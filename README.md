@@ -12,12 +12,13 @@ The framing is not "is this true?" but *"what part of this survives contact with
 
 | Document | What it is |
 |---|---|
+| [`docs/overview.md`](docs/overview.md) | **Start here.** High-level explanation with diagrams — what the system does, and why it cannot quietly become an advocacy tool |
 | [`docs/spec/claim-verification-engine.v0.2.md`](docs/spec/claim-verification-engine.v0.2.md) | **Current spec.** Pipeline, taxonomies, persistence model, and the resolved design decisions |
 | [`docs/spec/acceptance-criteria.md`](docs/spec/acceptance-criteria.md) | The anti-laundering constraints as fifteen numbered, binary pass/fail criteria |
 | [`docs/spec/custodian-pack-interface.md`](docs/spec/custodian-pack-interface.md) | Normative contract for jurisdiction packs — how routing generalises without diluting |
 | [`docs/spec/packs/israel.md`](docs/spec/packs/israel.md) | First pack instance, draft. Not yet admitted |
 | [`docs/spec/claim-verification-engine.v0.1.md`](docs/spec/claim-verification-engine.v0.1.md) | The original draft, archived verbatim for diffing |
-| [`docs/plan.md`](docs/plan.md) | The plan this spec work was executed against |
+| [`docs/plan.md`](docs/plan.md) | Roadmap — what is settled, what is next, what gates implementation |
 
 ---
 
