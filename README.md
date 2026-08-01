@@ -13,7 +13,7 @@ The framing is not "is this true?" but *"what part of this survives contact with
 | Document | What it is |
 |---|---|
 | [`docs/spec/claim-verification-engine.v0.2.md`](docs/spec/claim-verification-engine.v0.2.md) | **Current spec.** Pipeline, taxonomies, persistence model, and the resolved design decisions |
-| [`docs/spec/acceptance-criteria.md`](docs/spec/acceptance-criteria.md) | The anti-laundering constraints as fourteen numbered, binary pass/fail criteria |
+| [`docs/spec/acceptance-criteria.md`](docs/spec/acceptance-criteria.md) | The anti-laundering constraints as fifteen numbered, binary pass/fail criteria |
 | [`docs/spec/custodian-pack-interface.md`](docs/spec/custodian-pack-interface.md) | Normative contract for jurisdiction packs — how routing generalises without diluting |
 | [`docs/spec/packs/israel.md`](docs/spec/packs/israel.md) | First pack instance, draft. Not yet admitted |
 | [`docs/spec/claim-verification-engine.v0.1.md`](docs/spec/claim-verification-engine.v0.1.md) | The original draft, archived verbatim for diffing |
@@ -30,6 +30,7 @@ v0.1 was structurally complete but ended with five open questions, three of them
 - **Stage 8 misleadingness** — the *robustness sweep*: four mechanical tests over already-retrieved series, emitting a flip table. Narrower than "detects false impressions," and narrow on purpose.
 - **Geographic scope** — generalised from the start. Jurisdictions are versioned data packs, not code.
 - **Series changes** — a break register plus a mandatory continuity check. No verification by splicing.
+- **Reconstruction is versioned** — re-derived as a pure function of the verified element set every time an element changes, producing a trajectory that shows support accumulating *or eroding*. Never an edit of the previous text, which is what lets a reconstruction shrink correctly when a provisional figure revises.
 
 It also converts §7's six prose principles into criteria that can fail a build. A principle that cannot fail a build is decoration.
 

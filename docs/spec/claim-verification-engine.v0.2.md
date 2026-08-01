@@ -17,7 +17,8 @@ v0.1 was structurally complete but ended with five unresolved questions in its �
 | Stage 8 misleadingness | "Hardest unsolved piece" | Resolved — the **robustness sweep**, a mechanical four-test procedure emitting a flip table (§9.3) |
 | Geographic scope | Open question | Resolved — **generalised from the start** via versioned custodian packs; jurisdictions are data, not code (§9.4) |
 | Series changes | "Detection strategy needed" | Resolved — break register plus a mandatory continuity check; no verification by splicing (§9.5) |
-| Anti-laundering constraints | Six prose principles | Twelve numbered acceptance criteria with pass/fail tests ([acceptance-criteria.md](acceptance-criteria.md)) |
+| Reconstruction | Single subtractive pass | **Versioned** — re-derived as a pure function of the element set on every change, producing a revision trajectory. Causal clauses structurally excluded at every revision (§9.6) **[new in v0.2]** |
+| Anti-laundering constraints | Six prose principles | Fifteen numbered acceptance criteria with pass/fail tests ([acceptance-criteria.md](acceptance-criteria.md)) |
 
 Sections 1–8 are carried forward from v0.1 with amendments marked **[v0.2]**.
 
@@ -79,7 +80,7 @@ A fabricated verification is worse than no verification, because it launders a g
 | 4 | **Route** | Resolve jurisdiction → pack → measure → custodian. Log the routing decision, its rationale, and the alternatives considered **[v0.2]** |
 | 5 | **Retrieve** | Pull the figure. Record the citation record + revision status (see §5). Run the continuity check against the series break register **[v0.2]** |
 | 6 | **Element verdict** | Assign one status per element (see §6.1), applying the tolerance bands (§9.2). Automated and final **[v0.2]** |
-| 7 | **Reconstruct** | Subtractive rebuild from surviving elements only. Emit discard ledger |
+| 7 | **Reconstruct** | Subtractive rebuild from surviving elements only. Emit discard ledger. Re-derived as a new revision whenever an element status changes **[v0.2]** |
 | 8 | **Claim-level evaluation** | Run the robustness sweep (§9.3), then evaluate the *reconstructed* claim as a whole (see §6.2). Element-level truth does not imply claim-level honesty |
 | 9 | **Derive** | Identify implied/adjacent claims; map each to original and reconstructed (see §6.3) |
 | 10 | **Persist** | Store as retrieval events with validity windows, not as timeless facts |
@@ -103,6 +104,22 @@ Two authoritative institutions can both be correct and disagree, because they me
 ### Stage 7 is subtractive by construction
 
 Reconstruction removes; it never adds, rephrases toward a conclusion, or supplies connective claims. If the surviving elements do not compose into a coherent statement, the correct output is the element list plus "does not reconstruct," not a smoothed-over sentence.
+
+### Stage 7 is versioned, not incremental **[v0.2]**
+
+Reconstruction is not a one-shot pass. Element statuses change over time — an Unreachable custodian comes back, a provisional print revises, a newly-declared series break invalidates a comparison — and each change produces a **new reconstruction revision**.
+
+The governing rule:
+
+> A reconstruction is a **pure function of the current verified element set**. Every revision is re-derived from scratch from that set. No revision is ever produced by editing the text of a previous revision.
+
+This distinction is the whole safety property, and it is easy to get wrong because the naive implementation looks equivalent. An append-based reconstructor — one that takes the previous sentence and adds a clause when a new element verifies — is a text generator that accretes. It cannot shrink correctly when an element regresses, and it accumulates connective phrasing that no element licenses. A re-derived reconstructor is a deterministic projection of evidence, and shrinking is just as natural to it as growing.
+
+**Revisions are not monotone.** §8 invalidates verdicts pinned to a provisional print when a revision publishes, so an element can move from Verified to Contradicted and the reconstruction gets *smaller*. A shrinking revision is a first-class output, not an error state: a claim that gained support and then lost it is exactly the trajectory the system should make visible.
+
+**The revision trajectory is itself an output.** The sequence of reconstructions, each with the element-set it derived from and the retrieval that triggered it, shows how a claim's support accumulated or eroded. This is the natural companion to §6.3's `implied-by-original-only` tag: one shows what people believed because of the unsupported parts, the other shows when those parts were and were not supported.
+
+**What can never enter, at any revision.** Because every revision is composed only of surviving elements, and opinion, prediction, and causal fragments are marked Out of scope at Stage 1 and can never become Verified, no revision at any point in the trajectory can contain an evaluative or causal clause. This is a structural guarantee rather than a style rule — there is no code path by which such a clause reaches the reconstructor, because the reconstructor reads only the verified element set. See §9.6.
 
 ### Stage 8 exists because verified parts can compose a false whole
 
@@ -230,6 +247,8 @@ relationships     id, from_claim_id, to_claim_id, tag
 routing_log       id, element_id, custodian_id, rationale,
                   alternatives_considered, pack_id, pack_version           [v0.2]
 
+reconstructions   id, claim_id, revision, text, element_set_hash,          [v0.2]
+                  derived_at, triggered_by_retrieval_id, does_reconstruct
 packs             id, jurisdiction_id, version, maintainer, loaded_at      [v0.2]
 series_breaks     id, measure_id, effective_date, kind,                    [v0.2]
                   custodian_notice_ref, linked_series_available,
@@ -239,6 +258,8 @@ sweeps            id, claim_id, test, alternative, conclusion_holds,       [v0.2
 ```
 
 `sweeps` rows are the flip table (§9.3). Each row cites the retrieval it was computed from, so the sweep is bound by §3 exactly as the primary verification is: a sweep cell computed from anything other than a recorded retrieval is a fabricated comparison.
+
+`reconstructions` rows are the revision trajectory (§4, Stage 7). `element_set_hash` is what makes the pure-function property checkable after the fact: two revisions with the same hash must have identical text, and a revision whose text does not re-derive from its recorded element set is evidence the reconstructor edited rather than re-derived. `does_reconstruct` carries the "does not reconstruct" outcome as a value rather than as an empty string, so a claim whose surviving elements do not compose is distinguishable from one with nothing left.
 
 `source_attribution` on `claims` is stored for provenance and display but is **structurally excluded from the verification path** (§7.6, [AC-6](acceptance-criteria.md#ac-6--claimant-blindness)).
 
@@ -375,6 +396,31 @@ The third row is the one that keeps the sweep honest. Without it, an unrunnable 
 All three **flag for review only**. None may auto-verify, and none may auto-populate the register — a register entry requires a `custodian_notice_ref`, because a break the engine inferred but the custodian never announced is a suspicion, not a fact about the series. Signal 2 is the strongest of the three and is cheap: it falls out of storing retrievals as events rather than facts (§8).
 
 Tested by [AC-12](acceptance-criteria.md#ac-12--break-integrity).
+
+### 9.6 Can a reconstruction acquire a causal clause? — no, and the alternative
+
+**The question.** If reconstruction is versioned (§4, Stage 7), a natural next step suggests itself: as more elements verify, the reconstruction grows back toward the original claim. Given *"inflation is up due to governmental incompetence over the last three years"*, verifying the price series yields *"over the last three years, inflation rose."* If a later step could establish that government action was the dominant driver, the reconstruction would become *"over the last three years, inflation rose, most likely due to government action or inaction."*
+
+**Decision.** The first step is exactly right and is what §4's versioned reconstruction does. The second step is prohibited, and no configuration enables it.
+
+**Why the causal clause cannot enter.** Three independent reasons, any one of which is sufficient:
+
+1. **No custodian.** §3 requires every element to originate from a retrieval against a named institution with a mandate to publish the figure, a stated methodology, and a cadence. No institution publishes *the share of inflation attributable to government action*. There is nothing to retrieve, so there is no element, so there is nothing for the reconstructor to compose. This is not a coverage gap that a better pack would close — the figure does not exist as a published series anywhere.
+2. **Attribution requires a model, and the model chooses the answer.** Establishing that policy drove a price series means running a counterfactual — a structural model, a synthetic control, a decomposition. Reasonable economists select different models and reach different attributions from identical data. That is §2's fourth exclusion with one word changed: *source* selection becomes *model* selection, and the outcome still follows from the choice rather than from the record. Verification would be argument wearing a verification badge.
+3. **"More than other factors" is strictly harder.** Comparative attribution requires attributing *every* competing factor — global energy prices, exchange rates, supply conditions, monetary policy — and ranking them. Each carries its own model dependence, and the ranking amplifies rather than cancels them.
+
+**Why this is the highest-stakes case in the spec.** A causal clause in a reconstruction would be the most valuable output the system could possibly produce for someone seeking to launder a conclusion. It would arrive wearing a citation trail, a custodian name, and a verification stamp — the full apparatus of §5 — attached to a sentence whose operative word was never verified by any of it. Every other constraint in §7 would still pass while the artifact as a whole became precisely the laundering device §7 exists to prevent. The mechanism is worth naming plainly: the verified elements would be doing evidentiary work for a proposition they do not support, and the reader would have no way to see the seam.
+
+**What happens to the causal claim instead.** It is not discarded silently. It routes to §6.3 as a derived element tagged **`implied-by-original-only`** — it followed from the original, it depends on elements that did not survive, and it dies with them. §6.3 names this the most analytically valuable output of the whole system, and this is the case that shows why: the output records that people took away *"the government caused this"* from a claim whose only verified content was *"inflation rose."* That gap, made explicit and attached to the record, is a more useful artifact than a causal verdict would have been, and it is honest in a way a causal verdict could not be.
+
+**What can legitimately verify near a causal claim.** Adjacent administrative facts are ordinary in-scope elements, each with a real custodian:
+
+- *"Policy X took effect on date D"* — custodian: the official gazette or legislative record.
+- *"The series moved in direction Y from date D onward"* — custodian: the statistical office.
+
+Both can be Verified, and both can appear in a reconstruction. What the reconstructor may never do is **compose them into a causal connective**. "Policy X took effect in March, and prices rose from March" is two verified elements. "Prices rose because of policy X" is a third claim that neither element supports, and post-hoc composition is the oldest way to imply causation without asserting it. §7's rule that reconstruction "never supplies connective claims" is the operative constraint, and this is its most important application — not stylistic tidiness but the specific bar against assembling a causal implication out of non-causal parts.
+
+Tested by [AC-15](acceptance-criteria.md#ac-15--reconstruction-determinism-and-composition).
 
 ---
 

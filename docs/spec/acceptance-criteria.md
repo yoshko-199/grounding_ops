@@ -29,6 +29,7 @@ These criteria are versioned with the spec and are **not operator-configurable**
 | §9.3 robustness sweep | AC-11 |
 | §9.4 pack routing | AC-14 |
 | §9.5 series breaks | AC-12 |
+| §9.6 reconstruction trajectory and causal exclusion | AC-15 |
 
 ---
 
@@ -210,3 +211,23 @@ Assert **Unreachable** and **Unverified** are distinct outcomes and that neither
 **Fails if:** any verification retrieves from a non-custodian source under any circumstance; if a missing pack produces anything other than Insufficient Data; or if Unreachable is reported as Unverified.
 
 **Note.** This is the criterion that keeps generalisation from becoming dilution. Every other guarantee in the spec rests on "custodian of record" meaning something narrower than "source that looks official," and a fallback path — however well-intentioned, however rarely taken — dissolves that distinction at exactly the moments it matters most.
+
+---
+
+## AC-15 — Reconstruction determinism and composition
+
+**Constraint:** §4 Stage 7, §7.1, §9.6. Reconstruction is a pure function of the verified element set, and never composes a claim its elements do not support.
+
+**Test — determinism.** Take a verified element set. Derive a reconstruction. Derive it again from the same set. Assert byte-identical text. Assert two `reconstructions` rows sharing an `element_set_hash` always share their text.
+
+**Test — re-derivation, not editing.** For every revision in a claim's trajectory, re-derive from that revision's recorded element set and assert the result matches the stored text. Assert no code path produces revision *n* by taking revision *n−1* as input; the reconstructor's only input is the current element set.
+
+**Test — regression.** Flip an element from Verified to Contradicted, as a publishing revision would (AC-9). Assert the next reconstruction is *smaller*, is stored as a new revision rather than replacing its predecessor, and is not treated as an error.
+
+**Test — composition.** Assert no reconstruction, at any revision, contains a causal or evaluative connective ("because", "due to", "caused by", "thanks to", "as a result of", and their equivalents in each pack's declared languages) unless that connective originates in a single Verified element that itself carries it. Assert that two verified elements adjacent in time — a policy effective date and a series movement — never compose into a causal statement.
+
+**Test — scope closure.** Assert that elements marked Out of scope at Stage 1 (opinion, prediction, causal) can never reach a Verified status by any path, and are therefore structurally unreachable by the reconstructor.
+
+**Fails if:** the same element set yields different text across derivations; any revision is produced by editing its predecessor; a regressing element produces an error rather than a smaller revision; a reconstruction contains a causal connective not carried by a single verified element; or an out-of-scope element can attain Verified status.
+
+**Note.** The composition test is the one that matters most and the one an implementation is most likely to fail by accident. A reconstructor built to produce fluent prose will reach for connectives to smooth two adjacent verified facts into a sentence, and the resulting causal implication will carry the full authority of the citation trail while resting on nothing. §9.6 works through the worked example in full.
