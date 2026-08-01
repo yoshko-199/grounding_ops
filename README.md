@@ -13,8 +13,9 @@ The framing is not "is this true?" but *"what part of this survives contact with
 | Document | What it is |
 |---|---|
 | [`docs/overview.md`](docs/overview.md) | **Start here.** High-level explanation with diagrams — what the system does, and why it cannot quietly become an advocacy tool |
-| [`docs/spec/claim-verification-engine.v0.2.md`](docs/spec/claim-verification-engine.v0.2.md) | **Current spec.** Pipeline, taxonomies, persistence model, and the resolved design decisions |
-| [`docs/spec/acceptance-criteria.md`](docs/spec/acceptance-criteria.md) | The anti-laundering constraints as fifteen numbered, binary pass/fail criteria |
+| [`docs/spec/claim-verification-engine.v0.3.md`](docs/spec/claim-verification-engine.v0.3.md) | **Current spec.** Pipeline, taxonomies, persistence model, and the resolved design decisions |
+| [`docs/spec/claim-verification-engine.v0.2.md`](docs/spec/claim-verification-engine.v0.2.md) | Superseded. Archived for diffing |
+| [`docs/spec/acceptance-criteria.md`](docs/spec/acceptance-criteria.md) | The anti-laundering constraints as seventeen numbered, binary pass/fail criteria |
 | [`docs/spec/custodian-pack-interface.md`](docs/spec/custodian-pack-interface.md) | Normative contract for jurisdiction packs — how routing generalises without diluting |
 | [`docs/spec/packs/israel.md`](docs/spec/packs/israel.md) | First pack instance, draft. Not yet admitted |
 | [`docs/spec/claim-verification-engine.v0.1.md`](docs/spec/claim-verification-engine.v0.1.md) | The original draft, archived verbatim for diffing |
@@ -22,7 +23,7 @@ The framing is not "is this true?" but *"what part of this survives contact with
 
 ---
 
-## What v0.2 settled
+## What the spec settled
 
 v0.1 was structurally complete but ended with five open questions, three of them load-bearing — without them, two competent implementers would build materially different systems. v0.2 closes all five:
 
@@ -32,6 +33,11 @@ v0.1 was structurally complete but ended with five open questions, three of them
 - **Geographic scope** — generalised from the start. Jurisdictions are versioned data packs, not code.
 - **Series changes** — a break register plus a mandatory continuity check. No verification by splicing.
 - **Reconstruction is versioned** — re-derived as a pure function of the verified element set every time an element changes, producing a trajectory that shows support accumulating *or eroding*. Never an edit of the previous text, which is what lets a reconstruction shrink correctly when a provisional figure revises.
+
+v0.3 then closed the two gaps that made Stage 9 unimplementable and Stage 4 dependent on an input it had no rule for obtaining:
+
+- **Derived-element generation** — extraction, not invention. Every derived claim cites a span of the original, uses one of five closed operations, may introduce no entity absent from the claim, is never verified, and is gated.
+- **Jurisdiction detection** — provenance is split at ingest, and only a jurisdiction *code* crosses into the verification path. This is what resolves the collision between needing provenance to route and forbidding claimant metadata from reaching the pipeline.
 
 It also converts §7's six prose principles into criteria that can fail a build. A principle that cannot fail a build is decoration.
 
@@ -47,4 +53,8 @@ The `israeli-fact-checker` skill (installed at `~/.claude/skills/`, outside this
 
 ## Open questions
 
-Four remain genuinely open and are listed in [v0.2 §10](docs/spec/claim-verification-engine.v0.2.md#10-remaining-open-questions): sweep cost against rate-limited APIs, jurisdiction detection for claims with implicit jurisdiction, sign-off throughput at volume, and how derived elements are *generated* (§6.3 defines only how they are tagged).
+Four remain genuinely open and are listed in [v0.3 §10](docs/spec/claim-verification-engine.v0.3.md#10-remaining-open-questions): sweep cost against rate-limited custodian APIs, sign-off throughput at volume, whether five derivation operations cover the implication patterns that actually occur in public claims, and how span anchoring works when a claim arrives paraphrased rather than quoted.
+
+## Checks
+
+`python3 scripts/check_spec.py` runs the mechanical consistency checks: every resolved decision carries a rationale, every constraint maps to a criterion with a test and a failure condition, schema and prose agree, no statistics are embedded in prose, every link and anchor resolves, and the entry-point documents point at the current spec version.

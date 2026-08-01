@@ -1,6 +1,6 @@
 # Acceptance Criteria
 
-**v1.0** — companion to [`claim-verification-engine.v0.2.md`](claim-verification-engine.v0.2.md).
+**v1.1** — companion to [`claim-verification-engine.v0.3.md`](claim-verification-engine.v0.3.md).
 
 ---
 
@@ -30,6 +30,8 @@ These criteria are versioned with the spec and are **not operator-configurable**
 | §9.4 pack routing | AC-14 |
 | §9.5 series breaks | AC-12 |
 | §9.6 reconstruction trajectory and causal exclusion | AC-15 |
+| §9.7 derived-element generation | AC-16 |
+| §9.8 jurisdiction projection | AC-17, AC-6 |
 
 ---
 
@@ -93,11 +95,13 @@ Assert that a legitimate change requires a pack version bump, and that the bump 
 
 **Constraint:** §7.6. No claimant metadata reaches the verification path.
 
-**Test.** Take a fixed claim text. Run it N times, varying only `source_attribution` — different named individuals, different affiliations, no attribution at all. Assert that the routing decisions, retrievals, element statuses, flip table, and proposed claim-level verdict are **byte-identical** across all N runs, after normalising timestamps and record ids.
+**Test.** Take a fixed claim text. Run it N times, varying only `claimant_identity` — different named individuals, different affiliations, different roles, no attribution at all. Assert that the routing decisions, retrievals, element statuses, flip table, and proposed claim-level verdict are **byte-identical** across all N runs, after normalising timestamps and record ids.
 
-Additionally, assert by static analysis that `claims.source_attribution` is not reachable from any Stage 1–9 input.
+Additionally, assert by static analysis that `claimant_identity` is not reachable from any Stage 1–9 input.
 
-**Fails if:** any of those outputs differ across runs, or attribution is reachable from the verification path even if currently unused.
+**Test — venue projection (§9.8).** Vary `claimant_identity.venue` and `.audience` across runs — including venue strings that name a party or affiliation. Assert `claim_context.jurisdiction_hint` is unchanged, and assert it is a jurisdiction code rather than free text. A venue string that alters routing has smuggled claimant identity into the verification path through the jurisdiction door.
+
+**Fails if:** any of those outputs differ across runs; attribution is reachable from the verification path even if currently unused; `jurisdiction_hint` is free text rather than a code; or venue content influences any routing decision.
 
 **Note.** This is the sharpest criterion in the set. It converts "we are non-partisan" — an unfalsifiable claim about intent — into a differential test that either passes or does not. Reachability is tested alongside behaviour because an unused pathway is a latent failure, not a passing one.
 
@@ -231,3 +235,41 @@ Assert **Unreachable** and **Unverified** are distinct outcomes and that neither
 **Fails if:** the same element set yields different text across derivations; any revision is produced by editing its predecessor; a regressing element produces an error rather than a smaller revision; a reconstruction contains a causal connective not carried by a single verified element; or an out-of-scope element can attain Verified status.
 
 **Note.** The composition test is the one that matters most and the one an implementation is most likely to fail by accident. A reconstructor built to produce fluent prose will reach for connectives to smooth two adjacent verified facts into a sentence, and the resulting causal implication will carry the full authority of the citation trail while resting on nothing. §9.6 works through the worked example in full.
+
+---
+
+## AC-16 — Derived-element anchoring and closure
+
+**Constraint:** §9.7. Derived elements are extracted from the claim's text, never inferred from world knowledge.
+
+**Test — anchoring.** For every derived element, assert `source_span_start` and `source_span_end` are present, and that the substring they identify occurs verbatim in the original claim text at that position. Assert no derived element is emitted without a resolving span.
+
+**Test — closed operations.** Assert every `derivation_operation` is a member of the versioned list in §9.7.2. Assert the list cannot be extended at runtime through any configuration surface (AC-3 applies to it identically).
+
+**Test — no new entities.** For each derived element, extract its entity, quantity, and time-period tokens. Assert every one appears in the original claim text or in a flanking element of the anchoring span. A derived element containing a token found nowhere in the original is invention, and fails.
+
+**Test — never verified.** Assert no derived element carries an element status, a tolerance band, a retrieval, or a continuity status. Assert `derived_elements` has no foreign key by which a retrieval could attach. Assert no derived element appears in any reconstruction at any revision.
+
+**Test — framing.** Assert derived elements render as implication ("this claim invites the conclusion that…") and never as attributed quotation. Assert no output presents a discharged implication as something the claimant stated.
+
+**Test — gate.** Assert derived elements are emitted as `proposed` and cannot publish without confirmation, on the same footing as AC-10.
+
+**Fails if:** any derived element lacks a resolving span; uses an operation outside the closed list; introduces an entity, quantity, or period absent from the original; carries a verification status or retrieval; renders as quotation; or publishes unconfirmed.
+
+**Note.** The no-new-entities test is what converts "don't invent implications" from an instruction into a check. Given *"inflation is up due to governmental incompetence"*, the claim *"the government caused inflation to rise"* passes — every token traces to the original. *"The government's fiscal policy was expansionary"* fails on *fiscal policy*, a phrase found nowhere in the claim. The second is the more dangerous output precisely because it is fluent, plausible, and looks derived.
+
+---
+
+## AC-17 — Jurisdiction projection
+
+**Constraint:** §9.8. Only a jurisdiction code crosses from provenance into the verification path.
+
+**Test — structural split.** Assert `claim_context` and `claimant_identity` are separate records populated at ingest, not a single provenance structure filtered at point of use. Assert `claim_context` contains no free-text field.
+
+**Test — resolution order.** Construct four claims exercising each rule in §9.8.2 — explicit jurisdiction in the text, `jurisdiction_hint` only, a jurisdiction-invariant supranational measure, and none of the above. Assert the first three resolve to the expected pack and the fourth returns **Insufficient Data**. Assert each records which rule fired in `routing_log`.
+
+**Test — no default.** Assert no configuration surface sets a default or fallback jurisdiction. Assert a claim with no resolvable jurisdiction never routes to any pack.
+
+**Fails if:** provenance reaches the pipeline unsplit; `claim_context` carries free text; an unresolvable jurisdiction produces anything other than Insufficient Data; or a default jurisdiction exists anywhere.
+
+**Note.** A default jurisdiction fails in the worst available way. Every element would be genuinely Verified against a real custodian with a real citation record, and the entire artifact would be about the wrong country — an error with no internal symptom, because nothing in the pipeline is malfunctioning.

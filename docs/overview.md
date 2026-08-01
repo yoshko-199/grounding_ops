@@ -2,7 +2,7 @@
 
 A high-level explanation of what the system does, how it works, and — the part that matters most — **why it cannot quietly become an advocacy tool**.
 
-For the normative detail see the [specification](spec/claim-verification-engine.v0.2.md), the [acceptance criteria](spec/acceptance-criteria.md), and the [custodian pack interface](spec/custodian-pack-interface.md).
+For the normative detail see the [specification](spec/claim-verification-engine.v0.3.md), the [acceptance criteria](spec/acceptance-criteria.md), and the [custodian pack interface](spec/custodian-pack-interface.md).
 
 ---
 
@@ -103,7 +103,7 @@ The middle column is the design. The right column is why it's more than good int
 
 > Take one claim text. Run it repeatedly, changing only who is said to have made it — different politicians, different parties, no attribution at all. The routing decisions, retrievals, element statuses, flip table, and proposed verdict must be **byte-identical** across every run.
 
-That either passes or it doesn't. It converts a virtue into an assertion about behaviour that a test suite checks on every build. The same document does this fifteen times over, for each constraint the design depends on — because a principle that cannot fail a build is decoration.
+That either passes or it doesn't. It converts a virtue into an assertion about behaviour that a test suite checks on every build. The same document does this seventeen times over, for each constraint the design depends on — because a principle that cannot fail a build is decoration.
 
 ### The two rules everything rests on
 
@@ -183,4 +183,4 @@ An incomplete pack degrades to conservative outcomes rather than routing confide
 
 ## 6. Status
 
-Specification stage. No implementation exists, and the spec has [four open questions](spec/claim-verification-engine.v0.2.md#10-remaining-open-questions) — the sharpest being that Stage 9 must *generate* derived claims in order to tag them, which is a creative act inside a system otherwise built to prevent creative acts. See the [roadmap](plan.md).
+Specification stage. No implementation exists, and the spec has [four open questions](spec/claim-verification-engine.v0.3.md#10-remaining-open-questions) — sweep cost, sign-off throughput at volume, whether the five derivation operations cover the implications that actually occur, and how anchoring works when a claim arrives paraphrased. See the [roadmap](plan.md).
