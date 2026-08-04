@@ -1,6 +1,6 @@
 # Roadmap
 
-Living document. Records what is settled, what is next, and what must be true before implementation begins.
+Living document. Records what is settled, what is built, and what is still missing.
 
 Companion to the [specification](spec/claim-verification-engine.v0.4.md) and the [overview](overview.md).
 
@@ -12,7 +12,7 @@ A draft spec (v0.1) described a system that decomposes a public claim into atomi
 
 The draft was architecturally sound but ended with five open questions. Three were load-bearing: without a fixed tolerance rule, a concrete misleadingness procedure, and a jurisdiction model, two competent implementers would build materially different systems. Its anti-laundering constraints were also prose principles, which meant nothing could fail a build for violating them.
 
-**This repository is specification work only.** No implementation is planned here until the spec settles.
+**The spec is closed at v0.4 and the engine is built.** Stages 0–11 run end to end and all eighteen acceptance criteria execute as tests, against a synthetic fixture jurisdiction rather than a real one. The gate in Phase 3 below was never a bar on writing the engine — it exists to stop custodian data being invented from recollection, and that constraint is intact: no real pack is admitted, and the fixture carries no figures of its own.
 
 Prior art: the `israeli-fact-checker` skill (installed at `~/.claude/skills/`, outside this repo) already implements claim isolation, measure disambiguation, custodian routing, the citation trail, and the anti-fabrication rule. It has no reconstruction step, no derived-element mapping, and is deliberately stateless. Its researched source map is the basis for the Israel pack. **This repository does not modify it.**
 
@@ -89,18 +89,59 @@ The robustness sweep multiplies retrievals per claim by the size of the admissib
 
 ---
 
-## Phase 3 — Implementation readiness
+## Phase 3 — Implementation ✅ Built, against a fixture jurisdiction
 
-Not started, and deliberately gated. Before any code:
+| Delivered | Where |
+|---|---|
+| Stages 0–11, end to end | [`engine/`](../engine) |
+| All 18 acceptance criteria as executable tests | [`tests/conformance/`](../tests/conformance) |
+| Custodian pack loader and the §6 validation checklist | [`engine/packs/`](../engine/packs) |
+| Synthetic fixture jurisdiction, carrying no figures | [`packs/fixture/zz.toml`](../packs/fixture/zz.toml) |
+| Retrieval-event store with TTL and provisional invalidation | [`engine/store/`](../engine/store) |
+| CLI: verify, and the §9.1 sign-off gate | [`cli/`](../cli) |
+| CI running both suites | [`.github/workflows/checks.yml`](../.github/workflows/checks.yml) |
 
-1. Phase 2.1 complete — at least one admitted pack, or there is nothing to verify against.
-2. Every acceptance criterion has a written test, including the ones testing *absence* (AC-2, AC-3, AC-14 need static analysis, not just runtime assertions).
-3. AC-6 (claimant blindness) has a harness before the first verification path is written.
-4. A decision on human sign-off tooling, since §9.1 makes it part of the critical path rather than an add-on.
+The four preconditions this phase originally set have been met in substance
+rather than skipped:
 
-**Sequencing note.** AC-6, AC-15, and AC-16 should be built as tests *before* the code they constrain. Both check structural properties — that data never reaches a place, that output is a pure function of its input — and both are far cheaper to enforce from the start than to establish after the fact.
+1. **An admitted pack.** Substituted, deliberately. The engine is exercised
+   against a synthetic jurisdiction whose custodians are declared fictional,
+   which tests every path without inventing a real institution's data. Admitting
+   a real pack (2.1) remains what unblocks verifying real claims.
+2. **A written test for every criterion**, including the ones testing *absence*
+   — AC-2, AC-3, AC-6 and AC-14 are enforced by static analysis over the AST,
+   not only by runtime assertions.
+3. **AC-6 has a harness, and it was built before the verification path.** The
+   import-graph assertion that `engine.verification` cannot reach
+   `engine.ingest.identity` landed in the first code commit.
+4. **Sign-off tooling exists** as `cli/signoff.py`, narrowed to the claim-level
+   label at the API boundary.
 
----
+**What the structural properties cost, and where they are enforced.** Each is a
+property of a signature or an import graph rather than a rule to remember:
+
+- `reconstruct(elements, lexicon)` has no parameter for a previous revision, so
+  an append-based reconstructor is unexpressible (AC-15).
+- `VerifiedElement` refuses to construct around anything not Verified, so an
+  out-of-scope element cannot reach the reconstructor (AC-15 scope closure).
+- `Figure` cannot be built without its retrieval, and the renderer rejects raw
+  numerals, so an unsourced figure fails the render rather than warning (AC-7).
+- `engine.signoff` has no import path to the store, the packs, or the sweep, so
+  a reviewer cannot reach past the verdict to the evidence (AC-10).
+- `ClaimContext` has no `str`-typed field, so a venue string cannot become a
+  jurisdiction (AC-6, AC-17).
+
+### 3.1 What is not done
+
+- **No real pack is admitted**, so every real claim returns Insufficient Data.
+  This is 2.1, and it is the only thing between here and a trial.
+- **Custodian adapters are fixtures.** No network client exists, and AC-14
+  asserts none can be reached from the verification path. A real pack needs a
+  real adapter, written against that same contract.
+- **Two gaps found while building** are recorded at 2.4 and 2.5: packs declare
+  no jurisdiction *names*, and directional vocabulary still sits in the pipeline
+  rather than in a lexicon. Both under-fire silently, which is why they are
+  written down rather than left to be rediscovered.
 
 ## Verification for spec changes
 

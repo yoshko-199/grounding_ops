@@ -13,46 +13,11 @@ has to say so explicitly because nothing else will.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import Enum
-
-from engine.elements import ContinuityStatus, Element, ElementStatus, GateState
+from engine.elements import ContinuityStatus, Element, ElementStatus
+from engine.verdicts import ProposedVerdict, Verdict
 from engine.verification.sweep import SweepResult
 
-
-class Verdict(Enum):
-    """§6.2, applied to the reconstructed claim."""
-
-    ACCURATE = "accurate"
-    SUBSTANTIALLY_INACCURATE = "substantially_inaccurate"
-    MISLEADING = "misleading"
-    FALSE = "false"
-    INDETERMINATE = "indeterminate"
-    INSUFFICIENT_DATA = "insufficient_data"
-
-
-@dataclass(frozen=True, slots=True)
-class ProposedVerdict:
-    """A verdict as it leaves the pipeline: proposed, never final.
-
-    §9.1: "A ``proposed`` verdict renders visibly marked as unconfirmed and
-    cannot export."  The state is carried on the value rather than tracked
-    beside it, so nothing can render a verdict without also holding its state.
-    """
-
-    label: Verdict
-    rationale: str
-    state: GateState = GateState.PROPOSED
-    capped: bool = False
-    cap_reason: str = ""
-
-    @property
-    def is_final(self) -> bool:
-        return self.state in (GateState.CONFIRMED, GateState.AMENDED)
-
-    @property
-    def exportable(self) -> bool:
-        return self.state is GateState.CONFIRMED or self.state is GateState.AMENDED
+__all__ = ["ProposedVerdict", "Verdict", "evaluate"]
 
 
 def evaluate(
@@ -140,14 +105,16 @@ def evaluate(
         )
 
     if sweep.conclusion_flips:
-        flipped = ", ".join(
-            f"{row.test.value}:{row.alternative}" for row in sweep.flipped_rows
-        )
+        # The flipped alternatives are deliberately not named here. §9.3 makes
+        # the flip table itself the evidence, and it renders with every row
+        # citing the retrieval it was computed from; restating the alternatives
+        # in prose would duplicate that while putting their identifiers —
+        # window names like "3m" — into text no retrieval id travels with.
         return ProposedVerdict(
             Verdict.MISLEADING,
             "The elements verify, but the claim's conclusion does not hold under every "
-            f"admissible alternative the pack declares ({flipped}). The flip table is "
-            "attached as the evidence.",
+            "admissible alternative the pack declares. The flip table below records "
+            "which alternatives it fails under, and is the evidence for this label.",
         )
 
     return ProposedVerdict(
@@ -161,10 +128,24 @@ def evaluate(
 
 
 def _tally(lead: str, verified, contradicted, contested, unreachable) -> str:
-    parts = [
-        f"{len(verified)} verified",
-        f"{len(contradicted)} contradicted",
-        f"{len(contested)} contested by definition",
-        f"{len(unreachable)} unreachable",
+    """Summarise the element outcomes without emitting a bare numeral.
+
+    Counts are deliberately not rendered. AC-7 requires every numeric literal
+    in output to resolve to a retrieval id, and an element count resolves to
+    none — it is a fact about the artifact rather than about the record. The
+    information is not lost: the discard ledger lists every element that did
+    not survive, and the citation record lists every retrieval.
+    """
+    present = [
+        name
+        for name, group in (
+            ("verified", verified),
+            ("contradicted", contradicted),
+            ("contested by definition", contested),
+            ("unreachable", unreachable),
+        )
+        if group
     ]
-    return f"{lead} Elements: {'; '.join(parts)}."
+    if not present:
+        return lead
+    return f"{lead} Element outcomes present: {'; '.join(present)}."

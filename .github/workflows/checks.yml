@@ -1,0 +1,39 @@
+name: checks
+
+# The repository carried a consistency-check script and nothing that ran it.
+# Both suites gate here: check_spec.py keeps the documents internally
+# consistent, and the conformance suite is the executable form of the
+# acceptance criteria. A criterion that cannot fail a build is decoration.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Specification consistency
+        run: python3 scripts/check_spec.py -v
+
+      - name: Acceptance criteria conformance
+        run: python -m pytest tests/conformance -v
+
+      - name: Unit tests
+        run: python -m pytest tests/unit -v
+
+      - name: Verify a claim end to end
+        run: |
+          PYTHONPATH=. python3 cli/verify.py \
+            "prices rose over the last three years due to governmental incompetence" \
+            --jurisdiction ZZ --packs packs/fixture

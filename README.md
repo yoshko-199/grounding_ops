@@ -4,7 +4,14 @@ Specification work for a **Claim Verification & Reconstruction Engine** — a sy
 
 The framing is not "is this true?" but *"what part of this survives contact with the record, and what does the surviving part actually support?"*
 
-**Status: specification only.** No implementation exists in this repository, and none is planned here until the spec settles.
+**Status: specification closed at v0.4; engine implemented and conformance-tested against a synthetic fixture pack.** All eighteen acceptance criteria run as tests. No real jurisdiction is admitted, so no real claim can be verified yet — [`docs/spec/packs/israel.md`](docs/spec/packs/israel.md) still lists seven admission blockers, and until one pack passes them the system's answer to every real claim is *Insufficient Data*, which is the correct answer rather than a gap.
+
+```
+python3 scripts/check_spec.py                    # document consistency
+python3 -m pytest tests/                         # 224 tests, 18 criteria
+PYTHONPATH=. python3 cli/verify.py "prices rose over the last three years \
+  due to governmental incompetence" --jurisdiction ZZ
+```
 
 ---
 

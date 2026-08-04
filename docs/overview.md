@@ -183,4 +183,4 @@ An incomplete pack degrades to conservative outcomes rather than routing confide
 
 ## 6. Status
 
-Specification stage. No implementation exists, and the spec has [four open questions](spec/claim-verification-engine.v0.4.md#10-remaining-open-questions) — sweep cost, sign-off throughput at volume, whether the five derivation operations cover the implications that actually occur, and how anchoring works when a claim arrives paraphrased. See the [roadmap](plan.md).
+The specification is closed at v0.4 and the engine is built: Stages 0-11 run end to end, and all eighteen acceptance criteria execute as tests against a synthetic fixture jurisdiction. No real pack is admitted yet, so every real claim currently returns *Insufficient Data* — the correct answer rather than a gap. The spec has [four open questions](spec/claim-verification-engine.v0.4.md#10-remaining-open-questions) — sweep cost, sign-off throughput at volume, whether the five derivation operations cover the implications that actually occur, and how anchoring works when a claim arrives paraphrased. See the [roadmap](plan.md).

@@ -112,7 +112,8 @@ def _direction(element: Element, pull: PullOutcome, claim_text: str) -> ElementO
     return _settled(
         element,
         ElementStatus.VERIFIED if holds else ElementStatus.CONTRADICTED,
-        f"the claim asserts {direction}; over the retrieved span the series {movement}",
+        f"the claim asserts {direction}; over the retrieved span the series {movement}. "
+        "The figures are in the citation record",
         band=ToleranceBand.A if holds else ToleranceBand.C,
         continuity=pull.continuity.status,
     )
@@ -177,8 +178,9 @@ def _quantity(element: Element, measure: Measure, pull: PullOutcome) -> ElementO
             continuity_status=pull.continuity.status,
         ),
         (
-            f"claim states {claimed}; {measure.name} published {latest.value} for "
-            f"{latest.reference_period} (band {outcome.band.value})"
+            f"the claim's figure was compared against {measure.name} as published, and "
+            f"falls in band {outcome.band.value}. Both figures and the reference period "
+            "are in the citation record"
         ),
         rounded=outcome.rounded,
     )
