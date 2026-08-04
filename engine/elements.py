@@ -139,6 +139,54 @@ class Element:
 
 
 @dataclass(frozen=True, slots=True)
+class VerifiedElement:
+    """An element that has survived verification, with what it contributes.
+
+    The reconstructor's only input type (§9.9).  Spec §4 Stage 7 says the
+    structural guarantee in as many words: "there is no code path by which
+    such a clause reaches the reconstructor, because the reconstructor reads
+    only the verified element set."  This type is that sentence.
+
+    Construction fails for anything not Verified, so an out-of-scope element
+    cannot be handed to the reconstructor even by mistake — AC-15's scope
+    closure test is enforced at the type boundary rather than checked inside
+    the composition loop.
+    """
+
+    element: Element
+    measure_name: str
+    figure: object | None = None  # engine.figures.Figure; typed loosely to avoid a cycle
+
+    def __post_init__(self) -> None:
+        if self.element.status is not ElementStatus.VERIFIED:
+            raise ValueError(
+                f"element {self.element.id} has status "
+                f"{self.element.status.value if self.element.status else 'unassigned'}, "
+                "not verified. Only verified elements reach the reconstructor (§4 Stage 7)"
+            )
+        if self.element.is_out_of_scope:
+            raise ValueError(
+                f"element {self.element.id} is kind {self.element.kind.value}, which "
+                "§2 excludes. An out-of-scope element can never be Verified, and this "
+                "guard exists so that a bug upstream cannot make it so downstream"
+            )
+
+    @property
+    def span_start(self) -> int:
+        return self.element.span.start
+
+    @property
+    def sort_key(self) -> tuple[int, str]:
+        """§9.9.1's total order: span position, then element id.
+
+        A property of the claim text and the element set, never of retrieval
+        timing, insertion order, or hash iteration — each of which would make
+        the same element set render differently across runs.
+        """
+        return (self.element.span.start, self.element.id.value)
+
+
+@dataclass(frozen=True, slots=True)
 class DerivedElement:
     """A claim the original invites the reader to conclude.
 
