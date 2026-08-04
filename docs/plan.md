@@ -65,11 +65,25 @@ The failure mode is silent and in the safe direction: an implication with no mat
 
 Whether anchoring attaches to the received text or the original utterance is unresolved, and it is not a technicality: §9.7.5 forbids presenting a derived implication as something the claimant asserted, and under paraphrase the two can diverge enough to change who is responsible for the implication. Needs a decision before Stage 9 ships.
 
-### 2.4 Sweep cost
+### 2.4 Pack-declared jurisdiction names
+
+Surfaced by implementation, not by review. §9.8.2's first resolution rule binds a claim that names its own jurisdiction — *"inflation in Israel"* — and it is the preferred rule precisely because it needs no provenance at all. But a pack declares a `jurisdiction_id` and no names, so the pipeline has nothing to match *"Israel"* against without embedding country knowledge, which §9.4 forbids outright.
+
+The implementation matches the jurisdiction **code** as a standalone token, which works for a fixture and almost never for a real claim. Rule 1 therefore rarely fires, and claims fall through to the `jurisdiction_hint`. The failure is conservative — an unresolved jurisdiction is Insufficient Data, never a guess — but it silently disables the one rule that needs no provenance, which is the opposite of the intended ordering.
+
+Closing it means a `names[]` field on the jurisdiction header, per declared language: the demonyms and short forms a claim may use. Small, and it belongs to the pack rather than the pipeline.
+
+### 2.5 Language vocabularies outside the lexicon
+
+Directional and predictive surface forms — *rose*, *fell*, *will*, *expected to* — currently live in the pipeline (`engine/verification/patterns.py`) rather than in a pack. They are properties of a language rather than of a jurisdiction, which is why they are not obviously pack data, and the fixture declares one language so nothing yet forces the question.
+
+A second language forces it. Interface §3.6 already declares derivation triggers and connectives per language; these belong in the same block. Until they are there, decomposition under-fires on any language but English, and §3.6's own warning applies — the failure is invisible from the output, because an under-decomposed claim looks exactly like a simpler claim.
+
+### 2.6 Sweep cost
 
 The robustness sweep multiplies retrievals per claim by the size of the admissible alternative set. Whether that is affordable against rate-limited custodian APIs needs measurement against a real pack, which makes it dependent on 2.1. Not a design answer, and it should not be guessed at now.
 
-### 2.5 Sign-off throughput
+### 2.7 Sign-off throughput
 
 §9.1 puts a person on every claim-level verdict, and §9.7.6 adds derived elements to the same gate. At volume this becomes the binding constraint. Whether a reviewed-sample model preserves the guarantee is unresolved. Flagged explicitly because it is the constraint most likely to be weakened quietly under operational pressure — and weakening it silently would hollow out §9.1 while leaving the documentation intact.
 
