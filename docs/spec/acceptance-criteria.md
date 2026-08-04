@@ -1,6 +1,6 @@
 # Acceptance Criteria
 
-**v1.1** — companion to [`claim-verification-engine.v0.3.md`](claim-verification-engine.v0.3.md).
+**v1.2** — companion to [`claim-verification-engine.v0.4.md`](claim-verification-engine.v0.4.md).
 
 ---
 
@@ -31,7 +31,9 @@ These criteria are versioned with the spec and are **not operator-configurable**
 | §9.5 series breaks | AC-12 |
 | §9.6 reconstruction trajectory and causal exclusion | AC-15 |
 | §9.7 derived-element generation | AC-16 |
+| §9.7.1 element anchoring (Stage 2) | AC-18 |
 | §9.8 jurisdiction projection | AC-17, AC-6 |
+| §9.9 element surface grammar | AC-15, AC-3 (non-configurability) |
 
 ---
 
@@ -230,6 +232,10 @@ Assert **Unreachable** and **Unverified** are distinct outcomes and that neither
 
 **Test — composition.** Assert no reconstruction, at any revision, contains a causal or evaluative connective ("because", "due to", "caused by", "thanks to", "as a result of", and their equivalents in each pack's declared languages) unless that connective originates in a single Verified element that itself carries it. Assert that two verified elements adjacent in time — a policy effective date and a series movement — never compose into a causal statement.
 
+**Test — grammar closure (§9.9).** Assert every connective appearing between two element surface forms is a member of the pack's `composition_connectives` for the claim's language. Assert the composed text is scanned against `forbidden_connectives` before emission and that a match **fails** the reconstruction rather than warning. Assert no reconstruction path invokes a language model.
+
+**Test — order stability (§9.9.1).** Derive a reconstruction from an element set inserted in several different orders, and from a set whose retrievals completed in several different orders. Assert byte-identical text in every case: element order is a function of `source_span_start` and element id alone, never of insertion, retrieval timing, or hash iteration.
+
 **Test — scope closure.** Assert that elements marked Out of scope at Stage 1 (opinion, prediction, causal) can never reach a Verified status by any path, and are therefore structurally unreachable by the reconstructor.
 
 **Fails if:** the same element set yields different text across derivations; any revision is produced by editing its predecessor; a regressing element produces an error rather than a smaller revision; a reconstruction contains a causal connective not carried by a single verified element; or an out-of-scope element can attain Verified status.
@@ -273,3 +279,21 @@ Assert **Unreachable** and **Unverified** are distinct outcomes and that neither
 **Fails if:** provenance reaches the pipeline unsplit; `claim_context` carries free text; an unresolvable jurisdiction produces anything other than Insufficient Data; or a default jurisdiction exists anywhere.
 
 **Note.** A default jurisdiction fails in the worst available way. Every element would be genuinely Verified against a real custodian with a real citation record, and the entire artifact would be about the wrong country — an error with no internal symptom, because nothing in the pipeline is malfunctioning.
+
+---
+
+## AC-18 — Element anchoring
+
+**Constraint:** §9.7.1 as extended in v0.4. Stage 2 elements are decomposed from the claim's text, never invented.
+
+**Test — anchoring.** For every element, assert `source_span_start` and `source_span_end` are present, and that the substring they identify occurs verbatim in the claim text at that position. Assert no element is emitted without a resolving span.
+
+**Test — no new entities.** For each element, extract its entity, quantity, unit, and time-period tokens. Assert every one appears in the claim text. An element whose bound time period, entity, or quantity is found nowhere in the claim is invention, and fails.
+
+**Test — spans are not retrofitted.** Assert the span is recorded by the decomposer at emission, not attached afterwards by searching the claim text for the element's own rendering. A span found by searching for text the system generated proves only that the system is self-consistent.
+
+**Test — no verification without a span.** Assert an element lacking a resolving span cannot bind a measure, cannot route, cannot produce a retrieval, and cannot reach any status. The check runs before Stage 3, not at render.
+
+**Fails if:** any element lacks a resolving span; any element introduces an entity, quantity, unit, or time period absent from the claim text; a span is derived from generated text rather than recorded at decomposition; or an unanchored element reaches Stage 3 or beyond.
+
+**Note.** This criterion closes the door AC-16 left open on the other side of the wall. A fabricated *derived* element is inert — §9.7.4 denies it a status, a retrieval, and a place in any reconstruction. A fabricated *ordinary* element is live: it binds a real measure, retrieves a real published figure, reaches **Verified**, and enters the reconstruction carrying a custodian name, a series identifier, and a reference period. Nothing malfunctions and every citation resolves; the artifact is simply about a proposition nobody advanced. AC-16's note calls the fluent invented implication the more dangerous output because it looks derived — an invented element is more dangerous still, because it *is* verified.

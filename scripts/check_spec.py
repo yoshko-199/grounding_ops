@@ -25,7 +25,7 @@ import glob
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # The current spec version. Bump when a new version file becomes current.
-CURRENT_SPEC = "docs/spec/claim-verification-engine.v0.3.md"
+CURRENT_SPEC = "docs/spec/claim-verification-engine.v0.4.md"
 CRITERIA = "docs/spec/acceptance-criteria.md"
 
 failures = []
@@ -155,6 +155,9 @@ def check_schema():
         "amendment_rationale", "amended_from_label", "source_attribution",
         "series_breaks", "derived_elements", "confirmed_by", "confirmed_at",
         "proposed_at", "continuity_status", "tolerance_band", "routing_log",
+        # pack fields introduced by pack interface v1.1 §3.6, not columns
+        "composition_connectives", "forbidden_connectives",
+        "derivation_triggers", "element_slot_order",
         # enum values and tag names, not columns
         "base_year", "implied-by-original-only", "linked_series",
     }

@@ -1,6 +1,8 @@
 # Custodian Pack Interface
 
-**Normative contract, v1.0** — companion to [`claim-verification-engine.v0.2.md`](claim-verification-engine.v0.2.md) §9.4.
+**Normative contract, v1.1** — companion to [`claim-verification-engine.v0.4.md`](claim-verification-engine.v0.4.md) §9.4.
+
+> **v1.1** adds §3.6 `lexicons`, a fifth required block. Spec §9.7.2 triggers derivation on connective phrases and §9.9 composes reconstructions from connectives; both are language-specific, and v1.0 gave them nowhere to be declared. Without the block an implementation either hardcodes one language into the pipeline — which spec §9.4 forbids — or under-fires silently on every other language a pack declares. Packs at v1.0 do not load against v1.1.
 
 ---
 
@@ -27,7 +29,7 @@ Packs are versioned artifacts. They are inspectable, diffable, and **not operato
 
 ## 3. Required declarations
 
-A pack MUST declare all four blocks. A pack missing any block is invalid and MUST NOT load — a partial pack is worse than no pack, because it routes some claims and silently drops others.
+A pack MUST declare all five blocks. A pack missing any block is invalid and MUST NOT load — a partial pack is worse than no pack, because it routes some claims and silently drops others.
 
 ### 3.1 Jurisdiction header
 
@@ -98,6 +100,26 @@ Per measure. Methodology revisions, base-year changes, and definitional breaks f
 | `linked_series_available` | yes | Whether the custodian publishes a back-cast or linked series spanning the break |
 | `linked_series_identifier` | if available | Which series to use instead |
 
+### 3.6 Lexicons
+
+**New in v1.1.** One entry per language declared in `languages` — including the languages claims arrive in, not only the language custodians publish in. A pack declaring a language with no lexicon entry is invalid.
+
+| Field | Required | Meaning |
+|---|---|---|
+| `language` | yes | ISO 639 code. Must appear in the header's `languages` |
+| `derivation_triggers` | yes | Per derivation operation in spec §9.7.2, the trigger phrases in this language. All five operations must be keyed; an operation with no phrases in this language declares an empty list explicitly |
+| `composition_connectives` | yes | The enumeration and sequencing connectives the reconstructor may join elements with (spec §9.9). Enumeration and sequencing only |
+| `forbidden_connectives` | yes | Causal, evaluative, concessive, and explanatory connectives. A reconstruction containing one fails before emission |
+| `element_slot_order` | yes | The slot order an element renders into for this language (spec §9.9.1) |
+
+Two of these fields carry far more weight than a translation table normally would.
+
+`forbidden_connectives` is the executable form of the single most important bar in the spec. Spec §9.6 establishes that a reconstruction may never compose a causal connective out of non-causal parts, and [AC-15](acceptance-criteria.md#ac-15--reconstruction-determinism-and-composition) tests exactly that — "and their equivalents in each pack's declared languages." This is where those equivalents live. A pack that lists English causal connectives and leaves Hebrew empty passes every test the English fixtures exercise and provides no protection at all on Hebrew claims.
+
+`derivation_triggers` sets what the system can see. Spec §9.7.2's operations are a closed list, but the phrases that fire them are language-specific, and an implication whose trigger phrase is undeclared is never surfaced. The failure is silent and in the safe direction — under-reporting rather than misreporting — but it is invisible from the output, so an incompletely lexicon'd pack looks identical to a claim that simply had no implications.
+
+Both fields are pack data and therefore versioned, publicly reviewable, and non-configurable at runtime (§2). Neither is a place for a maintainer's judgment about which implications are worth surfacing: the operations are fixed by the spec, and the lexicon supplies only their surface forms.
+
 ---
 
 ## 4. Resolution order
@@ -147,7 +169,7 @@ Supranational bodies are declared as packs in their own right, with `jurisdictio
 
 Run before a pack is admitted. Every item is pass/fail.
 
-- [ ] All four required blocks present.
+- [ ] All five required blocks present.
 - [ ] Every custodian has a non-empty `mandate`, `cadence`, `revision_policy`, and `integrity_annotation`.
 - [ ] Every measure resolves to a declared custodian.
 - [ ] Every measure has non-empty `known_confusions[]`, `admissible_baselines[]`, `admissible_windows[]`, `unit`, and `published_precision`.
@@ -155,6 +177,8 @@ Run before a pack is admitted. Every item is pass/fail.
 - [ ] Every series-break entry cites a `custodian_notice_ref`.
 - [ ] No routing rule points at a source that is not a declared custodian.
 - [ ] No measure declares an admissible baseline or window the custodian does not itself publish.
+- [ ] Every language in `languages` has a lexicon entry, and every lexicon entry names a declared language.
+- [ ] Every lexicon keys all five derivation operations, declares a non-empty `forbidden_connectives`, and declares `composition_connectives` containing no causal, evaluative, concessive, or explanatory term.
 - [ ] The pack contains **no figures** — definitions, identifiers, mandates, and cadences only. A pack carrying a cached statistic is a pack serving figures from memory.
 
 The last item deserves emphasis. A pack describes *where a figure comes from and what it means*. The moment it contains the figure, it becomes exactly what spec §8 exists to prevent: a fact stored as timeless, reused without re-checking.

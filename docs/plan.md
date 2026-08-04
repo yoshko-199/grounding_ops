@@ -2,7 +2,7 @@
 
 Living document. Records what is settled, what is next, and what must be true before implementation begins.
 
-Companion to the [specification](spec/claim-verification-engine.v0.3.md) and the [overview](overview.md).
+Companion to the [specification](spec/claim-verification-engine.v0.4.md) and the [overview](overview.md).
 
 ---
 
@@ -24,6 +24,7 @@ Prior art: the `israeli-fact-checker` skill (installed at `~/.claude/skills/`, o
 |---|---|
 | v0.2 with all five §9 questions resolved | [`spec/claim-verification-engine.v0.2.md`](spec/claim-verification-engine.v0.2.md) |
 | v0.3 closing derived-element generation and jurisdiction detection | [`spec/claim-verification-engine.v0.3.md`](spec/claim-verification-engine.v0.3.md) |
+| v0.4 closing the four gaps implementation surfaced | [`spec/claim-verification-engine.v0.4.md`](spec/claim-verification-engine.v0.4.md) |
 | §7 converted to 17 binary pass/fail criteria | [`spec/acceptance-criteria.md`](spec/acceptance-criteria.md) |
 | Jurisdiction-pack contract | [`spec/custodian-pack-interface.md`](spec/custodian-pack-interface.md) |
 | Israel pack, draft, explicitly not admitted | [`spec/packs/israel.md`](spec/packs/israel.md) |
