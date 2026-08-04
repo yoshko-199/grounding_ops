@@ -2,7 +2,7 @@
 
 **Normative contract, v1.1** — companion to [`claim-verification-engine.v0.4.md`](claim-verification-engine.v0.4.md) §9.4.
 
-> **v1.1** adds §3.6 `lexicons`, a fifth required block. Spec §9.7.2 triggers derivation on connective phrases and §9.9 composes reconstructions from connectives; both are language-specific, and v1.0 gave them nowhere to be declared. Without the block an implementation either hardcodes one language into the pipeline — which spec §9.4 forbids — or under-fires silently on every other language a pack declares. Packs at v1.0 do not load against v1.1.
+> **v1.1** adds `admissible_source_ref` to §3.3 and §3.6 `lexicons`, a fifth required block. The first closes a checklist item that could not be checked: v1.0 required that admissible baselines and windows be "drawn only from windows the custodian itself publishes" while giving a validator nothing to test it against, which left the sweep's fixed comparison set resting on a maintainer's assurance. The second: Spec §9.7.2 triggers derivation on connective phrases and §9.9 composes reconstructions from connectives; both are language-specific, and v1.0 gave them nowhere to be declared. Without the block an implementation either hardcodes one language into the pipeline — which spec §9.4 forbids — or under-fires silently on every other language a pack declares. Packs at v1.0 do not load against v1.1.
 
 ---
 
@@ -72,6 +72,7 @@ The **measure**, not the source, is the unit of correctness. Two authoritative i
 | `known_confusions[]` | yes | The measures this one is routinely mistaken for, and why the confusion changes the answer. **May not be empty** unless the measure genuinely has no near neighbour; write `none known` |
 | `admissible_baselines[]` | yes | The baselines the robustness sweep may use (spec §9.3). Declared here so the sweep cannot be selected per claim |
 | `admissible_windows[]` | yes | The comparison windows the sweep may use, drawn from the custodian's own standard reporting windows |
+| `admissible_source_ref` | yes | **v1.1.** The custodian publication the admissible baselines and windows were taken from. Same role as `custodian_notice_ref` in §3.5: it is what makes the checklist item below a check rather than an assurance. An admissible set the maintainer chose is a comparison set selected by a person, which is the failure `admissible_baselines[]` exists to prevent |
 | `series_breaks[]` | yes | Break register — see §3.5 |
 | `discrete` | yes | Whether the measure counts discrete things (seats, votes, licences). Discrete measures take exact-match tolerance |
 
@@ -176,7 +177,7 @@ Run before a pack is admitted. Every item is pass/fail.
 - [ ] Every routing rule has a non-empty `rationale`, and `alternatives_considered[]` wherever an alternative custodian exists in the pack.
 - [ ] Every series-break entry cites a `custodian_notice_ref`.
 - [ ] No routing rule points at a source that is not a declared custodian.
-- [ ] No measure declares an admissible baseline or window the custodian does not itself publish.
+- [ ] No measure declares an admissible baseline or window the custodian does not itself publish, and every measure cites the `admissible_source_ref` establishing it.
 - [ ] Every language in `languages` has a lexicon entry, and every lexicon entry names a declared language.
 - [ ] Every lexicon keys all five derivation operations, declares a non-empty `forbidden_connectives`, and declares `composition_connectives` containing no causal, evaluative, concessive, or explanatory term.
 - [ ] The pack contains **no figures** — definitions, identifiers, mandates, and cadences only. A pack carrying a cached statistic is a pack serving figures from memory.
