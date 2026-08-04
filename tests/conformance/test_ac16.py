@@ -125,3 +125,156 @@ def test_element_and_derived_element_are_distinct_types() -> None:
     """
     assert not issubclass(DerivedElement, Element)
     assert not issubclass(Element, DerivedElement)
+
+
+# ---------------------------------------------------------------------------
+# Extraction (Stage 9). The structural tests above constrain the type; these
+# constrain what the extractor is allowed to produce.
+# ---------------------------------------------------------------------------
+
+from engine.codes import LanguageCode  # noqa: E402
+from engine.ids import ClaimId  # noqa: E402
+from engine.packs.schema import Lexicon  # noqa: E402
+from engine.verification.derive import (  # noqa: E402
+    IMPLICATION_PREFIX,
+    InadmissibleDerivation,
+    SCAFFOLD,
+    derive,
+    render_as_implication,
+)
+from engine.elements import GateState  # noqa: E402
+
+CLAIM = "prices rose due to governmental incompetence"
+
+LEXICON = Lexicon(
+    language=LanguageCode("en"),
+    derivation_triggers={
+        DerivationOperation.CAUSAL_DISCHARGE: ("due to", "because of"),
+        DerivationOperation.SUPERLATIVE_DISCHARGE: ("highest", "lowest"),
+        DerivationOperation.COMPARATIVE_DISCHARGE: ("more than",),
+        DerivationOperation.EVALUATIVE_DISCHARGE: ("incompetence", "failure"),
+        DerivationOperation.SCOPE_DISCHARGE: ("every", "all"),
+    },
+    composition_connectives=("and", ", "),
+    forbidden_connectives=("because", "due to"),
+    element_slot_order=("time_period", "entity", "measure", "direction", "quantity"),
+)
+
+
+def test_every_derived_element_is_anchored_to_a_resolving_span() -> None:
+    """AC-16: the substring must occur verbatim in the claim at that position."""
+    derived = derive(CLAIM, ClaimId(), LEXICON)
+    assert derived
+    for element in derived:
+        assert element.span.resolve(CLAIM) == CLAIM[element.span.start : element.span.end]
+        assert element.span.resolve(CLAIM).strip()
+
+
+def test_the_worked_example_from_the_spec_is_produced() -> None:
+    """§9.7.3's admissible row: every entity traces to the original."""
+    derived = derive(CLAIM, ClaimId(), LEXICON)
+    causal = [d for d in derived if d.operation is DerivationOperation.CAUSAL_DISCHARGE]
+    assert causal
+    text = causal[0].text.lower()
+    assert "prices rose" in text
+    assert "governmental incompetence" in text
+
+
+def test_no_derived_element_introduces_an_absent_entity() -> None:
+    """§9.7.3's inadmissible rows — "fiscal policy", a counterfactual.
+
+    AC-16's note: the invented output "is the more dangerous output precisely
+    because it is fluent, plausible, and looks derived."
+    """
+    claim_tokens = {t for t in CLAIM.lower().split()}
+    scaffold_words = {w for phrase in SCAFFOLD.values() for w in phrase.split()}
+    for element in derive(CLAIM, ClaimId(), LEXICON):
+        for word in element.text.lower().split():
+            assert word in claim_tokens or word in scaffold_words, (
+                f"derived text introduced {word!r}, absent from the claim"
+            )
+        assert "fiscal" not in element.text.lower()
+        assert "would have been" not in element.text.lower()
+
+
+def test_the_no_new_entities_check_actually_fires() -> None:
+    """Negative test of the guard, not of the templates that satisfy it."""
+    from engine.verification.derive import _reject_new_entities
+
+    _reject_new_entities("prices rose is asserted to be caused by governmental", CLAIM)
+
+    # §9.7.3's second inadmissible row. Note "governmental" rather than
+    # "government": the stemmer is deliberately crude and does not unify them,
+    # which errs toward rejecting more than it must. That is the safe
+    # direction here — a stemmer that collapsed distinct words would let
+    # invented content through, and §3 makes measure identity the unit of
+    # correctness precisely because near-misses are not misses.
+    with pytest.raises(InadmissibleDerivation, match="fiscal"):
+        _reject_new_entities("the governmental fiscal policy was expansionary", CLAIM)
+
+    # §9.7.3's third: a counterfactual the text does not contain.
+    with pytest.raises(InadmissibleDerivation):
+        _reject_new_entities("prices would have been lower under a different cabinet", CLAIM)
+
+
+def test_every_operation_is_from_the_closed_list() -> None:
+    for element in derive(CLAIM, ClaimId(), LEXICON):
+        assert element.operation in set(DerivationOperation)
+
+
+def test_derived_elements_are_emitted_proposed() -> None:
+    """§9.7.6 — gated on the same footing as the claim-level verdict."""
+    for element in derive(CLAIM, ClaimId(), LEXICON):
+        assert element.state is GateState.PROPOSED
+        assert element.confirmed_by is None
+        assert element.confirmed_at is None
+
+
+def test_derived_elements_render_as_implication_never_as_quotation() -> None:
+    """§9.7.5 — never "what the claimant asserted"."""
+    for element in derive(CLAIM, ClaimId(), LEXICON):
+        rendered = render_as_implication(element)
+        assert rendered.startswith(IMPLICATION_PREFIX)
+        for attribution in ("said", "stated", "claimed", "wrote", "according to"):
+            assert attribution not in rendered.lower()
+        assert '"' not in rendered
+
+
+def test_a_causal_discharge_carries_the_implied_by_original_only_tag() -> None:
+    """§9.6 — the causal claim "is not discarded silently".
+
+    It "routes to §6.3 as a derived element tagged implied-by-original-only —
+    it followed from the original, it depends on elements that did not
+    survive, and it dies with them."
+    """
+    from engine.elements import Element, ElementKind, ElementStatus
+    from engine.ids import ElementId
+    from engine.spans import Span as _Span
+
+    start = CLAIM.index("due to")
+    causal_element = Element(
+        id=ElementId(),
+        claim_id=ClaimId(),
+        fragment="due to",
+        span=_Span(start, start + 6),
+        kind=ElementKind.CAUSAL,
+        status=ElementStatus.OUT_OF_SCOPE,
+    )
+    derived = derive(CLAIM, ClaimId(), LEXICON, elements=(causal_element,))
+    causal = [d for d in derived if d.operation is DerivationOperation.CAUSAL_DISCHARGE]
+    assert causal
+    assert causal[0].tag is RelationshipTag.IMPLIED_BY_ORIGINAL_ONLY
+
+
+def test_a_claim_with_no_trigger_yields_nothing() -> None:
+    """Under-reporting is the correct direction to fail (§10, question 3)."""
+    assert derive("prices rose in 2021", ClaimId(), LEXICON) == ()
+
+
+def test_derived_elements_never_enter_a_reconstruction() -> None:
+    """"Assert no derived element appears in any reconstruction at any revision."."""
+    from engine.elements import VerifiedElement
+
+    for element in derive(CLAIM, ClaimId(), LEXICON):
+        with pytest.raises((ValueError, AttributeError, TypeError)):
+            VerifiedElement(element, "ZZ Price Index")  # type: ignore[arg-type]
