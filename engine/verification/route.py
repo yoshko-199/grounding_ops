@@ -112,9 +112,9 @@ def route(claim_text: str, context: ClaimContext, registry: PackRegistry) -> Rou
             failure=RoutingFailure.NO_JURISDICTION,
             rationale=(
                 "no jurisdiction could be established from the claim text or the "
-                "ingest context. There is no default jurisdiction (§9.8.3): a default "
-                "would produce a confident, fully-cited verdict against the wrong "
-                "country's custodian, with nothing malfunctioning to reveal it"
+                "ingest context. There is no default jurisdiction: a default would "
+                "produce a confident, fully-cited verdict against the wrong country's "
+                "custodian, with nothing malfunctioning to reveal it"
             ),
         )
 
@@ -127,7 +127,7 @@ def route(claim_text: str, context: ClaimContext, registry: PackRegistry) -> Rou
             rationale=(
                 f"no custodian pack covers {jurisdiction}. A jurisdiction with no pack "
                 "yields Insufficient Data rather than a fallback to a non-custodial "
-                "source (§9.4)"
+                "source"
             ),
         )
 
@@ -163,8 +163,8 @@ def route(claim_text: str, context: ClaimContext, registry: PackRegistry) -> Rou
             measure=measure,
             failure=RoutingFailure.NO_ROUTING_RULE,
             rationale=(
-                f"measure {measure.id!r} has no routing rule in pack {pack.version}. "
-                "Interface §4.1 makes this Insufficient Data and a pack defect to be filed"
+                f"measure {measure.id!r} has no routing rule in the loaded pack. "
+                "This is Insufficient Data, and a pack defect to be filed"
             ),
         )
 

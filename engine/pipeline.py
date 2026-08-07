@@ -237,7 +237,9 @@ def _out_of_scope(claim_text: str, gate: scope_gate.ScopeOutcome) -> Verificatio
                 ),
             ),
             verdict=verdict,
-            sweep=SweepResult(ran=False, reason_not_run="the claim did not pass Stage 1"),
+            sweep=SweepResult(
+                ran=False, reason_not_run="the claim did not pass the scope gate"
+            ),
             unconfirmed_marker="UNCONFIRMED — proposed, not signed off",
         ),
         (),
