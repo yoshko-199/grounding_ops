@@ -78,6 +78,7 @@ def test_derivation_operations_are_the_closed_versioned_list() -> None:
     """
     assert {op.value for op in DerivationOperation} == {
         "causal-discharge",
+        "inferential-discharge",  # [v0.5]
         "superlative-discharge",
         "comparative-discharge",
         "evaluative-discharge",
@@ -278,3 +279,130 @@ def test_derived_elements_never_enter_a_reconstruction() -> None:
     for element in derive(CLAIM, ClaimId(), LEXICON):
         with pytest.raises((ValueError, AttributeError, TypeError)):
             VerifiedElement(element, "ZZ Price Index")  # type: ignore[arg-type]
+
+
+# ---------------------------------------------------------------------------
+# v0.5 — the sixth operation, approximate trigger matching, and §9.10.
+# ---------------------------------------------------------------------------
+
+INFERENTIAL_CLAIM = (
+    "When you look at the horizon you dont see a curve - therfore the earth is flat"
+)
+
+FUZZY_LEXICON = Lexicon(
+    language=LanguageCode("en"),
+    derivation_triggers={
+        DerivationOperation.CAUSAL_DISCHARGE: ("due to", "because of"),
+        DerivationOperation.INFERENTIAL_DISCHARGE: ("therefore", "hence"),
+        DerivationOperation.SUPERLATIVE_DISCHARGE: ("highest",),
+        DerivationOperation.COMPARATIVE_DISCHARGE: ("more than",),
+        DerivationOperation.EVALUATIVE_DISCHARGE: ("incompetence",),
+        DerivationOperation.SCOPE_DISCHARGE: ("every", "never"),
+    },
+    composition_connectives=("and", ", "),
+    forbidden_connectives=("because", "due to", "therefore"),
+    element_slot_order=("time_period", "entity", "measure", "direction", "quantity"),
+    fuzzy_trigger_matching=True,
+)
+
+EXACT_LEXICON = dataclasses.replace(FUZZY_LEXICON, fuzzy_trigger_matching=False)
+
+
+def test_the_operation_list_is_now_six() -> None:
+    assert {op.value for op in DerivationOperation} == {
+        "causal-discharge",
+        "inferential-discharge",
+        "superlative-discharge",
+        "comparative-discharge",
+        "evaluative-discharge",
+        "scope-discharge",
+    }
+
+
+def test_inferential_discharge_is_distinct_from_causal() -> None:
+    """§9.7.2 as amended in v0.5.
+
+    "A therefore B" claims B follows from A; "B due to A" claims A produced B.
+    Collapsing them would tell a reader the claimant asserted a causal
+    mechanism they may never have asserted.
+    """
+    derived = derive(INFERENTIAL_CLAIM, ClaimId(), FUZZY_LEXICON)
+    assert derived
+    operations = {d.operation for d in derived}
+    assert DerivationOperation.INFERENTIAL_DISCHARGE in operations
+    assert DerivationOperation.CAUSAL_DISCHARGE not in operations
+
+
+def test_the_inference_reads_conclusion_from_premise_not_the_reverse() -> None:
+    """The flanks are reversed relative to a causal discharge."""
+    derived = [
+        d
+        for d in derive(INFERENTIAL_CLAIM, ClaimId(), FUZZY_LEXICON)
+        if d.operation is DerivationOperation.INFERENTIAL_DISCHARGE
+    ]
+    assert derived
+    text = derived[0].text.lower()
+    assert text.startswith("the earth is flat")
+    assert "follow from" in text
+    assert "horizon" in text
+
+
+# -- approximate matching ---------------------------------------------------
+
+
+def test_a_misspelled_trigger_fires_when_the_pack_enables_it() -> None:
+    derived = derive(INFERENTIAL_CLAIM, ClaimId(), FUZZY_LEXICON)
+    assert any(
+        d.operation is DerivationOperation.INFERENTIAL_DISCHARGE for d in derived
+    ), "'therfore' did not match 'therefore' at edit distance one"
+
+
+def test_a_misspelled_trigger_does_not_fire_when_the_pack_disables_it() -> None:
+    """The flag is the whole control surface, and it defaults off."""
+    assert not derive(INFERENTIAL_CLAIM, ClaimId(), EXACT_LEXICON)
+
+
+def test_an_approximate_match_still_anchors_verbatim() -> None:
+    """AC-16's anchoring test is untouched by approximate matching.
+
+    What changes is *which* spans are found. What a span is — an offset pair
+    resolving verbatim to the claim — does not change, and must not.
+    """
+    for element in derive(INFERENTIAL_CLAIM, ClaimId(), FUZZY_LEXICON):
+        resolved = element.span.resolve(INFERENTIAL_CLAIM)
+        assert resolved == INFERENTIAL_CLAIM[element.span.start : element.span.end]
+        assert resolved.strip()
+
+
+def test_an_approximate_match_introduces_no_new_token() -> None:
+    claim_tokens = set(INFERENTIAL_CLAIM.lower().split())
+    scaffold_words = {w for phrase in SCAFFOLD.values() for w in phrase.split()}
+    for element in derive(INFERENTIAL_CLAIM, ClaimId(), FUZZY_LEXICON):
+        for word in element.text.lower().split():
+            assert word in claim_tokens or word in scaffold_words
+
+
+def test_a_near_miss_that_is_not_a_trigger_does_not_fire() -> None:
+    """The bound is one edit, and it is a bound rather than a similarity score."""
+    assert not derive("the therapy worked", ClaimId(), FUZZY_LEXICON)
+    assert not derive("we went there", ClaimId(), FUZZY_LEXICON)
+
+
+def test_short_triggers_are_excluded_from_approximate_matching() -> None:
+    """Below six characters, ordinary words sit one edit from declared triggers.
+
+    "ever" is one insertion from "never". Admitting it would fire
+    scope-discharge on unremarkable prose.
+    """
+    assert not derive("have you ever seen it", ClaimId(), FUZZY_LEXICON)
+
+
+def test_the_edit_distance_bound_is_exactly_one() -> None:
+    from engine.verification.derive import _within_one_edit
+
+    assert _within_one_edit("therefore", "therefore")
+    assert _within_one_edit("therfore", "therefore")     # deletion
+    assert _within_one_edit("thereforee", "therefore")   # insertion
+    assert _within_one_edit("tharefore", "therefore")    # substitution
+    assert not _within_one_edit("thrfore", "therefore")  # two deletions
+    assert not _within_one_edit("therapy", "therefore")

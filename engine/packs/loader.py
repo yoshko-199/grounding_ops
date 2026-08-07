@@ -339,6 +339,7 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
         composition_connectives=composition,
         forbidden_connectives=forbidden,
         element_slot_order=tuple(raw.get("element_slot_order", ())),
+        fuzzy_trigger_matching=bool(raw.get("fuzzy_trigger_matching", False)),
     )
 
 

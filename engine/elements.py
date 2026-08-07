@@ -87,6 +87,13 @@ class DerivationOperation(Enum):
     """
 
     CAUSAL_DISCHARGE = "causal-discharge"
+    # [v0.5] Distinct from causal-discharge. "B due to A" claims A produced B;
+    # "A therefore B" claims B follows from A. Both discharge to a derived
+    # element and neither is ever verified, so the operational consequence is
+    # identical — but the label is what a reader sees, and telling them a
+    # claimant asserted a causal mechanism they never asserted is the harm
+    # §9.7.5 exists to prevent.
+    INFERENTIAL_DISCHARGE = "inferential-discharge"
     SUPERLATIVE_DISCHARGE = "superlative-discharge"
     COMPARATIVE_DISCHARGE = "comparative-discharge"
     EVALUATIVE_DISCHARGE = "evaluative-discharge"

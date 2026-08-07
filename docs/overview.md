@@ -2,7 +2,7 @@
 
 A high-level explanation of what the system does, how it works, and — the part that matters most — **why it cannot quietly become an advocacy tool**.
 
-For the normative detail see the [specification](spec/claim-verification-engine.v0.4.md), the [acceptance criteria](spec/acceptance-criteria.md), and the [custodian pack interface](spec/custodian-pack-interface.md).
+For the normative detail see the [specification](spec/claim-verification-engine.v0.5.md), the [acceptance criteria](spec/acceptance-criteria.md), and the [custodian pack interface](spec/custodian-pack-interface.md).
 
 ---
 
@@ -183,4 +183,4 @@ An incomplete pack degrades to conservative outcomes rather than routing confide
 
 ## 6. Status
 
-The specification is closed at v0.4 and the engine is built: Stages 0-11 run end to end, and all eighteen acceptance criteria execute as tests against a synthetic fixture jurisdiction. No real pack is admitted yet, so every real claim currently returns *Insufficient Data* — the correct answer rather than a gap. The spec has [four open questions](spec/claim-verification-engine.v0.4.md#10-remaining-open-questions) — sweep cost, sign-off throughput at volume, whether the five derivation operations cover the implications that actually occur, and how anchoring works when a claim arrives paraphrased. See the [roadmap](plan.md).
+The specification is closed at v0.4 and the engine is built: Stages 0-11 run end to end, and all eighteen acceptance criteria execute as tests against a synthetic fixture jurisdiction. No real pack is admitted yet, so every real claim currently returns *Insufficient Data* — the correct answer rather than a gap. The spec has [four open questions](spec/claim-verification-engine.v0.5.md#10-remaining-open-questions) — sweep cost, sign-off throughput at volume, which implication patterns the six derivation operations still miss, and how anchoring works when a claim arrives paraphrased. See the [roadmap](plan.md).

@@ -145,3 +145,79 @@ def test_no_user_facing_string_carries_a_spec_citation(
         rendered = verify(claim, zz_context, registry, adapters, store).artifact.render()
         assert "§" not in rendered, f"a spec citation reached output for {claim!r}"
         assert not re.search(r"\bStage \d", rendered)
+
+
+# ---------------------------------------------------------------------------
+# §9.10 — a claim routed out at Stage 1 still surfaces its derived elements.
+# ---------------------------------------------------------------------------
+
+from engine.elements import GateState, RelationshipTag  # noqa: E402
+
+
+def test_an_out_of_scope_claim_still_derives(zz_context, registry, adapters, store) -> None:
+    """§9.10. Routed out is not the same as gone silent.
+
+    The flat-earth claim's entire content is a rhetorical move: the observation
+    and the conclusion are both outside §2's scope, so the record says nothing
+    and says it correctly. What a reader needs is the inference made explicit,
+    which §6.3 calls the most analytically valuable output in the system.
+    """
+    run = verify(
+        CLAIMS["out_of_scope_at_the_scope_gate"], zz_context, registry, adapters, store
+    )
+    assert run.derived, "a claim whose whole structure is an inference derived nothing"
+    assert "DERIVED ELEMENTS" in run.artifact.render()
+
+
+def test_derived_elements_on_an_out_of_scope_claim_are_implied_by_original_only(
+    zz_context, registry, adapters, store
+) -> None:
+    """§6.3 defines the tag as depending on elements that did not survive.
+
+    On a wholly out-of-scope claim nothing survived, so the tag follows by
+    definition. `independent` would be wrong: there is no verified subset for
+    anything to be independent *of*.
+    """
+    run = verify(
+        CLAIMS["out_of_scope_at_the_scope_gate"], zz_context, registry, adapters, store
+    )
+    for element in run.derived:
+        assert element.tag is RelationshipTag.IMPLIED_BY_ORIGINAL_ONLY
+
+
+def test_an_out_of_scope_claim_performs_no_retrieval(
+    zz_context, registry, adapters, store
+) -> None:
+    """The restraint that keeps §9.10 from becoming a laundering route.
+
+    The claim bound no measure. A series pulled to display beside it would put
+    a custodian's figure next to a proposition the figure does not address.
+    """
+    before = store.count()
+    run = verify(
+        CLAIMS["out_of_scope_at_the_scope_gate"], zz_context, registry, adapters, store
+    )
+    assert not run.artifact.citations
+    assert store.count() == before, "a retrieval was performed for an out-of-scope claim"
+    assert not run.artifact.does_reconstruct
+
+
+def test_out_of_scope_derived_elements_are_still_gated(
+    zz_context, registry, adapters, store
+) -> None:
+    """§9.7.6 applies unchanged. Nothing about §9.10 relaxes the gate."""
+    run = verify(
+        CLAIMS["out_of_scope_at_the_scope_gate"], zz_context, registry, adapters, store
+    )
+    for element in run.derived:
+        assert element.state is GateState.PROPOSED
+        assert element.confirmed_by is None
+
+
+def test_the_verdict_is_unchanged_by_deriving(zz_context, registry, adapters, store) -> None:
+    """Surfacing an implication is not a verdict on it."""
+    run = verify(
+        CLAIMS["out_of_scope_at_the_scope_gate"], zz_context, registry, adapters, store
+    )
+    assert run.artifact.verdict.label is Verdict.INSUFFICIENT_DATA
+    assert run.artifact.verdict.label is not Verdict.FALSE

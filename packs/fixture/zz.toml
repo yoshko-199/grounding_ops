@@ -241,9 +241,14 @@ forbidden_connectives = [
   "meaning that", "although", "despite", "even though", "however",
 ]
 element_slot_order = ["time_period", "entity", "measure", "direction", "quantity"]
+# Real claims carry typos. A trigger missed on a misspelling under-fires
+# silently, and a derived element is gated and never verified, so the cost of
+# a false trigger is a reviewer's attention rather than a laundered fact.
+fuzzy_trigger_matching = true
 
   [lexicons.derivation_triggers]
   "causal-discharge" = ["due to", "because of", "thanks to", "caused by", "owing to", "as a result of"]
+  "inferential-discharge" = ["therefore", "hence", "which proves", "which shows", "consequently"]
   "superlative-discharge" = ["highest", "lowest", "first time", "record", "ever", "worst", "best"]
   "comparative-discharge" = ["more than", "less than", "twice as", "half as", "worse than", "better than"]
   "evaluative-discharge" = ["incompetence", "failure", "success", "mismanagement", "disaster", "triumph"]

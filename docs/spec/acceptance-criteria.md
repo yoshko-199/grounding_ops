@@ -1,6 +1,6 @@
 # Acceptance Criteria
 
-**v1.2** — companion to [`claim-verification-engine.v0.4.md`](claim-verification-engine.v0.4.md).
+**v1.3** — companion to [`claim-verification-engine.v0.5.md`](claim-verification-engine.v0.5.md).
 
 ---
 
@@ -34,6 +34,7 @@ These criteria are versioned with the spec and are **not operator-configurable**
 | §9.7.1 element anchoring (Stage 2) | AC-18 |
 | §9.8 jurisdiction projection | AC-17, AC-6 |
 | §9.9 element surface grammar | AC-15, AC-3 (non-configurability) |
+| §9.10 out-of-scope claims surface derived elements | AC-16 |
 
 ---
 
@@ -250,7 +251,11 @@ Assert **Unreachable** and **Unverified** are distinct outcomes and that neither
 
 **Test — anchoring.** For every derived element, assert `source_span_start` and `source_span_end` are present, and that the substring they identify occurs verbatim in the original claim text at that position. Assert no derived element is emitted without a resolving span.
 
-**Test — closed operations.** Assert every `derivation_operation` is a member of the versioned list in §9.7.2. Assert the list cannot be extended at runtime through any configuration surface (AC-3 applies to it identically).
+**Test — closed operations.** Assert every `derivation_operation` is a member of the versioned list in §9.7.2 — six operations as of v0.5. Assert the list cannot be extended at runtime through any configuration surface (AC-3 applies to it identically).
+
+**Test — approximate trigger matching preserves anchoring.** Where a pack enables approximate matching of trigger phrases, assert the recorded span still resolves verbatim to the claim text at its offsets, and that the derived element still introduces no token absent from the claim. Approximate matching may change *which* spans are found; it may never change what a span is. Assert a near-miss that is not a declared trigger does not fire.
+
+**Test — out-of-scope claims still derive (§9.10).** Construct a claim every fragment of which Stage 1 routes out. Assert the artifact still carries its discard ledger and its derived elements, that every derived element is tagged `implied-by-original-only`, and that **no retrieval was performed**.
 
 **Test — no new entities.** For each derived element, extract its entity, quantity, and time-period tokens. Assert every one appears in the original claim text or in a flanking element of the anchoring span. A derived element containing a token found nowhere in the original is invention, and fails.
 

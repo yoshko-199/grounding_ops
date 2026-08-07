@@ -20,7 +20,8 @@ PYTHONPATH=. python3 cli/verify.py "prices rose over the last three years \
 | Document | What it is |
 |---|---|
 | [`docs/overview.md`](docs/overview.md) | **Start here.** High-level explanation with diagrams — what the system does, and why it cannot quietly become an advocacy tool |
-| [`docs/spec/claim-verification-engine.v0.4.md`](docs/spec/claim-verification-engine.v0.4.md) | **Current spec.** Pipeline, taxonomies, persistence model, and the resolved design decisions |
+| [`docs/spec/claim-verification-engine.v0.5.md`](docs/spec/claim-verification-engine.v0.5.md) | **Current spec.** Pipeline, taxonomies, persistence model, and the resolved design decisions |
+| [`docs/spec/claim-verification-engine.v0.4.md`](docs/spec/claim-verification-engine.v0.4.md) | Superseded. Archived for diffing |
 | [`docs/spec/claim-verification-engine.v0.3.md`](docs/spec/claim-verification-engine.v0.3.md) | Superseded. Archived for diffing |
 | [`docs/spec/claim-verification-engine.v0.2.md`](docs/spec/claim-verification-engine.v0.2.md) | Superseded. Archived for diffing |
 | [`docs/spec/acceptance-criteria.md`](docs/spec/acceptance-criteria.md) | The anti-laundering constraints as seventeen numbered, binary pass/fail criteria |
@@ -61,7 +62,7 @@ The `israeli-fact-checker` skill (installed at `~/.claude/skills/`, outside this
 
 ## Open questions
 
-Four remain genuinely open and are listed in [v0.4 §10](docs/spec/claim-verification-engine.v0.4.md#10-remaining-open-questions): sweep cost against rate-limited custodian APIs, sign-off throughput at volume, whether five derivation operations cover the implication patterns that actually occur in public claims, and how span anchoring works when a claim arrives paraphrased rather than quoted.
+Four remain genuinely open and are listed in [v0.5 §10](docs/spec/claim-verification-engine.v0.5.md#10-remaining-open-questions): sweep cost against rate-limited custodian APIs, sign-off throughput at volume, which further implication patterns the six derivation operations still miss, and how span anchoring works when a claim arrives paraphrased rather than quoted.
 
 ## Checks
 

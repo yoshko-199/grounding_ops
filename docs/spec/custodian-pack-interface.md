@@ -1,7 +1,9 @@
 # Custodian Pack Interface
 
-**Normative contract, v1.1** — companion to [`claim-verification-engine.v0.4.md`](claim-verification-engine.v0.4.md) §9.4.
+**Normative contract, v1.2** — companion to [`claim-verification-engine.v0.4.md`](claim-verification-engine.v0.4.md) §9.4.
 
+> **v1.2** keys a sixth derivation operation (`inferential-discharge`, spec §9.7.2) and adds the optional `fuzzy_trigger_matching` flag to §3.6. Real claims carry typos, and a trigger phrase missed on a misspelling under-fires silently — the failure mode §3.6 already warns about. The flag is pack data, versioned and reviewable, and its blast radius is bounded by the §9.7.6 gate: a derived element is `proposed`, never verified, so a false trigger costs a reviewer's attention rather than a laundered fact.
+>
 > **v1.1** adds `admissible_source_ref` to §3.3 and §3.6 `lexicons`, a fifth required block. The first closes a checklist item that could not be checked: v1.0 required that admissible baselines and windows be "drawn only from windows the custodian itself publishes" while giving a validator nothing to test it against, which left the sweep's fixed comparison set resting on a maintainer's assurance. The second: Spec §9.7.2 triggers derivation on connective phrases and §9.9 composes reconstructions from connectives; both are language-specific, and v1.0 gave them nowhere to be declared. Without the block an implementation either hardcodes one language into the pipeline — which spec §9.4 forbids — or under-fires silently on every other language a pack declares. Packs at v1.0 do not load against v1.1.
 
 ---
@@ -108,7 +110,8 @@ Per measure. Methodology revisions, base-year changes, and definitional breaks f
 | Field | Required | Meaning |
 |---|---|---|
 | `language` | yes | ISO 639 code. Must appear in the header's `languages` |
-| `derivation_triggers` | yes | Per derivation operation in spec §9.7.2, the trigger phrases in this language. All five operations must be keyed; an operation with no phrases in this language declares an empty list explicitly |
+| `derivation_triggers` | yes | Per derivation operation in spec §9.7.2, the trigger phrases in this language. All six operations must be keyed **[v1.2]**; an operation with no phrases in this language declares an empty list explicitly |
+| `fuzzy_trigger_matching` | no | **v1.2.** Whether trigger phrases match at an edit distance of one. Applies only to single-token phrases of at least six characters. Below that, ordinary words sit one edit from declared triggers — *ever* is one insertion from *never* — and the matcher would fire an operation on unremarkable prose. Defaults to false |
 | `composition_connectives` | yes | The enumeration and sequencing connectives the reconstructor may join elements with (spec §9.9). Enumeration and sequencing only |
 | `forbidden_connectives` | yes | Causal, evaluative, concessive, and explanatory connectives. A reconstruction containing one fails before emission |
 | `element_slot_order` | yes | The slot order an element renders into for this language (spec §9.9.1) |
@@ -179,7 +182,7 @@ Run before a pack is admitted. Every item is pass/fail.
 - [ ] No routing rule points at a source that is not a declared custodian.
 - [ ] No measure declares an admissible baseline or window the custodian does not itself publish, and every measure cites the `admissible_source_ref` establishing it.
 - [ ] Every language in `languages` has a lexicon entry, and every lexicon entry names a declared language.
-- [ ] Every lexicon keys all five derivation operations, declares a non-empty `forbidden_connectives`, and declares `composition_connectives` containing no causal, evaluative, concessive, or explanatory term.
+- [ ] Every lexicon keys all six derivation operations, declares a non-empty `forbidden_connectives`, and declares `composition_connectives` containing no causal, evaluative, concessive, or explanatory term.
 - [ ] The pack contains **no figures** — definitions, identifiers, mandates, and cadences only. A pack carrying a cached statistic is a pack serving figures from memory.
 
 The last item deserves emphasis. A pack describes *where a figure comes from and what it means*. The moment it contains the figure, it becomes exactly what spec §8 exists to prevent: a fact stored as timeless, reused without re-checking.

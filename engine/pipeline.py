@@ -80,20 +80,23 @@ def verify(
     if lexicon is None:
         return _unrouted(claim_text, decision)
 
-    gate = scope_gate.classify(
-        claim_text,
-        lexicon.derivation_triggers.get(_evaluative(), ()),
-        lexicon.derivation_triggers.get(_causal(), ()),
-    )
-    if not gate.in_scope:
-        return _out_of_scope(claim_text, gate)
-
+    # Decomposition precedes the scope gate's branch. §9.10: a claim routed out
+    # at Stage 1 still surfaces its derived elements, so the elements they are
+    # tagged against have to exist before that branch is taken.
     elements = decompose.decompose(claim_text, claim_id, lexicon)
     anchoring_failures = decompose.verify_anchoring(elements, claim_text)
     if anchoring_failures:
         # §9.7.1 as extended: an element with no resolving span is
         # inadmissible and must not reach Stage 3.
         raise ValueError("; ".join(anchoring_failures))
+
+    gate = scope_gate.classify(
+        claim_text,
+        lexicon.derivation_triggers.get(_evaluative(), ()),
+        lexicon.derivation_triggers.get(_causal(), ()),
+    )
+    if not gate.in_scope:
+        return _out_of_scope(claim_text, claim_id, gate, elements, lexicon)
 
     pull = None
     if decision.routed and decision.custodian_id in adapters:
@@ -220,28 +223,69 @@ def _unrouted(claim_text: str, decision: route.RoutingDecision) -> VerificationR
     )
 
 
-def _out_of_scope(claim_text: str, gate: scope_gate.ScopeOutcome) -> VerificationRun:
-    """§4 Stage 1 — routed out with an explanation, and no verdict."""
-    verdict = ProposedVerdict(Verdict.INSUFFICIENT_DATA, gate.explanation)
+def _out_of_scope(
+    claim_text: str,
+    claim_id: ClaimId,
+    gate: scope_gate.ScopeOutcome,
+    elements: tuple[Element, ...],
+    lexicon,
+) -> VerificationRun:
+    """§4 Stage 1 — routed out with an explanation, and no verdict.
+
+    §9.10: routed out is not the same as gone silent. Decomposition and
+    derivation still run, so the artifact carries its discard ledger and the
+    implications the claim invites a reader to draw. §6.3 calls
+    `implied-by-original-only` the most analytically valuable output in the
+    system, and a claim whose entire content is a rhetorical move is exactly
+    where that is true.
+
+    No retrieval is attempted, and that restraint is the point. The claim bound
+    no measure; a series pulled to display beside it would put a custodian's
+    figure next to a proposition the figure does not address, which is §9.6's
+    shape reached by a different route. The prior art this design draws on
+    presents baseline data here — defensible for an analyst exercising
+    judgment about relevance, and not for a pipeline with no such judgment.
+    """
+    assigned: list[Element] = []
+    reasons: dict[str, str] = {}
+    for element in elements:
+        outcome = element_verdict.assign(element, None, None, claim_text)
+        assigned.append(outcome.element)
+        reasons[outcome.element.id.value] = outcome.reason
+
+    derived_elements = derive.derive(claim_text, claim_id, lexicon, tuple(assigned))
+
+    ledger = tuple(
+        DiscardEntry(
+            fragment=element.fragment,
+            status=element.status.value if element.status else "unresolved",
+            reason=reasons.get(element.id.value, ""),
+        )
+        for element in assigned
+    )
+    if not ledger:
+        # Nothing decomposed. The claim itself is the discarded unit, and an
+        # empty ledger would read as "nothing was removed" when everything was.
+        ledger = (
+            DiscardEntry(
+                fragment=claim_text, status="out_of_scope", reason=gate.explanation
+            ),
+        )
+
     return VerificationRun(
         Artifact(
             claim_text=claim_text,
             _reconstruction="",
             does_reconstruct=False,
             element_set_hash="",
-            ledger=(
-                DiscardEntry(
-                    fragment=claim_text,
-                    status="out_of_scope",
-                    reason=gate.explanation,
-                ),
-            ),
-            verdict=verdict,
+            ledger=ledger,
+            verdict=ProposedVerdict(Verdict.INSUFFICIENT_DATA, gate.explanation),
             sweep=SweepResult(
                 ran=False, reason_not_run="the claim did not pass the scope gate"
             ),
+            derived=derived_elements,
             unconfirmed_marker="UNCONFIRMED — proposed, not signed off",
         ),
-        (),
-        (),
+        tuple(assigned),
+        derived_elements,
     )

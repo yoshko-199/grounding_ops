@@ -2,7 +2,7 @@
 
 Living document. Records what is settled, what is built, and what is still missing.
 
-Companion to the [specification](spec/claim-verification-engine.v0.4.md) and the [overview](overview.md).
+Companion to the [specification](spec/claim-verification-engine.v0.5.md) and the [overview](overview.md).
 
 ---
 
@@ -55,9 +55,20 @@ The remaining four are straightforward: assign a maintainer, give the ministries
 
 ### 2.2 Derivation coverage — needs a corpus
 
-§9.7.2 fixes five derivation operations. Whether they cover the implication patterns that actually occur is empirical, and answerable only against a corpus of real claims.
+§9.7.2 fixes six derivation operations **[v0.5]**. Whether they cover the implication patterns that actually occur is empirical, and answerable only against a corpus of real claims.
 
-The failure mode is silent and in the safe direction: an implication with no matching operation is never surfaced, so the system under-reports rather than misreports. That is the right way to fail, but the size of the gap should be measured rather than assumed small — the whole value of `implied-by-original-only` depends on it catching the implications that matter.
+The first real claim tested against the built engine — *"you don't see a curve, therefore the earth is flat"* — exercised a pattern the original five did not cover, and `inferential-discharge` was added for it. That is one data point, and it points the wrong way for optimism: the list was not chosen carelessly, it was chosen without a corpus, and the very first claim found a hole. The remaining question is no longer *whether* patterns are missing but *which*.
+
+The failure mode is silent and in the safe direction: an implication with no matching operation is never surfaced, so the system under-reports rather than misreports.
+
+### 2.2a Divergence from the prior art, deliberately retained
+
+The `israeli-fact-checker` skill's method (`SKILL.md` Step 1, `references/domain-checklist.md`) and this spec agree on almost everything — its eight-step workflow maps stage for stage onto the pipeline, and its verdict scale corresponds one-to-one with §6.2. Two differences are real and are kept:
+
+- **Causal claims.** The skill rates them **לשיפוטכם** (Indeterminate) and presents the data. §9.6 refuses *any* label on a causal element and routes it to a derived element instead, arguing that a causal verdict is argument wearing a verification badge regardless of how it is hedged. Ours is stricter, and the argument for it is in §9.6 rather than in a preference.
+- **Presenting baseline data beside an out-of-scope claim.** The skill does; §9.10 does not. A human analyst can judge whether a given series is relevant to a claim it does not address. A pipeline cannot, and a custodian's figure displayed next to a proposition it does not address is §9.6's shape reached by a different route.
+
+Where the two agree and the engine was wrong, the engine changed: §9.10 exists because the skill is right that an out-of-scope claim should not produce silence.
 
 ### 2.3 Anchoring across paraphrase
 

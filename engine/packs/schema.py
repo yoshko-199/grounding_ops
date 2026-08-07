@@ -133,6 +133,9 @@ class Lexicon:
     composition_connectives: tuple[str, ...]
     forbidden_connectives: tuple[str, ...]
     element_slot_order: tuple[str, ...]
+    # Interface v1.2. Pack data, versioned and reviewable, on the same footing
+    # as the trigger lists themselves (AC-3). Off unless a pack says otherwise.
+    fuzzy_trigger_matching: bool = False
 
 
 @dataclass(frozen=True, slots=True)

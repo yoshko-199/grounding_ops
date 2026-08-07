@@ -51,6 +51,7 @@ from engine.verification import patterns
 # contain that the claim does not.
 SCAFFOLD: dict[DerivationOperation, str] = {
     DerivationOperation.CAUSAL_DISCHARGE: "is asserted to be caused by",
+    DerivationOperation.INFERENTIAL_DISCHARGE: "is asserted to follow from",
     DerivationOperation.SUPERLATIVE_DISCHARGE: "is asserted to be",
     DerivationOperation.COMPARATIVE_DISCHARGE: "is asserted to be",
     DerivationOperation.EVALUATIVE_DISCHARGE: "is characterised as",
@@ -64,6 +65,11 @@ _SCAFFOLD_TOKENS = frozenset(
 )
 
 IMPLICATION_PREFIX = "This claim invites the conclusion that"
+
+# Punctuation trimmed from a flank before it becomes part of a proposition.
+# Trimming only, never substitution: every remaining character still comes
+# from the claim, so the no-new-entities rule is unaffected.
+_FLANK_TRIM = " ,;.:-–—"
 
 
 class InadmissibleDerivation(Exception):
@@ -98,8 +104,8 @@ def derive(
     derived: list[DerivedElement] = []
     for index, trigger in enumerate(triggers):
         previous_end = triggers[index - 1].end if index else 0
-        left = claim_text[previous_end : trigger.start].strip(" ,;.")
-        right = claim_text[trigger.end :].strip(" ,;.")
+        left = claim_text[previous_end : trigger.start].strip(_FLANK_TRIM)
+        right = claim_text[trigger.end :].strip(_FLANK_TRIM)
 
         text = _proposition(trigger, left, right)
         if not text:
@@ -122,17 +128,73 @@ def derive(
     return tuple(derived)
 
 
+# Approximate matching applies only to single-token phrases of at least this
+# length. Below it, ordinary words sit one edit from declared triggers —
+# "ever" is one insertion from "never" — and the matcher would fire an
+# operation on unremarkable prose. Six is where that stops being true for the
+# vocabularies packs actually declare.
+_FUZZY_MIN_LENGTH = 6
+
+_WORD = re.compile(r"[^\W\d_]+", re.UNICODE)
+
+
+def _within_one_edit(a: str, b: str) -> bool:
+    """Whether two words differ by at most one insertion, deletion, or substitution.
+
+    Written out rather than pulled from difflib because the bound is the whole
+    point: an unbounded similarity ratio would admit pairs that are merely
+    alike, and "alike" is how a matcher starts inventing triggers.
+    """
+    if a == b:
+        return True
+    if abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) > len(b):
+        a, b = b, a
+    i = j = 0
+    edited = False
+    while i < len(a) and j < len(b):
+        if a[i] == b[j]:
+            i += 1
+            j += 1
+            continue
+        if edited:
+            return False
+        edited = True
+        if len(a) == len(b):
+            i += 1
+        j += 1
+    return True
+
+
 def _triggers(claim_text: str, lexicon: Lexicon) -> list[_Trigger]:
-    """Find pack-declared trigger phrases as literal spans.
+    """Find pack-declared trigger phrases as spans of the claim.
 
     Longest match wins where phrases overlap, so "because of" is not
     decomposed into a shorter trigger that would discharge differently.
+
+    Where the pack enables it, a single-token phrase also matches a word one
+    edit away — real claims carry typos, and a trigger missed on a misspelling
+    under-fires silently, which is the failure mode interface §3.6 warns about.
+    The span is still taken from the position of the word *in the claim*, never
+    from the declared phrase, so §9.7.1 anchoring is untouched: what changes is
+    which spans are found, never what a span is.
     """
     found: list[_Trigger] = []
     for operation, phrases in lexicon.derivation_triggers.items():
         for phrase in phrases:
             for match in re.finditer(rf"\b{re.escape(phrase)}\b", claim_text, re.I):
                 found.append(_Trigger(match.start(), match.end(), operation, phrase))
+
+            if not _fuzzy_enabled(lexicon):
+                continue
+            if " " in phrase or len(phrase) < _FUZZY_MIN_LENGTH:
+                continue
+            for word in _WORD.finditer(claim_text):
+                if _within_one_edit(word.group(0).lower(), phrase.lower()):
+                    found.append(
+                        _Trigger(word.start(), word.end(), operation, word.group(0))
+                    )
 
     found.sort(key=lambda t: (t.start, -(t.end - t.start)))
     kept: list[_Trigger] = []
@@ -156,6 +218,15 @@ def _proposition(trigger: _Trigger, left: str, right: str) -> str:
         if not left or not right:
             return ""
         return f"{left} {scaffold} {right}"
+
+    if trigger.operation is DerivationOperation.INFERENTIAL_DISCHARGE:
+        # The flanks are reversed relative to a causal discharge. In "B due to
+        # A" the effect precedes the connective; in "A therefore B" the
+        # conclusion follows it. Reading them the same way would invert the
+        # claim and attribute the premise to the conclusion.
+        if not left or not right:
+            return ""
+        return f"{right} {scaffold} {left}"
 
     if trigger.operation is DerivationOperation.EVALUATIVE_DISCHARGE:
         subject = left or right
@@ -207,6 +278,19 @@ def _tag(trigger: _Trigger, elements: tuple[Element, ...]) -> RelationshipTag:
     government caused this" from a claim whose only verified content was
     "inflation rose".
     """
+    # [v0.5] Where nothing survived, every derived element depends on elements
+    # that did not — §6.3's definition of the tag, satisfied by the whole
+    # element set rather than by the span's neighbours. This is the §9.10 case:
+    # on a claim Stage 1 routes out entirely, `independent` would have been
+    # wrong, because there is no verified subset for anything to be
+    # independent *of*.
+    # No guard on an empty element set: derivation runs after assignment, so
+    # "no elements" means nothing was decomposed, which means nothing survived.
+    # That is the wholly-out-of-scope claim, and it is the case where the tag
+    # matters most.
+    if not any(e.status is ElementStatus.VERIFIED for e in elements):
+        return RelationshipTag.IMPLIED_BY_ORIGINAL_ONLY
+
     overlapping = [
         element
         for element in elements
@@ -217,6 +301,10 @@ def _tag(trigger: _Trigger, elements: tuple[Element, ...]) -> RelationshipTag:
     if overlapping:
         return RelationshipTag.IMPLIED_BY_RECONSTRUCTED
     return RelationshipTag.INDEPENDENT
+
+
+def _fuzzy_enabled(lexicon: Lexicon) -> bool:
+    return bool(getattr(lexicon, "fuzzy_trigger_matching", False))
 
 
 def render_as_implication(derived: DerivedElement) -> str:
