@@ -39,6 +39,13 @@ class UnsourcedFigure(Exception):
 # trail, because nothing was retrieved.
 _QUOTED = RetrievalId("quoted-from-claim")
 
+# Marks a derived element's text: verbatim spans of the claim joined by a
+# closed scaffold phrase (§9.7). Distinct from _QUOTED because the value is
+# not one contiguous span of the claim and so cannot be checked as one — see
+# :meth:`Payload.derived` for what is checked instead. Like _QUOTED, never a
+# retrieval id and never in the citation trail.
+_DERIVED = RetrievalId("derived-from-claim")
+
 
 @dataclass(frozen=True, slots=True)
 class _Segment:
@@ -92,6 +99,42 @@ class Payload:
         self._segments.append(_Segment(value, retrieval_id=_QUOTED))
         return self
 
+    def derived(self, value: str) -> Payload:
+        """Add a derived element's rendered text.
+
+        A derived element is assembled from verbatim spans of the claim joined
+        by a closed scaffold phrase (§9.7), so any numeral it carries is the
+        claimant's own — the same position :meth:`quoted` occupies, reached by
+        a different construction.  It cannot go through :meth:`quoted` because
+        the scaffold makes the value a *composition* of claim spans rather
+        than one contiguous span, and the substring check would reject it.
+
+        So a different invariant is checked, and it is the one §3 actually
+        cares about: **no numeral appears that the claim did not contain.**
+        §9.7.3 already guarantees this upstream by rejecting any token absent
+        from the claim; checking again here keeps AC-7 enforced at the
+        boundary where output happens rather than resting on a guarantee made
+        three modules away.
+
+        Found by running a real claim carrying a figure through a real
+        connective — "corporate tax ... 25 percent ... therefore ...".  Before
+        this channel existed the render *crashed* on that shape, which is a
+        large fraction of the political claims anyone would actually check.
+        Failing closed was the right default; failing on the claimant's own
+        numbers was still a defect.
+        """
+        claim_numerals = set(_NUMERAL.findall(self.claim_text))
+        intruders = [n for n in _NUMERAL.findall(value) if n not in claim_numerals]
+        if intruders:
+            raise UnsourcedFigure(
+                f"a derived element carries {sorted(set(intruders))}, which the claim "
+                "does not contain. Derived elements are extracted from the claim's own "
+                "text (§9.7.3); a numeral appearing here that the claimant did not "
+                "write is an invented figure inside an authoritative-looking artifact"
+            )
+        self._segments.append(_Segment(value, retrieval_id=_DERIVED))
+        return self
+
     def figure(self, value: Figure) -> Payload:
         """Add a figure, with its retrieval and reference period.
 
@@ -131,7 +174,9 @@ class Payload:
         return tuple(
             str(s.retrieval_id)
             for s in self._segments
-            if s.retrieval_id is not None and s.retrieval_id is not _QUOTED
+            if s.retrieval_id is not None
+            and s.retrieval_id is not _QUOTED
+            and s.retrieval_id is not _DERIVED
         )
 
 

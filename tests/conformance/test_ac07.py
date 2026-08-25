@@ -148,3 +148,75 @@ def test_pack_contents_carry_no_numeric_literals(pack) -> None:
     for custodian in pack.custodians:
         assert not scan_prose(custodian.mandate)
         assert not scan_prose(custodian.integrity_annotation)
+
+
+# ---------------------------------------------------------------------------
+# The derived-element channel.
+#
+# Found by running a real claim from a political-claim aggregator: a figure
+# and a connective in one sentence — "corporate tax ... 25 percent ...
+# therefore ..." — crashed the render. The numeral was the claimant's own,
+# quoted verbatim into a derived element by §9.7's construction, but it
+# reached output through the prose channel and AC-7 correctly refused it.
+#
+# Failing closed was right. Failing on the claimant's own numbers was still a
+# defect, and it covered a large fraction of the claims anyone would check.
+# ---------------------------------------------------------------------------
+
+NUMERIC_INFERENCE = (
+    "corporate tax rose to 25 percent over the last four years "
+    "therefore the promise was broken"
+)
+
+
+def test_a_claim_carrying_a_figure_and_a_connective_renders(
+    registry, context, adapters, store
+) -> None:
+    """The regression. Before the derived channel existed this raised."""
+    artifact = verify(NUMERIC_INFERENCE, context, registry, adapters, store).artifact
+    output = artifact.render()
+    assert "DERIVED ELEMENTS" in output
+    assert "25 percent" in output
+
+
+def test_the_derived_channel_still_refuses_an_invented_numeral() -> None:
+    """The negative control, and the reason the channel is not just `quoted`.
+
+    A channel that has never been seen to reject anything is a channel nobody
+    has confirmed is checking. The invariant is not "derived text is exempt";
+    it is "no numeral appears that the claim did not contain".
+    """
+    payload = Payload(claim_text="corporate tax rose therefore the promise was broken")
+    with pytest.raises(UnsourcedFigure, match="42"):
+        payload.derived("the promise was broken is asserted to follow from 42 percent")
+
+
+def test_the_derived_channel_admits_only_the_claim_s_own_numerals() -> None:
+    """A numeral the claim does contain passes; a neighbour of it does not."""
+    payload = Payload(claim_text="tax was 25 percent therefore the promise was broken")
+    payload.derived("the promise was broken is asserted to follow from tax was 25")
+    with pytest.raises(UnsourcedFigure, match="26"):
+        payload.derived("the promise was broken is asserted to follow from tax was 26")
+
+
+def test_a_derived_element_never_enters_the_citation_trail() -> None:
+    """§9.7.4 — derived elements carry no retrieval, so none may be implied.
+
+    The channel needs a marker to be exempt from the numeral scan, and a
+    marker that leaked into `retrieval_ids()` would put a citation-shaped
+    token next to text that was never retrieved.
+    """
+    payload = Payload(claim_text="tax was 25 percent therefore the promise was broken")
+    payload.quoted("tax was 25 percent")
+    payload.derived("the promise was broken is asserted to follow from tax was 25")
+    assert payload.retrieval_ids() == ()
+
+
+def test_the_derived_channel_is_not_a_general_bypass(
+    registry, context, adapters, store
+) -> None:
+    """Prose is still prose. The new channel must not have widened `text`."""
+    payload = Payload(claim_text="tax was 25 percent")
+    payload.text("the government raised it to 30 percent")
+    with pytest.raises(UnsourcedFigure, match="30"):
+        payload.render()

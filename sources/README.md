@@ -58,16 +58,37 @@ kind — external support for §9.10 from a direction the spec did not anticipat
 
 ### Blockers
 
+A harvest was attempted. It did not run, and each of the first three blockers
+below would have stopped it independently. Items marked **confirmed** were
+checked against the site rather than inferred.
+
 | # | Blocker |
 |---|---|
-| 1 | **The site's own notice.** Its about page states that it is an experimental site for academic purposes, not yet launched, and asks that it not be entered until further notice. That is the publisher's stated wish about access to their own material, and it settles the question until it changes. **Confirm the notice has been withdrawn before anything else on this list matters.** |
-| 2 | **No confirmed machine-readable surface.** No feed, endpoint, or payload shape has been verified. `items_path`, `text_field`, `url_field`, and `date_field` cannot be declared without that, and inventing them would produce a declaration that looks admitted and silently harvests nothing. |
-| 3 | **Dating.** The about page states that where an exact date could not be found, an approximate one is displayed, without marking which records those are. A source that cannot distinguish its exact dates from its approximate ones can only be declared `date_precision = "approximate"`, and every record it yields is then refused a `stated_at` by `CandidateClaim.stated_at`. That is correct behaviour and it makes the corpus unusable for anything indexed on when the claim was made — §9.2 bands and §9.5 continuity both are. |
-| 4 | **Text provenance.** Records are presented as statements by named people. Whether the displayed text is the utterance or a summary of it is not stated, and §9.7.1 anchors derived elements to spans of the original — a summary would anchor spans to words the claimant did not say, which §9.7.5 forbids presenting as theirs. |
-| 5 | **Language.** Claims are in Hebrew. The lexicon carries no Hebrew derivation triggers, and directional vocabulary still sits in `engine/verification/patterns.py` rather than in a pack — [`docs/plan.md` §2.5](../docs/plan.md#25-language-vocabularies-outside-the-lexicon). Harvesting the corpus before that is closed produces a corpus the engine under-decomposes silently. |
-| 6 | **Reachability from this environment.** The domain is blocked by the network egress policy of the environment this repository is developed in. Any harvest would need that changed deliberately, which is the right place for the decision to sit. |
+| 1 | **The site's own notice.** Its about page states that it is an experimental site for academic purposes, not yet launched, and asks that it not be entered until further notice. That is the publisher's stated wish about access to their own material, and it settles the question until it changes. |
+| 2 | **The machine-readable surface is disallowed — confirmed.** `robots.txt` reads `Allow: /` with a single `Disallow: /bff/`. That backend-for-frontend path is exactly where a JSON API would live, so the site permits crawling its pages and specifically excludes its data endpoint. The pages are server-rendered and do carry the claims, but this harvester has no HTML-scraping backend and deliberately will not gain one: its backend kinds are a closed set, and screen-scraping rendered markup is how text arrives silently reshaped. |
+| 3 | **Egress — confirmed, and not specific to this site.** The environment this repository is developed in enforces a strict allowlist; unrelated public domains are refused identically. Routing around it is explicitly out of bounds, so a harvest needs the policy changed, which is the right place for that decision to sit. |
+| 4 | **Dating is worse than imprecise — confirmed.** Each record pairs *two* dates: the date of the claim and the date of the check that refuted it. On a page sampled, claims dated 2006, 2009 and 2015 sit beside check dates from the last fortnight. A parser taking "the date near the text" attaches the check date to the claim, producing a record that is confidently wrong about when the claim was made rather than merely vague. Combined with the about page's admission that approximate dates are displayed unmarked, this source can only ever be `date_precision = "approximate"` — and `CandidateClaim.stated_at()` will then refuse every record, which is correct and makes the corpus unusable for anything indexed on when the claim was made. |
+| 5 | **Rendered items are duplicated — confirmed.** Every claim appeared twice in the extracted page, consistent with a carousel rendering each slide twice. Deduplication by `identity_key` handles this only where a per-item URL is present; a text-keyed fallback would merge genuinely distinct records that happen to share wording. |
+| 6 | **Text provenance.** Records are presented as statements by named people, and some are clearly summarised rather than quoted — several begin "promised that…" rather than reproducing words. §9.7.1 anchors derived elements to spans of the original, so a summary anchors spans to words the claimant did not say, which §9.7.5 forbids presenting as theirs. Distinguishing the quoted records from the summarised ones is a per-record judgement the harvester cannot make. |
+| 7 | **Language.** Claims are in Hebrew. The lexicon carries no Hebrew derivation triggers, and directional vocabulary still sits in `engine/verification/patterns.py` rather than in a pack — [`docs/plan.md` §2.5](../docs/plan.md#25-language-vocabularies-outside-the-lexicon). Harvesting before that is closed produces a corpus the engine under-decomposes silently. |
 
-Blockers 3, 4 and 5 are the substantial ones, and none is a defect in the
+Blockers 4, 6 and 7 are the substantial ones, and none is a defect in the
 site — it is built for browsing, and it is good at that. They are the distance
 between something built for reading and something usable as a verification
 input.
+
+### What the attempt was worth anyway
+
+Reading real records from the site surfaced a **crash-level defect in the
+engine**, now fixed: a claim carrying both a figure and a connective — the
+commonest shape in political discourse — failed the render. The figure was the
+claimant's own, quoted verbatim into a derived element by §9.7's construction,
+but it reached output through the prose channel and AC-7 correctly refused it.
+See `Payload.derived` and the regression tests in
+`tests/conformance/test_ac07.py`.
+
+The fixture corpus could never have found this. It carries no claim that pairs
+a numeral with a connective, because it was written to exercise the criteria
+rather than to resemble anything. That is the argument for the corpus in one
+line: not that real claims are more numerous, but that they are shaped
+differently from the ones a test author invents.

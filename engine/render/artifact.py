@@ -258,7 +258,14 @@ class Artifact:
             return
         payload.line("DERIVED ELEMENTS (proposed, not confirmed)")
         for element in self.derived:
-            payload.line(f"  [{element.tag.value}] {render_as_implication(element)}")
+            # The tag and the operation are prose the system chose; the
+            # implication is the claimant's own words plus a closed scaffold.
+            # They go through different channels because AC-7 asks different
+            # questions of them — a numeral in the first would be invented, a
+            # numeral in the second was quoted.
+            payload.text(f"  [{element.tag.value}] ")
+            payload.derived(render_as_implication(element))
+            payload.line()
             payload.line(f"      operation: {element.operation.value}")
         payload.line()
 
