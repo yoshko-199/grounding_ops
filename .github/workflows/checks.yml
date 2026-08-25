@@ -37,3 +37,23 @@ jobs:
           PYTHONPATH=. python3 cli/verify.py \
             "prices rose over the last three years due to governmental incompetence" \
             --jurisdiction ZZ --packs packs/fixture
+
+      # The harvester ships with every source disabled. This asserts that the
+      # shipped configuration reaches nothing at all — the run must skip and
+      # exit 2 ("nothing was scanned"), never 0. A harvester that quietly
+      # acquired a live default would otherwise pass every other check here.
+      - name: Harvester reaches nothing by default
+        run: |
+          set +e
+          output=$(python3 scripts/harvest_corpus.py --dry-run 2>&1)
+          status=$?
+          set -e
+          echo "$output"
+          if [ "$status" -ne 2 ]; then
+            echo "expected exit 2 (nothing scanned), got $status" >&2
+            exit 1
+          fi
+          echo "$output" | grep -q "skipped" || {
+            echo "expected the disabled source to be skipped with its reason" >&2
+            exit 1
+          }

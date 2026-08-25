@@ -1,0 +1,57 @@
+# Fixture source — the loader's test subject, and a worked example of a
+# declaration.
+#
+# Disabled, and pointed at a reserved-for-documentation domain (RFC 2606), so
+# that a stray run of the harvester cannot reach anything real. The tests drive
+# it through a recorded transport instead of the network.
+#
+# Two accounts and two backends, because the interesting behaviour only appears
+# with more than one of each: the fallback ladder within an account, and the
+# absence of any ladder between accounts.
+
+[source]
+id = "fixture"
+name = "Fixture publication"
+accounts = ["alpha", "beta"]
+cadence = "daily"
+languages = ["en"]
+
+# The source publishes a real timestamp per item and states that it is the
+# time of the original utterance. Where a source says nothing about its dating,
+# omit this field: the parser then caps every record at `approximate`, because
+# a well-formed timestamp of unstated provenance is not an exact date.
+date_precision = "exact"
+
+enabled = false
+disabled_reason = """
+A fixture, not a publication. It exists so that the loader, the fallback
+ladder, and the cache have something to run against, and it must never be
+enabled.
+"""
+
+# Preferred transport first. The order is the source's own statement about
+# which transport it trusts, and deduplication keeps the earliest record.
+[[backend]]
+kind = "json"
+url_template = "https://feeds.example.invalid/{account}/claims.json"
+items_path = "data.items"
+text_field = "body"
+url_field = "permalink"
+date_field = "published"
+
+[[backend]]
+kind = "rss"
+url_template = "https://feeds.example.invalid/{account}/rss"
+
+# A server-rendered page with its payload in a script tag. This is the shape
+# the prior art hardcoded against one site; here the script id and the path
+# into it are declared, which is what makes it a backend rather than a scraper.
+[[backend]]
+kind = "embedded-json"
+url_template = "https://www.example.invalid/{account}"
+script_id = "__NEXT_DATA__"
+items_path = "props.pageProps.items"
+text_field = "statement"
+url_field = "href"
+date_field = "statedOn"
+date_format = "%d/%m/%Y"

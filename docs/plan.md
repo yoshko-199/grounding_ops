@@ -53,6 +53,8 @@ Seven blockers listed in [`spec/packs/israel.md`](spec/packs/israel.md#6-admissi
 
 The remaining four are straightforward: assign a maintainer, give the ministries reached via `data.gov.il` their own custodian entries, complete the routing table, and confirm revision policies for three custodians.
 
+**What admission would and would not buy.** The pack's measures are almost entirely economy, government, and property. Surveying an Israeli political-discourse aggregator's own topic index — see 2.2 below — its economy section holds about one claim in twelve of everything it has collected; security, law, and society together hold well over half. So a fully admitted pack binds a measure for roughly the smallest tenth of what actually circulates, and returns Insufficient Data for the rest. That is the correct answer for the rest, and it is worth knowing the ratio before the pack lands rather than reading it off a dashboard afterwards. It is an argument for 2.5 and for §9.10, not an argument against 2.1.
+
 ### 2.2 Derivation coverage — needs a corpus
 
 §9.7.2 fixes six derivation operations **[v0.5]**. Whether they cover the implication patterns that actually occur is empirical, and answerable only against a corpus of real claims.
@@ -60,6 +62,21 @@ The remaining four are straightforward: assign a maintainer, give the ministries
 The first real claim tested against the built engine — *"you don't see a curve, therefore the earth is flat"* — exercised a pattern the original five did not cover, and `inferential-discharge` was added for it. That is one data point, and it points the wrong way for optimism: the list was not chosen carelessly, it was chosen without a corpus, and the very first claim found a hole. The remaining question is no longer *whether* patterns are missing but *which*.
 
 The failure mode is silent and in the safe direction: an implication with no matching operation is never surfaced, so the system under-reports rather than misreports.
+
+**A harvester now exists.** [`plugins/harvest`](../plugins/harvest/__init__.py) scans declared sources and accounts and writes candidate claims to a corpus file, driven by [`scripts/harvest_corpus.py`](../scripts/harvest_corpus.py). It is a plugin in the strict sense: nothing under `engine/` can reach it, and `tests/conformance/test_plugin_isolation.py` fails if that changes. It produces claims, never evidence — a harvested record has no field that could hold a figure, and no import path to the store or to a custodian adapter.
+
+No source is admitted yet. [`sources/README.md`](../sources/README.md) records what a declaration must establish and why the first candidate surveyed does not yet meet it.
+
+**What surveying that candidate established, before any claim was harvested.** Its own category scheme is the finding. It sorts collected statements into refuted claims, double standards, broken promises, incitement, and misleading forecasts — and four of those five are claim types Stage 1 routes out of verdict scope. Only the first is the factual lane.
+
+That is external support for §9.10 arriving from a direction the spec did not anticipate. §9.10 was argued from a single constructed test claim; this says a real corpus of political discourse is *mostly* the out-of-scope kind, which means the pre-v0.5 behaviour — route out at Stage 1, emit nothing — would have left the engine silent on the majority of what it was handed. The change mattered considerably more than the claim that prompted it suggested.
+
+It also sharpens what a corpus is for. A corpus assembled from such a source measures derivation coverage well, because derived elements are exactly what those four categories reduce to. It measures routing and retrieval coverage badly, because most of its claims bind no measure at all. Both numbers are worth having; reporting the first as though it were the second would overstate the engine's reach.
+
+**Two properties the survey forced into the harvester**, both worth keeping regardless of which source is admitted first:
+
+- **Approximate dates are refused, not rounded.** A source that displays an estimated date where it could not establish the real one — a common and openly stated practice — cannot supply a `stated_at`, because §9.2 bands and §9.5 continuity are both indexed on when the claim was made. An approximate date there does not degrade the answer; it produces a confident answer to a different question. `CandidateClaim.stated_at()` raises rather than guessing, and a source that says nothing about its dating has every record capped at approximate.
+- **Text transforms are recorded.** §9.7.1 anchors derived elements to spans of the original, so text silently rewritten in transit — tags stripped, entities decoded — yields spans that resolve to the wrong words much later. Every edit between the received body and the stored text is named on the record, and the raw body is kept.
 
 ### 2.2a Divergence from the prior art, deliberately retained
 
@@ -153,6 +170,11 @@ property of a signature or an import graph rather than a rule to remember:
   no jurisdiction *names*, and directional vocabulary still sits in the pipeline
   rather than in a lexicon. Both under-fire silently, which is why they are
   written down rather than left to be rediscovered.
+- **No source is admitted.** `plugins/harvest` runs, and the only declaration
+  shipped is a fixture pointed at a reserved domain and disabled. The harvester
+  is therefore exercised end to end and has collected nothing, which is the
+  same posture as the pack: the machinery is finished, and admitting real
+  input is a decision with its own checklist.
 
 ## Verification for spec changes
 

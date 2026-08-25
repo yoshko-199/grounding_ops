@@ -23,17 +23,28 @@ from functools import cache
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
+#: Top-level packages the graph knows about.  ``plugins`` is here so that the
+#: isolation assertion has something to assert *against*: a rule saying no
+#: engine module may reach a plugin is vacuous if plugin modules are invisible
+#: to the analyser, and a vacuous guard is the "unused pathway is a latent
+#: failure" case AC-6 warns about, one level up.
+PACKAGES = ("engine", "plugins")
+
 
 @cache
 def _modules() -> dict[str, pathlib.Path]:
-    """Every module in the engine package, by dotted name."""
+    """Every module in the analysed packages, by dotted name."""
     found: dict[str, pathlib.Path] = {}
-    for path in sorted((ROOT / "engine").rglob("*.py")):
-        rel = path.relative_to(ROOT).with_suffix("")
-        parts = list(rel.parts)
-        if parts[-1] == "__init__":
-            parts.pop()
-        found[".".join(parts)] = path
+    for package in PACKAGES:
+        root = ROOT / package
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*.py")):
+            rel = path.relative_to(ROOT).with_suffix("")
+            parts = list(rel.parts)
+            if parts[-1] == "__init__":
+                parts.pop()
+            found[".".join(parts)] = path
     return found
 
 
@@ -75,10 +86,11 @@ def direct_imports(module: str) -> frozenset[str]:
 
 
 def reachable(module: str) -> frozenset[str]:
-    """Transitive closure of imports from ``module``, following engine modules.
+    """Transitive closure of imports from ``module``, following known modules.
 
-    Non-engine imports (stdlib, third party) are recorded but not followed —
-    AC-14 needs to see that ``urllib`` was imported, not to walk into it.
+    Imports outside :data:`PACKAGES` (stdlib, third party) are recorded but not
+    followed — AC-14 needs to see that ``urllib`` was imported, not to walk
+    into it.
     """
     seen: set[str] = set()
     stack = [module]
@@ -95,7 +107,7 @@ def reachable(module: str) -> frozenset[str]:
 
 
 def modules_under(package: str) -> list[str]:
-    """Every engine module inside ``package``, including the package itself."""
+    """Every known module inside ``package``, including the package itself."""
     return sorted(
         name
         for name in _modules()

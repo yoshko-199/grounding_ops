@@ -4,3 +4,7 @@ __pycache__/
 *.egg-info/
 .venv/
 *.db
+
+# Harvested corpora and the harvest fetch cache are local artefacts:
+# a test input produced by scripts/harvest_corpus.py, never a source of truth.
+corpus/

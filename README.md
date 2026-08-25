@@ -56,6 +56,25 @@ It also converts §7's six prose principles into criteria that can fail a build.
 
 **No generic fallback.** Where no custodian covers a claim, the answer is *Insufficient Data* — never a web search, a news source, or a plausible-looking substitute. Generalising across jurisdictions must not become diluting what "custodian of record" means.
 
+## Layout
+
+| Path | What it is |
+|---|---|
+| `engine/` | The pipeline. Stages 0–11, no network client, no source it did not get from a loaded pack |
+| `packs/` | Custodian packs — who is authoritative for which measure in which jurisdiction |
+| `cli/` | Verify a claim, and sign one off |
+| `plugins/harvest/` | **Outside the engine.** Scans declared sources and accounts for candidate *claims*. It may reach the network; nothing in `engine/` may reach it |
+| `sources/` | Source declarations for the harvester. See [`sources/README.md`](sources/README.md) |
+| `tests/conformance/` | One file per acceptance criterion, plus the static import-graph assertions |
+
+The `plugins/` boundary is the one worth knowing about. A harvester does the
+four things `engine/custodians/base.py` excludes by name — "no web search, no
+news source, no model prior, no operator-supplied URL" — which is fine on the
+claim-input side and fatal anywhere near a verification path. So the separation
+is asserted by static import-graph analysis rather than agreed by convention:
+no engine module may reach a plugin, and no harvest module may reach the
+custodian adapters, the retrieval layer, or the event store.
+
 ## Prior art
 
 The `israeli-fact-checker` skill (installed at `~/.claude/skills/`, outside this repository) is the direct ancestor: it already implements claim isolation, measure disambiguation, custodian routing, the citation trail, and the anti-fabrication rule. It has no reconstruction step, no derived-element mapping, and is deliberately stateless. Its researched source map is the basis for the Israel pack. **This repository does not modify it.**
