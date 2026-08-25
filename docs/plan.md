@@ -55,6 +55,8 @@ The remaining four are straightforward: assign a maintainer, give the ministries
 
 **What admission would and would not buy.** The pack's measures are almost entirely economy, government, and property. Surveying an Israeli political-discourse aggregator's own topic index — see 2.2 below — its economy section holds about one claim in twelve of everything it has collected; security, law, and society together hold well over half. So a fully admitted pack binds a measure for roughly the smallest tenth of what actually circulates, and returns Insufficient Data for the rest. That is the correct answer for the rest, and it is worth knowing the ratio before the pack lands rather than reading it off a dashboard afterwards. It is an argument for 2.5 and for §9.10, not an argument against 2.1.
 
+Reading that economy section rather than only its count makes the bound tighter still. Most of what it holds are **broken promises** — commitments about what a government would do, which Stage 1 routes out exactly as it routes out predictions. The checkable factual assertions are concentrated in the *rebuttals* rather than in the claims: the claim is "I will reduce the rate", and the figure lives in the finding that the rate went up. Whether the rebuttal is itself a claim worth routing is a real question and it is not obviously no — but it is a different intake decision from the one the harvester currently implements, and it should be taken deliberately rather than by accident of what a parser happens to pick up.
+
 ### 2.2 Derivation coverage — needs a corpus
 
 §9.7.2 fixes six derivation operations **[v0.5]**. Whether they cover the implication patterns that actually occur is empirical, and answerable only against a corpus of real claims.
