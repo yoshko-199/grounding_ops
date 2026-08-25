@@ -1,0 +1,255 @@
+# Fixture custodian pack — a synthetic jurisdiction for the conformance suite.
+#
+# ZZ is not a country and its custodians are not institutions.  The pack
+# exists so that every guarantee in the spec can be exercised end to end
+# without populating a real jurisdiction from recollection, which is the
+# failure the whole system exists to prevent and would be self-refuting to
+# commit in the test rig.
+#
+# It carries no figures.  Series values live in the fixture custodian adapter
+# and reach the engine only through recorded retrievals, exactly as a real
+# custodian's would.  A pack holding its own numbers would be interface §6's
+# "pack serving figures from memory" introduced by the tests.
+#
+# Measures are chosen to exercise the hard paths:
+#   price_index            break with a linked series  -> continuity check passes
+#   output_index           break with no linked series -> never Verified (AC-12)
+#   assembly_seats         discrete                    -> exact match (AC-13)
+#   sparse_gauge           single-observation series   -> sweep cannot run (AC-11)
+#   unemployment_survey    | definitionally distinct measures published by
+#   unemployment_registered| different custodians       -> Contested by definition
+
+[header]
+jurisdiction_id = "ZZ"
+languages = ["en"]
+authority_basis = "Fixture. No statutory basis; this jurisdiction does not exist."
+pack_version = "1.0.0-fixture"
+maintainer = "conformance suite"
+
+# --------------------------------------------------------------------------
+# Custodians
+# --------------------------------------------------------------------------
+
+[[custodians]]
+id = "zzstat"
+name = "ZZ Statistical Office"
+mandate = "Fixture national statistical office; compiles price, output, and labour series."
+cadence = "monthly"
+revision_policy = "Publishes provisional prints and revises them at the following release."
+access_method = "fixture adapter, in process"
+integrity_annotation = "none known"
+
+[[custodians]]
+id = "zzelect"
+name = "ZZ Electoral Commission"
+mandate = "Fixture authority certifying assembly election results."
+cadence = "per election"
+revision_policy = "Certified results supersede provisional counts and are not revised thereafter."
+access_method = "fixture adapter, in process"
+integrity_annotation = "none known"
+
+[[custodians]]
+id = "zzlabour"
+name = "ZZ Labour Directorate"
+mandate = "Fixture administrative registry of persons registered as seeking work."
+cadence = "monthly"
+revision_policy = "Administrative counts are restated as late registrations arrive."
+access_method = "fixture adapter, in process"
+integrity_annotation = """Administrative coverage counts only those who register. \
+Absence from the register is not evidence of employment, and a verified count \
+must never render as a measure of joblessness."""
+
+# --------------------------------------------------------------------------
+# Measures
+# --------------------------------------------------------------------------
+
+[[measures]]
+id = "price_index"
+name = "ZZ Price Index"
+definition = "Index of consumer prices against a fixed basket and base year."
+custodian_id = "zzstat"
+series_identifier = "ZZ-PRICE"
+unit = "index_points"
+published_precision = 0.1
+discrete = false
+known_confusions = [
+  "Month-over-month change against year-over-year change.",
+  "Nominal against real; the index is the deflator, not a deflated series.",
+  "A component series is not the headline index.",
+]
+admissible_baselines = ["prior_period", "prior_year", "series_start", "last_break"]
+admissible_windows = ["1m", "3m", "12m"]
+admissible_source_ref = "ZZ Statistical Office, Fixture Release Calendar and Standard Comparisons"
+
+  [[measures.series_breaks]]
+  effective_date = 2020-01-01
+  kind = "base_year"
+  custodian_notice_ref = "ZZ Statistical Office, Fixture Notice on Rebasing"
+  linked_series_available = true
+  linked_series_identifier = "ZZ-PRICE-LINKED"
+
+[[measures]]
+id = "output_index"
+name = "ZZ Output Index"
+definition = "Index of manufacturing output volume."
+custodian_id = "zzstat"
+series_identifier = "ZZ-OUTPUT"
+unit = "index_points"
+published_precision = 0.1
+discrete = false
+known_confusions = [
+  "Volume against value; the index is a volume measure and does not move with prices.",
+  "Manufacturing output is not total output.",
+]
+admissible_baselines = ["prior_period", "prior_year"]
+admissible_windows = ["3m", "12m"]
+admissible_source_ref = "ZZ Statistical Office, Fixture Release Calendar and Standard Comparisons"
+
+  # No linked series spans this break.  Any element comparing across it is
+  # Contested by definition or Unverified, never Verified (§9.5, AC-12).
+  [[measures.series_breaks]]
+  effective_date = 2019-06-01
+  kind = "methodology"
+  custodian_notice_ref = "ZZ Statistical Office, Fixture Notice on Survey Redesign"
+  linked_series_available = false
+
+[[measures]]
+id = "assembly_seats"
+name = "ZZ Assembly seats"
+definition = "Certified seat allocation following an assembly election."
+custodian_id = "zzelect"
+series_identifier = "ZZ-SEATS"
+unit = "seats"
+published_precision = 1.0
+discrete = true
+known_confusions = [
+  "Certified allocation against exit-poll projection.",
+  "Seats against vote share; the allocation is not proportional to either.",
+]
+admissible_baselines = ["prior_period"]
+admissible_windows = ["1_election"]
+admissible_source_ref = "ZZ Electoral Commission, Fixture Certification Record"
+
+[[measures]]
+id = "sparse_gauge"
+name = "ZZ Sparse Gauge"
+definition = """A measure the fixture custodian publishes as a single observation \
+with no history. Declares admissible alternatives, but the series is too short for \
+any of them to be computed."""
+custodian_id = "zzstat"
+series_identifier = "ZZ-SPARSE"
+unit = "index_points"
+published_precision = 0.1
+discrete = false
+known_confusions = ["none known"]
+admissible_baselines = ["prior_period", "prior_year"]
+admissible_windows = ["12m"]
+admissible_source_ref = "ZZ Statistical Office, Fixture Release Calendar and Standard Comparisons"
+
+[[measures]]
+id = "unemployment_survey"
+name = "ZZ survey unemployment rate"
+definition = """Share of the labour force reporting themselves as without work and \
+seeking work, measured by household survey."""
+custodian_id = "zzstat"
+series_identifier = "ZZ-UNEMP-SURVEY"
+unit = "percent"
+published_precision = 0.1
+discrete = false
+known_confusions = [
+  "Not the registered job-seeker count. Different population, different definition.",
+]
+admissible_baselines = ["prior_period", "prior_year"]
+admissible_windows = ["3m", "12m"]
+admissible_source_ref = "ZZ Statistical Office, Fixture Release Calendar and Standard Comparisons"
+
+[[measures]]
+id = "unemployment_registered"
+name = "ZZ registered job-seekers"
+definition = """Count of persons registered with the Labour Directorate as seeking \
+work. An administrative count of registrations, not a measure of the labour force."""
+custodian_id = "zzlabour"
+series_identifier = "ZZ-UNEMP-REG"
+unit = "persons"
+published_precision = 1.0
+discrete = true
+known_confusions = [
+  "Not the survey unemployment rate. Quoting one as the other is the archetypal misleading-but-numerically-true claim in this fixture.",
+]
+admissible_baselines = ["prior_period"]
+admissible_windows = ["12m"]
+admissible_source_ref = "ZZ Labour Directorate, Fixture Registry Publication Schedule"
+
+# --------------------------------------------------------------------------
+# Routing rules
+# --------------------------------------------------------------------------
+
+[[routing_rules]]
+measure_id = "price_index"
+custodian_id = "zzstat"
+rationale = "Sole compiler of the fixture price index."
+no_alternative_custodian = true
+
+[[routing_rules]]
+measure_id = "output_index"
+custodian_id = "zzstat"
+rationale = "Sole compiler of the fixture output index."
+no_alternative_custodian = true
+
+[[routing_rules]]
+measure_id = "assembly_seats"
+custodian_id = "zzelect"
+rationale = "Certifying authority for assembly elections; the certified record is the seat allocation."
+alternatives_considered = [
+  "ZZ Statistical Office publishes demographic series but certifies no election result.",
+]
+
+[[routing_rules]]
+measure_id = "sparse_gauge"
+custodian_id = "zzstat"
+rationale = "Sole publisher of the fixture sparse gauge."
+no_alternative_custodian = true
+
+[[routing_rules]]
+measure_id = "unemployment_survey"
+custodian_id = "zzstat"
+rationale = """The survey rate is the defined labour-force measure and is compiled \
+from the household survey."""
+alternatives_considered = [
+  "ZZ Labour Directorate registered job-seeker count — a different population measured a different way, not an alternative source for this measure.",
+]
+
+[[routing_rules]]
+measure_id = "unemployment_registered"
+custodian_id = "zzlabour"
+rationale = "The Directorate maintains the registry and is the originating record for registrations."
+alternatives_considered = [
+  "ZZ Statistical Office survey unemployment rate — measures the labour force, not the registry.",
+]
+
+# --------------------------------------------------------------------------
+# Lexicons — interface §3.6
+# --------------------------------------------------------------------------
+
+[[lexicons]]
+language = "en"
+composition_connectives = ["and", ", ", "; ", "then"]
+forbidden_connectives = [
+  "because", "because of", "due to", "caused by", "thanks to",
+  "as a result of", "resulting in", "leading to", "owing to",
+  "therefore", "hence", "consequently", "which shows", "which proves",
+  "meaning that", "although", "despite", "even though", "however",
+]
+element_slot_order = ["time_period", "entity", "measure", "direction", "quantity"]
+# Real claims carry typos. A trigger missed on a misspelling under-fires
+# silently, and a derived element is gated and never verified, so the cost of
+# a false trigger is a reviewer's attention rather than a laundered fact.
+fuzzy_trigger_matching = true
+
+  [lexicons.derivation_triggers]
+  "causal-discharge" = ["due to", "because of", "thanks to", "caused by", "owing to", "as a result of"]
+  "inferential-discharge" = ["therefore", "hence", "which proves", "which shows", "consequently"]
+  "superlative-discharge" = ["highest", "lowest", "first time", "record", "ever", "worst", "best"]
+  "comparative-discharge" = ["more than", "less than", "twice as", "half as", "worse than", "better than"]
+  "evaluative-discharge" = ["incompetence", "failure", "success", "mismanagement", "disaster", "triumph"]
+  "scope-discharge" = ["all", "every", "always", "never", "nobody", "everyone", "none"]
