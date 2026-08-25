@@ -38,9 +38,25 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
+        stated_at = (
+            date.fromisoformat(args.stated_at) if args.stated_at else date.today()
+        )
+    except ValueError:
+        # A malformed date is an operator error, and it must not reach the
+        # pipeline: every tolerance band and the continuity check are indexed
+        # on when the claim was made. Reported like any other bad code rather
+        # than raised, because a traceback here reads as a crash in the engine.
+        print(
+            f"error: not a date: {args.stated_at!r}. Expected ISO format, "
+            "for example 2021-06-01",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
         context, identity = split(
             RawProvenance(
-                stated_at=date.fromisoformat(args.stated_at) if args.stated_at else date.today(),
+                stated_at=stated_at,
                 language=args.language,
                 jurisdiction_hint=args.jurisdiction,
                 claimant_name=args.claimant,

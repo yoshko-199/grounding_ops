@@ -73,3 +73,34 @@ def test_no_non_2xx_equivalent_in_the_structured_payload(
     payload = _render(INSUFFICIENT, context, registry, adapters, store).to_dict()
     assert "error" not in payload
     assert payload["verdict"]["label"] == "insufficient_data"
+
+
+def test_a_malformed_date_is_reported_rather_than_raised(capsys) -> None:
+    """An operator error must not surface as an engine crash.
+
+    Found while documenting the CLI: `--stated-at 2021-13-99` propagated a
+    bare ValueError as a traceback. AC-5 is about Insufficient Data rendering
+    as an answer, and the same reasoning applies one step earlier — a
+    traceback reads as the machinery breaking, which is exactly the error
+    styling this criterion refuses for a non-failure.
+
+    The date is refused rather than defaulted because every tolerance band and
+    the continuity check are indexed on when the claim was made.
+    """
+    from cli.verify import main
+
+    assert main([ORDINARY, "--stated-at", "2021-13-99", "--packs", "packs/fixture"]) == 2
+    assert "not a date" in capsys.readouterr().err
+
+
+def test_an_unresolvable_jurisdiction_is_an_answer_not_an_error(capsys) -> None:
+    """A hint of the wrong shape yields Insufficient Data, never a non-zero exit.
+
+    §9.8.3 forbids defaulting or inferring a jurisdiction, so an unusable hint
+    resolves to none at all. That is a verdict, and AC-5 requires it to exit
+    zero like any other.
+    """
+    from cli.verify import main
+
+    assert main([ORDINARY, "--jurisdiction", "zz", "--packs", "packs/fixture"]) == 0
+    assert main([ORDINARY, "--jurisdiction", "not-a-code", "--packs", "packs/fixture"]) == 0

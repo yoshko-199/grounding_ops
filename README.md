@@ -15,6 +15,17 @@ PYTHONPATH=. python3 cli/verify.py "prices rose over the last three years \
 
 ---
 
+## Start here
+
+**[Documentation index](docs/README.md)** — organised by [Diátaxis](https://diataxis.fr/): a tutorial, task-oriented how-to guides, interface reference, and the explanatory material.
+
+| If you want to | Go to |
+|---|---|
+| Run your first claim through the engine | [Tutorial](docs/tutorial.md) |
+| Do one specific task | [How-to guides](docs/README.md#how-to-guides) |
+| Look up a flag, field, or exit code | [CLI](docs/reference/cli.md) · [Pack schema](docs/reference/pack-schema.md) · [Source schema](docs/reference/source-schema.md) |
+| Understand why it is built this way | [Overview](docs/overview.md) |
+
 ## Contents
 
 | Document | What it is |
