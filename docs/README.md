@@ -54,6 +54,7 @@ Understanding-oriented. Read these when you want to know *why*.
 | Document | Discusses |
 |---|---|
 | [Overview](overview.md) | What the system does, how the pipeline hangs together, and why it cannot quietly become an advocacy tool |
+| [Validation run](validation.md) | Five claims against the prior art, three examined closely, and the two defects the conformance suite could not find |
 | [Roadmap](plan.md) | What is settled, what is deliberately unfinished, and what gates a real deployment |
 | [Israel pack draft](spec/packs/israel.md) | A real jurisdiction worked through the interface, and the seven blockers stopping its admission |
 | [Source admission](../sources/README.md) | What a claim source must establish before it can be harvested |
