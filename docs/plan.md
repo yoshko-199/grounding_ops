@@ -45,6 +45,14 @@ Everything that can be settled on paper is settled. What remains needs either so
 
 ### 2.1 Admit the Israel pack — the only thing blocking a trial
 
+**One measure is now admitted.** [`packs/live/il.toml`](../packs/live/il.toml) loads, declaring the Bank of Israel and its representative US dollar rate, with every field taken from the Bank's own current publications. A pack must be complete to load but need not be broad: one confirmed measure routes claims about that measure and returns Insufficient Data for everything else, which is the correct answer for everything else. Twenty half-filled measures would not load at all.
+
+Three things that only became visible by doing it:
+
+- **The hardest blocker was the easiest for this custodian.** Break registers were expected to be the worst of the seven. The Bank publishes a prose history of every change to how the representative rate is determined, with dates — a coverage change in 1986, methodology changes in 1990 and 1995, a sampling-window change in 2006. That *is* a break register; it simply had to be read. Whether other custodians publish the same is unknown and should not be assumed.
+- **Two entries in the draft were wrong in the plausible direction.** It recorded the rate as "fixed per date and not revised" with integrity annotation "none known". The Bank's own notes say the rates have no official or legal standing, are not published in the Official Gazette, are indicative rather than transactional, and that it reserves absolute discretion to change them without notice. Neither error was careless; both are what confident recollection produces, which is the whole argument for the rule.
+- **A real pack reaches a state no fixture can.** It names a custodian this deployment has no client for. That is recorded at 3.1 and was a live defect until admission surfaced it.
+
 Seven blockers listed in [`spec/packs/israel.md`](spec/packs/israel.md#6-admission-blockers). Three are substantial research and **must be done with the custodians' publications open**, not from recollection — a pack populated from memory is the exact failure the spec exists to prevent, and it would be self-refuting to introduce it here:
 
 - `published_precision`, `unit`, `discrete` per measure, confirmed against each custodian's current publication.
@@ -163,11 +171,19 @@ property of a signature or an import graph rather than a rule to remember:
 
 ### 3.1 What is not done
 
-- **No real pack is admitted**, so every real claim returns Insufficient Data.
-  This is 2.1, and it is the only thing between here and a trial.
+- **One real measure is admitted**, and no more. Every claim outside it returns
+  Insufficient Data. This is 2.1.
 - **Custodian adapters are fixtures.** No network client exists, and AC-14
   asserts none can be reached from the verification path. A real pack needs a
   real adapter, written against that same contract.
+- **A pack can name a custodian this deployment has no client for**, which no
+  fixture jurisdiction can produce, because fixtures ship their own adapters.
+  Until admission surfaced it, that case reported as *Unverified* — asserting
+  the custodian publishes nothing covering the element, which nobody had
+  checked. It is now *Unreachable*, a fact about what can be reached rather
+  than about the record, which is the distinction §6.1 and AC-14 exist to
+  keep. The engine therefore routes real claims to the Bank of Israel and
+  verifies none of them, and says so in those words.
 - **Two gaps found while building** are recorded at 2.4 and 2.5: packs declare
   no jurisdiction *names*, and directional vocabulary still sits in the pipeline
   rather than in a lexicon. Both under-fire silently, which is why they are
