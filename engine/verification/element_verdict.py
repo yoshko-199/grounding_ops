@@ -39,11 +39,34 @@ def assign(
     if element.is_out_of_scope:
         return _out_of_scope(element)
 
-    if pull is None or measure is None:
+    if measure is None:
         return _settled(
             element,
             ElementStatus.UNVERIFIED,
             "no measure was bound for this element, so no custodian was consulted",
+        )
+
+    if pull is None:
+        # A measure bound and a custodian named, but no retrieval happened —
+        # this deployment has no adapter for that custodian. That is a fact
+        # about what this session can reach, not about what the record holds,
+        # so it is Unreachable. §6.1 keeps the two apart and AC-14 asserts
+        # neither collapses into the other; reporting it as Unverified would
+        # say the custodian publishes nothing covering the element, which is
+        # a claim about the world that nobody checked.
+        #
+        # Found by admitting the first real pack: a pack can name a custodian
+        # the code has no client for, which no fixture jurisdiction could
+        # produce because fixtures ship their own adapters.
+        return _settled(
+            element,
+            ElementStatus.UNREACHABLE,
+            (
+                f"{measure.name} was bound, and no client is configured for its "
+                "custodian in this deployment, so the record was never consulted. "
+                "This is a gap in what can be reached, not a finding about what "
+                "is published"
+            ),
         )
 
     if pull.blocked_status is not None:
@@ -64,6 +87,9 @@ def assign(
             pull.continuity.caveat or "comparison spans an unlinked series break",
             continuity=pull.continuity.status,
         )
+
+    if element.kind is ElementKind.TIME_PERIOD:
+        return _time_period(element, pull)
 
     if element.kind is ElementKind.DIRECTION:
         return _direction(element, pull, claim_text)
@@ -207,4 +233,66 @@ def _settled(
     return ElementOutcome(
         replace(element, status=status, tolerance_band=band, continuity_status=continuity),
         reason,
+    )
+
+
+def _time_period(element: Element, pull: PullOutcome) -> ElementOutcome:
+    """A period scopes the comparison; it is not a figure to compare.
+
+    This branch exists because its absence produced the worst class of error
+    the system can make. A time period was decomposed as a
+    :attr:`~engine.elements.ElementKind.QUANTITY`, so a claim like
+    "unemployment fell in 2021" had the *year* pulled out as the claimant's
+    figure and compared against the unemployment rate. Two thousand and
+    twenty-one does not equal four point two, so the element came back
+    Contradicted and the claim was labelled Substantially Inaccurate — with a
+    full citation trail behind it, on a claim the record supports.
+
+    That is a confident, fully-sourced, wrong answer about a true statement,
+    which is precisely what §3 and the whole verdict apparatus exist to
+    prevent. It bit any claim whose period named a year.
+
+    What a period *can* be checked for is coverage: whether the retrieved
+    series actually spans the period the claim scopes itself to. A claim about
+    a year the custodian does not cover is Unverified, and that is a real
+    finding rather than an arithmetic accident.
+    """
+    named = {m.group(0) for m in patterns.YEAR.finditer(element.fragment)}
+    if not named:
+        return _settled(
+            element,
+            ElementStatus.VERIFIED,
+            "a relative period, carried as the scope of the comparison rather than "
+            "as a figure to check",
+            continuity=pull.continuity.status,
+        )
+
+    covered = {
+        observation.reference_period[:4]
+        for observation in pull.observations
+        if observation.reference_period
+    }
+    missing = sorted(named - covered)
+    if missing:
+        return _settled(
+            element,
+            ElementStatus.UNVERIFIED,
+            # The year is deliberately not interpolated. A reason is prose, and
+            # §3 admits no figure into prose that no retrieval supports — AC-7
+            # caught three such leaks during the original build and this was a
+            # fourth, added by the fix above and found by shape fuzzing. The
+            # ledger already shows the fragment beside this reason, quoted from
+            # the claim, so naming the year here adds nothing but a crash.
+            "the custodian was reached and the retrieved series does not cover the "
+            "period this claim names. A period the record does not span cannot "
+            "scope a comparison",
+            continuity=pull.continuity.status,
+        )
+
+    return _settled(
+        element,
+        ElementStatus.VERIFIED,
+        "the retrieved series covers this period. A period scopes the comparison "
+        "and is not itself compared against a figure",
+        continuity=pull.continuity.status,
     )

@@ -33,6 +33,7 @@ steps for one task.
 | [Add a jurisdiction pack](how-to/add-a-jurisdiction-pack.md) | Make the engine able to route claims in a country it does not yet cover |
 | [Declare a harvest source](how-to/declare-a-harvest-source.md) | Point the claim harvester at a publication and its accounts |
 | [Sign off a verdict](how-to/sign-off-a-verdict.md) | Confirm, amend, or reject a proposed claim-level verdict |
+| [Fuzz claim shapes](how-to/fuzz-claim-shapes.md) | Find the defects the acceptance criteria cannot, after changing decomposition, derivation, verdicts, or rendering |
 
 ## Reference
 
@@ -54,6 +55,7 @@ Understanding-oriented. Read these when you want to know *why*.
 | Document | Discusses |
 |---|---|
 | [Overview](overview.md) | What the system does, how the pipeline hangs together, and why it cannot quietly become an advocacy tool |
+| [Validation run](validation.md) | Five claims against the prior art, three examined closely, and the two defects the conformance suite could not find |
 | [Roadmap](plan.md) | What is settled, what is deliberately unfinished, and what gates a real deployment |
 | [Israel pack draft](spec/packs/israel.md) | A real jurisdiction worked through the interface, and the seven blockers stopping its admission |
 | [Source admission](../sources/README.md) | What a claim source must establish before it can be harvested |

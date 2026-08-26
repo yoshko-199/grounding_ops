@@ -45,6 +45,14 @@ Everything that can be settled on paper is settled. What remains needs either so
 
 ### 2.1 Admit the Israel pack — the only thing blocking a trial
 
+**One measure is now admitted.** [`packs/live/il.toml`](../packs/live/il.toml) loads, declaring the Bank of Israel and its representative US dollar rate, with every field taken from the Bank's own current publications. A pack must be complete to load but need not be broad: one confirmed measure routes claims about that measure and returns Insufficient Data for everything else, which is the correct answer for everything else. Twenty half-filled measures would not load at all.
+
+Three things that only became visible by doing it:
+
+- **The hardest blocker was the easiest for this custodian.** Break registers were expected to be the worst of the seven. The Bank publishes a prose history of every change to how the representative rate is determined, with dates — a coverage change in 1986, methodology changes in 1990 and 1995, a sampling-window change in 2006. That *is* a break register; it simply had to be read. Whether other custodians publish the same is unknown and should not be assumed.
+- **Two entries in the draft were wrong in the plausible direction.** It recorded the rate as "fixed per date and not revised" with integrity annotation "none known". The Bank's own notes say the rates have no official or legal standing, are not published in the Official Gazette, are indicative rather than transactional, and that it reserves absolute discretion to change them without notice. Neither error was careless; both are what confident recollection produces, which is the whole argument for the rule.
+- **A real pack reaches a state no fixture can.** It names a custodian this deployment has no client for. That is recorded at 3.1 and was a live defect until admission surfaced it.
+
 Seven blockers listed in [`spec/packs/israel.md`](spec/packs/israel.md#6-admission-blockers). Three are substantial research and **must be done with the custodians' publications open**, not from recollection — a pack populated from memory is the exact failure the spec exists to prevent, and it would be self-refuting to introduce it here:
 
 - `published_precision`, `unit`, `discrete` per measure, confirmed against each custodian's current publication.
@@ -64,6 +72,10 @@ Reading that economy section rather than only its count makes the bound tighter 
 The first real claim tested against the built engine — *"you don't see a curve, therefore the earth is flat"* — exercised a pattern the original five did not cover, and `inferential-discharge` was added for it. That is one data point, and it points the wrong way for optimism: the list was not chosen carelessly, it was chosen without a corpus, and the very first claim found a hole. The remaining question is no longer *whether* patterns are missing but *which*.
 
 The failure mode is silent and in the safe direction: an implication with no matching operation is never surfaced, so the system under-reports rather than misreports.
+
+**Flank scope, found by a real claim carrying two triggers in sequence.** Comparing the engine against the prior-art skill on *"…fell below 3 and is now the lowest in years due to the government's economic management"* exposed two defects that no fixture claim can produce, because fixture claims carry one trigger. The right flank ran to the end of the claim while the left stopped at the previous trigger, so an early superlative swallowed the later causal clause; and bounding a causal discharge at the previous trigger made it attribute the wrong thing entirely, naming *"in years"* as the effect of a government policy. Causal and inferential connectives now take the claim's own bounds, the other four stop at the triggers either side, and both cases are pinned by tests.
+
+**What was deliberately not fixed.** The superlative on that claim still reads *"…and is now the is asserted to be lowest in years"* — the claimant's own "is now the" abutting the scaffold. It is stiff and slightly ungrammatical, and it is not wrong: every word is theirs and the meaning is recoverable. Trimming for fluency was tried and rejected, because the obvious mechanism is the stopword list and that list contains `rate`, `index`, and `national` — trimming a trailing stopword would delete the *measure* from "the exchange **rate**". §9.7 already defends stiffness as the visible cost of not supplying words the claim does not contain; deleting the claimant's words to smooth a sentence is the same error facing the other way.
 
 **A harvester now exists.** [`plugins/harvest`](../plugins/harvest/__init__.py) scans declared sources and accounts and writes candidate claims to a corpus file, driven by [`scripts/harvest_corpus.py`](../scripts/harvest_corpus.py). It is a plugin in the strict sense: nothing under `engine/` can reach it, and `tests/conformance/test_plugin_isolation.py` fails if that changes. It produces claims, never evidence — a harvested record has no field that could hold a figure, and no import path to the store or to a custodian adapter.
 
@@ -163,11 +175,19 @@ property of a signature or an import graph rather than a rule to remember:
 
 ### 3.1 What is not done
 
-- **No real pack is admitted**, so every real claim returns Insufficient Data.
-  This is 2.1, and it is the only thing between here and a trial.
+- **One real measure is admitted**, and no more. Every claim outside it returns
+  Insufficient Data. This is 2.1.
 - **Custodian adapters are fixtures.** No network client exists, and AC-14
   asserts none can be reached from the verification path. A real pack needs a
   real adapter, written against that same contract.
+- **A pack can name a custodian this deployment has no client for**, which no
+  fixture jurisdiction can produce, because fixtures ship their own adapters.
+  Until admission surfaced it, that case reported as *Unverified* — asserting
+  the custodian publishes nothing covering the element, which nobody had
+  checked. It is now *Unreachable*, a fact about what can be reached rather
+  than about the record, which is the distinction §6.1 and AC-14 exist to
+  keep. The engine therefore routes real claims to the Bank of Israel and
+  verifies none of them, and says so in those words.
 - **Two gaps found while building** are recorded at 2.4 and 2.5: packs declare
   no jurisdiction *names*, and directional vocabulary still sits in the pipeline
   rather than in a lexicon. Both under-fire silently, which is why they are

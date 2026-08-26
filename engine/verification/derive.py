@@ -103,9 +103,9 @@ def derive(
 
     derived: list[DerivedElement] = []
     for index, trigger in enumerate(triggers):
-        previous_end = triggers[index - 1].end if index else 0
-        left = claim_text[previous_end : trigger.start].strip(_FLANK_TRIM)
-        right = claim_text[trigger.end :].strip(_FLANK_TRIM)
+        left_start, right_end = _flank_bounds(triggers, index, len(claim_text))
+        left = claim_text[left_start : trigger.start].strip(_FLANK_TRIM)
+        right = claim_text[trigger.end : right_end].strip(_FLANK_TRIM)
 
         text = _proposition(trigger, left, right)
         if not text:
@@ -203,6 +203,50 @@ def _triggers(claim_text: str, lexicon: Lexicon) -> list[_Trigger]:
             continue
         kept.append(trigger)
     return sorted(kept, key=lambda t: t.start)
+
+
+# Operations whose flanks are whole propositions rather than local phrases.
+#
+# "B due to A" and "A therefore B" attribute or infer across a *claim*: the
+# effect of a causal discharge is everything the claimant asserted before the
+# connective, not merely the words since the last trigger fired. The other
+# four attach to a local phrase — a superlative qualifies the thing beside it,
+# an evaluative characterises its neighbour — so their flanks stop at the
+# triggers either side.
+_PROPOSITION_SCOPE = frozenset(
+    {
+        DerivationOperation.CAUSAL_DISCHARGE,
+        DerivationOperation.INFERENTIAL_DISCHARGE,
+    }
+)
+
+
+def _flank_bounds(
+    triggers: list[_Trigger], index: int, end_of_claim: int
+) -> tuple[int, int]:
+    """Where this trigger's flanks start and stop.
+
+    Two defects lived here, both found by running a real claim carrying two
+    triggers in sequence — "... is now the lowest in years due to ..." — which
+    no fixture claim does, because fixture claims carry one.
+
+    The first was asymmetry: the left flank stopped at the previous trigger
+    while the right ran to the end of the claim, so an early trigger swallowed
+    every later clause. The right flank now stops at the next trigger, which
+    is what the left has always done.
+
+    The second was scope. Bounding a causal discharge's left flank at the
+    previous trigger made it attribute the wrong thing: on the claim above it
+    produced "in years is asserted to be caused by the government's economic
+    management", naming a time fragment as the effect. A causal or inferential
+    connective operates on the whole preceding proposition, so those two take
+    the claim's own bounds.
+    """
+    if triggers[index].operation in _PROPOSITION_SCOPE:
+        return 0, end_of_claim
+    left_start = triggers[index - 1].end if index else 0
+    right_end = triggers[index + 1].start if index + 1 < len(triggers) else end_of_claim
+    return left_start, right_end
 
 
 def _proposition(trigger: _Trigger, left: str, right: str) -> str:

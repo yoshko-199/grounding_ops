@@ -160,3 +160,76 @@ def test_precision_drives_the_band_rather_than_a_fixed_threshold() -> None:
     )
     assert coarse.band is ToleranceBand.A
     assert fine.band is ToleranceBand.C
+
+
+# ---------------------------------------------------------------------------
+# A time period is not a figure.
+#
+# Found by validating against real claims: "unemployment fell in 2021" came
+# back Substantially Inaccurate. The period had been decomposed as a QUANTITY,
+# so the year was pulled out as the claimant's figure and compared against the
+# unemployment rate. It is the worst error the system can make — a confident,
+# fully-cited, wrong verdict on a claim the record supports — and it bit any
+# claim whose period named a year.
+# ---------------------------------------------------------------------------
+
+
+def test_a_period_naming_a_year_is_not_compared_as_a_figure(
+    registry, context, adapters, store
+) -> None:
+    """The regression, end to end. This returned SUBSTANTIALLY_INACCURATE."""
+    from engine.pipeline import verify
+    from engine.verdicts import Verdict
+
+    run = verify("unemployment fell in 2021", context, registry, adapters, store)
+
+    assert run.artifact.verdict.label is Verdict.ACCURATE, (
+        f"a true claim came back {run.artifact.verdict.label.value}"
+    )
+    for element in run.elements:
+        assert element.status is not ElementStatus.CONTRADICTED, (
+            f"{element.fragment!r} was contradicted; a period is not a figure"
+        )
+
+
+def test_a_period_is_decomposed_as_its_own_kind(lexicon) -> None:
+    from engine.ids import ClaimId
+    from engine.verification.decompose import decompose
+
+    kinds = {
+        e.fragment: e.kind
+        for e in decompose("unemployment fell in 2021", ClaimId(), lexicon)
+    }
+    assert kinds.get("in 2021") is ElementKind.TIME_PERIOD, (
+        f"'in 2021' decomposed as {kinds.get('in 2021')}, not a time period"
+    )
+
+
+def test_a_period_the_series_does_not_cover_is_unverified(
+    registry, context, adapters, store
+) -> None:
+    """Coverage is what a period *can* be checked for, and it still is.
+
+    The fix must not make periods unconditionally verified — that would trade
+    a false negative for a false positive, which is worse.
+    """
+    from engine.pipeline import verify
+
+    run = verify("unemployment fell in 1998", context, registry, adapters, store)
+    periods = [e for e in run.elements if e.kind is ElementKind.TIME_PERIOD]
+    assert periods, "no time-period element was produced"
+    assert all(e.status is ElementStatus.UNVERIFIED for e in periods), (
+        "a period outside the retrieved series must not verify"
+    )
+
+
+def test_a_relative_period_still_verifies(registry, context, adapters, store) -> None:
+    """'over the last three years' names no year and scopes the comparison."""
+    from engine.pipeline import verify
+    from engine.verdicts import Verdict
+
+    run = verify("prices rose over the last three years", context, registry, adapters, store)
+    periods = [e for e in run.elements if e.kind is ElementKind.TIME_PERIOD]
+    assert periods
+    assert all(e.status is ElementStatus.VERIFIED for e in periods)
+    assert run.artifact.verdict.label is not Verdict.SUBSTANTIALLY_INACCURATE

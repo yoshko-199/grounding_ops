@@ -38,6 +38,12 @@ jobs:
             "prices rose over the last three years due to governmental incompetence" \
             --jurisdiction ZZ --packs packs/fixture
 
+      # Every claim shape, not the bounded sample the suite gates on. It runs
+      # in seconds and it is the check that finds what the criteria cannot:
+      # three defects so far were invisible to a green conformance run.
+      - name: Claim-shape fuzzing
+        run: python3 scripts/fuzz_shapes.py --all
+
       # The harvester ships with every source disabled. This asserts that the
       # shipped configuration reaches nothing at all — the run must skip and
       # exit 2 ("nothing was scanned"), never 0. A harvester that quietly

@@ -406,3 +406,88 @@ def test_the_edit_distance_bound_is_exactly_one() -> None:
     assert _within_one_edit("tharefore", "therefore")    # substitution
     assert not _within_one_edit("thrfore", "therefore")  # two deletions
     assert not _within_one_edit("therapy", "therefore")
+
+
+# ---------------------------------------------------------------------------
+# Flank bounds with two triggers in sequence.
+#
+# Found by running a real claim against the first admitted pack:
+#   "... fell below 3 and is now the lowest in years due to the government's
+#    economic management"
+# No fixture claim carries two triggers in a row, so no fixture claim could
+# have found either of the two defects below.
+# ---------------------------------------------------------------------------
+
+TWO_TRIGGERS = (
+    "the exchange rate fell and is now the lowest in years "
+    "due to the government's economic management"
+)
+
+
+def _by_operation(claim: str, operation: DerivationOperation) -> str:
+    derived = derive(claim, ClaimId(), LEXICON)
+    matches = [d for d in derived if d.operation is operation]
+    assert matches, f"expected a {operation.value} on {claim!r}"
+    return matches[0].text
+
+
+def test_a_phrase_scope_flank_stops_at_the_next_trigger() -> None:
+    """The right flank used to run to the end of the claim.
+
+    An early superlative therefore swallowed every later clause, including
+    the causal one that belongs to a different operation entirely.
+    """
+    text = _by_operation(TWO_TRIGGERS, DerivationOperation.SUPERLATIVE_DISCHARGE)
+    assert "lowest" in text
+    assert "economic management" not in text, (
+        "the superlative swallowed the causal clause; its right flank is not "
+        "bounded by the next trigger"
+    )
+
+
+def test_a_causal_flank_spans_the_whole_preceding_proposition() -> None:
+    """The effect is what the claimant asserted, not the words since the last
+    trigger.
+
+    Bounded at the previous trigger, this produced "in years is asserted to be
+    caused by the government's economic management" — naming a time fragment
+    as the effect of a government policy.
+    """
+    text = _by_operation(TWO_TRIGGERS, DerivationOperation.CAUSAL_DISCHARGE)
+    assert "the exchange rate fell" in text, (
+        "the causal effect lost the proposition it belongs to"
+    )
+    assert "economic management" in text
+    assert not text.startswith("in years"), (
+        "the effect is a time fragment, which is the defect this pins"
+    )
+
+
+def test_two_triggers_still_yield_one_element_each() -> None:
+    derived = derive(TWO_TRIGGERS, ClaimId(), LEXICON)
+    operations = [d.operation for d in derived]
+    assert operations.count(DerivationOperation.SUPERLATIVE_DISCHARGE) == 1
+    assert operations.count(DerivationOperation.CAUSAL_DISCHARGE) == 1
+
+
+def test_a_single_trigger_claim_is_unaffected_by_the_bounds_change() -> None:
+    """The regression guard: one trigger has no neighbours to bound against."""
+    text = _by_operation(CLAIM, DerivationOperation.CAUSAL_DISCHARGE)
+    assert text == "prices rose is asserted to be caused by governmental incompetence"
+
+
+def test_every_derived_element_still_introduces_no_absent_entity() -> None:
+    """Wider flanks must not become a route for new content.
+
+    The bounds changed; the no-world-knowledge rule did not. Every token still
+    has to come from the claim.
+    """
+    for element in derive(TWO_TRIGGERS, ClaimId(), LEXICON):
+        assert element.span.resolve(TWO_TRIGGERS)
+        for token in element.text.lower().split():
+            stripped = token.strip(".,;:'\"")
+            if not stripped:
+                continue
+            assert stripped in TWO_TRIGGERS.lower() or stripped in " ".join(
+                SCAFFOLD.values()
+            ).lower(), f"{stripped!r} appears in neither the claim nor a scaffold"

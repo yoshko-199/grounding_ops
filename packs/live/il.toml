@@ -1,0 +1,199 @@
+# Custodian pack — Israel. ADMITTED, and deliberately tiny.
+#
+# One custodian, one measure. Everything here was taken from the Bank of
+# Israel's own current publications, read and quoted rather than recalled:
+#
+#   Explanatory Notes to the Representative Exchange Rates
+#     https://www.boi.org.il/en/economic-roles/financial-markets/
+#       explanatory-notes-to-the-representative-exchange-rates/
+#     last updated 17/07/2024 by its own footer
+#   Exchange Rates
+#     https://www.boi.org.il/en/economic-roles/financial-markets/exchange-rates/
+#   Extracting representative exchange rates from the new series database
+#     https://www.boi.org.il/media/tzxbuhhj/
+#
+# Why one measure. A pack must be complete to load, but it need not be broad.
+# A pack declaring one fully-confirmed measure routes claims about that measure
+# and returns Insufficient Data for everything else, which is the correct
+# answer for everything else. Twenty half-filled measures would not load at
+# all, and if they did they would be the failure this system exists to
+# prevent. The remaining measures stay in docs/spec/packs/israel.md marked
+# [confirm] until someone opens the custodian's publication for each.
+#
+# Languages: English only, and that is a real limitation rather than an
+# oversight. Claims about Israel mostly arrive in Hebrew; there is no Hebrew
+# lexicon here, and directional vocabulary still sits in the pipeline rather
+# than in a pack (docs/plan.md 2.5). Declaring Hebrew without a Hebrew lexicon
+# would under-fire silently on every Hebrew claim, which interface 3.6 warns
+# is invisible from the output. Declaring English only means Hebrew claims
+# return Insufficient Data, which is visible.
+#
+# No adapter exists for this custodian, and none can be written from an
+# environment whose egress policy blocks boi.org.il. The pack therefore routes
+# correctly and retrieves nothing. That is a more honest answer than "no
+# jurisdiction could be established", and it is not a verified claim.
+
+[header]
+jurisdiction_id = "IL"
+languages = ["en"]
+authority_basis = """Statutory. The Bank of Israel Law; section 4(3) makes \
+"Supporting the orderly activity of the Foreign Currency market in Israel" a \
+function of the Bank, under which it publishes the representative rate."""
+pack_version = "0.1.0"
+maintainer = "unassigned — see docs/spec/packs/israel.md"
+
+# --------------------------------------------------------------------------
+# Custodians
+# --------------------------------------------------------------------------
+
+[[custodians]]
+id = "boi"
+name = "Bank of Israel"
+mandate = """Central bank. Calculates and publishes the representative \
+exchange rate of the shekel against foreign currencies, once a day on foreign \
+currency business days, as a purely informational service."""
+cadence = "daily, business days"
+revision_policy = """A rate is calculated once for a given date. The series \
+database is updated shortly after publication. The Bank reserves absolute and \
+sole discretion to change the rates, the process by which they are determined, \
+and the means by which they are published, without obligation and without \
+prior notice."""
+access_method = "SDMX series database and a public XML endpoint"
+# Straight from the custodian's own explanatory notes, and the reason this
+# measure needs an integrity annotation at all: the "official" rate is not
+# official in the sense a reader assumes.
+integrity_annotation = """The rates have no official or legal standing and are \
+not published in the Official Gazette. They are indicative: based on an average \
+of buying and selling prices published by banks, and not necessarily reflecting \
+rates at which transactions were carried out. The Bank has no obligation to \
+publish a rate on any given date, and none is published on Saturdays, Sundays, \
+Israeli holidays, Christmas Day, New Year's Day or Easter. A verified rate is \
+evidence of what the Bank published, never of what anyone paid."""
+
+# --------------------------------------------------------------------------
+# Measures
+# --------------------------------------------------------------------------
+
+[[measures]]
+id = "fx_representative_usd"
+name = "Representative exchange rate, US dollar"
+definition = """Indicative exchange rate of the US dollar in terms of the \
+shekel, calculated as the average rate of bilateral interbank trading during a \
+predetermined sampling period, sampled from rates published by the banks, \
+excluding values deviating from the sample average by more than two standard \
+deviations."""
+custodian_id = "boi"
+series_identifier = "BOI.STATISTICS/EXR/1.0:DATA_TYPE=OF00,CURRENCY=USD"
+unit = "NIS per USD"
+# Observed from the custodian's own published rate table, which quotes every
+# currency to four decimal places. The Bank states no precision policy in
+# prose, so this is confirmed by reading the publication rather than by being
+# told. Note that at this scale the relative floor in the tolerance rule
+# dominates the absolute half-step by a wide margin.
+published_precision = 0.0001
+discrete = false
+known_confusions = [
+  """Not a commercial rate. The representative rate is not necessarily \
+identical with rates quoted by commercial banks to their customers, with \
+buying or selling rates of banknotes, checks and transfers, or with interbank \
+rates.""",
+  """Not a transaction rate. It is an average of prices published by banks and \
+does not necessarily reflect rates at which transactions were carried out.""",
+  """Not binding. Parties to a foreign-currency-indexed transaction may use any \
+rate they agree on; the representative rate binds only where they stipulated it \
+in advance.""",
+  """The rate for a non-dollar currency is derived from the dollar rate and \
+international cross rates, not sampled directly.""",
+]
+# The Bank's own published comparisons, and nothing else. The daily change is
+# published beside the rate on the exchange rates page; monthly and annual
+# averages are published as downloadable series from the same page.
+admissible_baselines = ["prior_period"]
+admissible_windows = ["monthly_average", "annual_average"]
+admissible_source_ref = """Bank of Israel, Exchange Rates page — daily change \
+column, and the monthly and annual average exchange rate extracts offered there."""
+
+  # Break register, populated from the Explanatory Notes, which narrate every
+  # change to how the rate is determined. None of these has a linked series:
+  # the Bank publishes no spliced series across them, so a comparison spanning
+  # one cannot be Verified. That bites only on long-run comparisons; anything
+  # inside the current regime crosses no break.
+
+  [[measures.series_breaks]]
+  # Note 3: before this date no rate was published for a currency on its own
+  # country's national holidays, so coverage differs either side.
+  effective_date = 1986-08-01
+  kind = "coverage"
+  custodian_notice_ref = """Bank of Israel, Explanatory Notes to the \
+Representative Exchange Rates, note 3, last updated 17/07/2024."""
+  linked_series_available = false
+
+  [[measures.series_breaks]]
+  # From an average of the commercial banks' quoted buying and selling rates,
+  # to the closing rate of the daily multilateral trading session.
+  effective_date = 1990-05-24
+  kind = "methodology"
+  custodian_notice_ref = """Bank of Israel, Explanatory Notes to the \
+Representative Exchange Rates, last updated 17/07/2024."""
+  linked_series_available = false
+
+  [[measures.series_breaks]]
+  # Multilateral trading ended and trading became continuous and bilateral.
+  # The Bank states the determination method was adjusted at the same time.
+  effective_date = 1995-04-03
+  kind = "methodology"
+  custodian_notice_ref = """Bank of Israel, Explanatory Notes to the \
+Representative Exchange Rates, last updated 17/07/2024."""
+  linked_series_available = false
+
+  [[measures.series_breaks]]
+  # Sampling window widened from one hour to two.
+  effective_date = 2006-02-21
+  kind = "methodology"
+  custodian_notice_ref = """Bank of Israel, Explanatory Notes to the \
+Representative Exchange Rates, note 5, last updated 17/07/2024."""
+  linked_series_available = false
+
+# --------------------------------------------------------------------------
+# Routing rules
+# --------------------------------------------------------------------------
+
+[[routing_rules]]
+measure_id = "fx_representative_usd"
+custodian_id = "boi"
+rationale = """The representative rate is defined by, and exists only because \
+of, the Bank's own calculation and publication of it. No other body publishes \
+this measure."""
+alternatives_considered = [
+  """Commercial banks publish their own buying and selling rates. Those are \
+different quantities, which the Bank's explanatory notes state explicitly, not \
+alternative sources for this one.""",
+  """Financial data vendors and news outlets republish market spot rates. A \
+spot rate is not the representative rate and is not a candidate for it.""",
+  """Other central banks publish their own representative rates for their own \
+currencies, which say nothing about the shekel.""",
+]
+
+# --------------------------------------------------------------------------
+# Lexicons
+# --------------------------------------------------------------------------
+
+[[lexicons]]
+language = "en"
+composition_connectives = ["and", ", ", "; ", "then"]
+forbidden_connectives = [
+  "because", "because of", "due to", "caused by", "thanks to",
+  "as a result of", "resulting in", "leading to", "owing to",
+  "therefore", "hence", "consequently", "which shows", "which proves",
+  "meaning that", "although", "despite", "even though", "however",
+]
+element_slot_order = ["time_period", "entity", "measure", "direction", "quantity"]
+fuzzy_trigger_matching = true
+
+  [lexicons.derivation_triggers]
+  "causal-discharge" = ["due to", "because of", "thanks to", "caused by", "owing to", "as a result of"]
+  "inferential-discharge" = ["therefore", "hence", "which proves", "which shows", "consequently"]
+  "superlative-discharge" = ["highest", "lowest", "first time", "record", "weakest", "strongest"]
+  "comparative-discharge" = ["more than", "less than", "twice as", "half as", "worse than", "better than"]
+  "evaluative-discharge" = ["mismanagement", "incompetence", "failure", "success", "disaster", "collapse"]
+  "scope-discharge" = ["all", "every", "always", "never", "nobody", "everyone", "none"]

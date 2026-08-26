@@ -121,3 +121,72 @@ def test_unreachable_and_unverified_do_not_collapse(pack, adapters, store) -> No
 def test_registry_has_no_fallback_pack(registry: PackRegistry) -> None:
     assert registry.get(JurisdictionCode("QQ")) is None
     assert registry.get(None) is None
+
+
+def test_a_custodian_with_no_adapter_is_unreachable_not_unverified() -> None:
+    """The collapse a real pack makes reachable for the first time.
+
+    A pack may name a custodian this deployment has no client for. No fixture
+    jurisdiction can produce that case, because fixtures ship their own
+    adapters — it appeared the moment a real pack was admitted.
+
+    Reporting it as Unverified would assert that the custodian publishes
+    nothing covering the element. Nobody checked that. It is a fact about what
+    this session can reach, which is what Unreachable means.
+    """
+    from engine.elements import Element, ElementKind
+    from engine.ids import ClaimId, ElementId
+    from engine.spans import Span
+    from engine.verification import element_verdict
+
+    element = Element(
+        id=ElementId(),
+        claim_id=ClaimId(),
+        fragment="rose",
+        span=Span(0, 4),
+        kind=ElementKind.DIRECTION,
+    )
+
+    class _Measure:
+        name = "Some measure"
+
+    bound_but_unpulled = element_verdict.assign(element, _Measure(), None, "rose")
+    assert bound_but_unpulled.element.status is ElementStatus.UNREACHABLE
+    assert "never consulted" in bound_but_unpulled.reason
+
+    unbound = element_verdict.assign(element, None, None, "rose")
+    assert unbound.element.status is ElementStatus.UNVERIFIED
+    assert "no measure was bound" in unbound.reason
+
+    assert bound_but_unpulled.element.status is not unbound.element.status
+
+
+def test_the_admitted_pack_routes_without_verifying() -> None:
+    """The real pack routes to a real institution and verifies nothing.
+
+    Both halves matter. Routing proves the pack is admitted and bound; the
+    absence of any citation proves no figure was invented to fill the gap.
+    """
+    import pathlib
+
+    from engine.packs.registry import PackRegistry
+
+    live = pathlib.Path(__file__).resolve().parents[2] / "packs" / "live"
+    if not live.is_dir():
+        pytest.skip("no live pack directory")
+
+    pack = PackRegistry.from_directory(live).get(JurisdictionCode("IL"))
+    assert pack is not None, "the Israel pack must load"
+    assert pack.measures, "an admitted pack declares at least one measure"
+
+    for measure in pack.measures:
+        rule = pack.route(measure.id) if hasattr(pack, "route") else None
+        assert measure.custodian_id in {c.id for c in pack.custodians}
+        assert measure.admissible_source_ref, (
+            f"{measure.id} declares admissible comparisons with no source reference"
+        )
+        for brk in measure.series_breaks:
+            assert brk.custodian_notice_ref, (
+                f"{measure.id} has a break with no custodian notice behind it"
+            )
+        del rule

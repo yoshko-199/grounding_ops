@@ -44,6 +44,10 @@ class ElementKind(Enum):
     """
 
     QUANTITY = "quantity"
+    # A period scopes a comparison; it is not itself a figure to compare.
+    # Classifying one as a QUANTITY made the engine check a year against a
+    # series and call a true claim contradicted — see element_verdict.
+    TIME_PERIOD = "time_period"
     SUPERLATIVE = "superlative"
     DIRECTION = "direction"
     DISCRETE_COUNT = "discrete_count"

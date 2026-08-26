@@ -2,7 +2,11 @@
 
 **Pack version 0.1 (draft)** — reference instance of the [Custodian Pack Interface](../custodian-pack-interface.md).
 
-> **Status: not admitted.** This pack does not yet pass the [validation checklist](../custodian-pack-interface.md#6-pack-validation-checklist). Fields marked **[confirm]** were not present in the source material and must be confirmed against the custodian's own current publication before the pack loads. They are deliberately left unfilled rather than filled from memory — a pack populated from recollection is the failure mode the whole spec exists to prevent, and it would be self-refuting to introduce it here.
+> **Status: one measure admitted, the rest not.** A minimal pack carrying the Bank of Israel's representative US dollar rate now loads and routes, and ships as [`packs/live/il.toml`](../../../packs/live/il.toml). Every field in it was taken from the Bank's own current publications, read and quoted rather than recalled.
+>
+> Everything else in this document remains **not admitted**. Fields marked **[confirm]** were not present in the source material and must be confirmed against the custodian's own current publication before they can load. They are deliberately left unfilled rather than filled from memory — a pack populated from recollection is the failure mode the whole spec exists to prevent, and it would be self-refuting to introduce it here.
+>
+> **Two entries below were wrong, and reading the source is what showed it.** The `boi` row previously recorded the representative rate as "fixed per date and not revised" with integrity annotation "none known". The Bank's own explanatory notes say the rates *have no official or legal standing*, are not published in the Official Gazette, are indicative rather than transactional, and that the Bank reserves absolute discretion to change them and the process determining them without notice. Both corrections are now in the table. Neither was a careless error; both are what plausible recollection produces, which is the argument for the rule.
 
 ---
 
@@ -31,7 +35,7 @@ Custodians, mandates, cadences, routing, and `known_confusions[]` are carried ov
 | `id` | Name | `mandate` | `cadence` | `revision_policy` | `access_method` | `integrity_annotation` |
 |---|---|---|---|---|---|---|
 | `cbs` | Central Bureau of Statistics (הלשכה המרכזית לסטטיסטיקה) | Statutory national statistical office under the Statistics Ordinance | Monthly for price indices; monthly/quarterly for labour force; periodic for demographics | Publishes provisional prints and revises; index rebasing occurs periodically | API / bulk datasets / published tables | None known as to independence. Rebasing and basket revisions fracture long series — see break register §5 |
-| `boi` | Bank of Israel (בנק ישראל) | Central bank; publishes the official representative rate (שער יציג) under the Bank of Israel Law | Daily, business days | Representative rates are fixed per date and not revised; macro series are revised | API / published rate tables | None known |
+| `boi` | Bank of Israel (בנק ישראל) | Central bank; calculates and publishes the representative rate (שער יציג) once a day on foreign-currency business days, as a purely informational service | Daily, business days — none on Saturdays, Sundays, Israeli holidays, Christmas Day, New Year's Day or Easter | A rate is calculated once for a date; the series database is updated shortly after publication. The Bank reserves absolute and sole discretion to change the rates, the process determining them, and the means of publication, without notice | SDMX series database and a public XML endpoint | **Not "none known".** The rates have no official or legal standing and are not published in the Official Gazette. They are indicative — an average of buying and selling prices published by banks, not necessarily rates at which transactions occurred |
 | `budgetkey` | BudgetKey / OpenBudget (obudget.org) | Publishes state budget allocation and execution derived from Ministry of Finance data | Updated through the fiscal cycle | Execution figures firm up over the year; provisional through the cycle | API / structured datasets | **Derived publisher, not the originating ministry.** Treat as authoritative for budget structure and execution while recording that the originating record is the Ministry of Finance. Procurement coverage begins only in recent years — verify the period claimed exists in the data |
 | `knesset` | Knesset ParliamentInfo OData | Parliamentary record: bills, committees, member profiles | Continuous | Records amended as legislative status changes | OData service | Holds bills, committees, and members — **not** per-MK plenum votes |
 | `knesset_votes` | Knesset plenum-votes dataset (הצבעות חברי הכנסת במליאה, via data.gov.il) | Roll-call record of plenum votes, published by the Knesset | Per sitting | — **[confirm]** | data.gov.il CKAN | Distinct custodian from `knesset` and from `elections`. Conflating the three is the most common routing error in this jurisdiction |
@@ -120,6 +124,27 @@ The `budget_executed` and `procurement` rows deserve attention: both produce bre
 ---
 
 ## 6. Admission blockers
+
+### What is now admitted
+
+[`packs/live/il.toml`](../../../packs/live/il.toml) loads. It declares one custodian (`boi`) and one measure (`fx_representative_usd`), and every blocker below is closed **for that measure only**:
+
+| Blocker | How it was closed |
+|---|---|
+| 1 maintainer | Recorded as unassigned, pointing here. Honest rather than closed |
+| 3 precision, unit, discrete | Precision observed from the Bank's own published rate table, which quotes every currency to four decimal places. The Bank states no precision policy in prose, so this is confirmed by reading the publication rather than by being told, and the pack says so |
+| 4 admissible baselines and windows | The daily change published beside the rate, and the monthly and annual average extracts offered on the same page. `admissible_source_ref` cites them |
+| 5 routing | One rule, with three alternatives considered — commercial bank rates, vendor spot rates, and other central banks' own representative rates |
+| 6 break register | Four entries, all from the Bank's Explanatory Notes, which narrate every change to how the rate is determined: a coverage change in 1986, methodology changes in 1990 and 1995, and a sampling-window change in 2006. **None has a linked series**, so any comparison spanning one cannot be Verified |
+| 7 revision policy | Confirmed for `boi`. Still open for `knesset_votes`, `justice_amutot`, `btl` |
+
+The break register is worth dwelling on, because it was the blocker expected to be hardest and turned out to be the easiest for this custodian. The Bank publishes a prose history of its own methodology changes with dates. That is exactly what a break register is, and it was already written — it simply had to be read.
+
+**Languages: English only.** Claims about Israel mostly arrive in Hebrew, there is no Hebrew lexicon, and directional vocabulary still sits in the pipeline rather than in a pack ([plan §2.5](../../plan.md#25-language-vocabularies-outside-the-lexicon)). Declaring Hebrew without a Hebrew lexicon would under-fire silently on every Hebrew claim; declaring English only makes Hebrew claims return Insufficient Data, which is visible.
+
+**It routes and verifies nothing.** No adapter exists for the Bank, and none can be written from an environment whose egress policy blocks `boi.org.il`. A covered claim binds the measure, names the custodian and its rationale, and returns Insufficient Data because the custodian was never reached. That is a better answer than "no jurisdiction could be established" and it is not a verified claim.
+
+### Still blocked, for every other measure
 
 This pack cannot load until:
 

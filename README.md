@@ -4,11 +4,14 @@ Specification work for a **Claim Verification & Reconstruction Engine** — a sy
 
 The framing is not "is this true?" but *"what part of this survives contact with the record, and what does the surviving part actually support?"*
 
-**Status: specification closed at v0.4; engine implemented and conformance-tested against a synthetic fixture pack.** All eighteen acceptance criteria run as tests. No real jurisdiction is admitted, so no real claim can be verified yet — [`docs/spec/packs/israel.md`](docs/spec/packs/israel.md) still lists seven admission blockers, and until one pack passes them the system's answer to every real claim is *Insufficient Data*, which is the correct answer rather than a gap.
+**Status: specification closed at v0.5; engine implemented and conformance-tested against a synthetic fixture pack.** All eighteen acceptance criteria run as tests, alongside claim-shape fuzzing over every generated shape.
+
+One real measure is admitted — the Bank of Israel representative US dollar rate, in [`packs/live/il.toml`](packs/live/il.toml) — built from the Bank's own publications. It **routes but does not retrieve**, because no adapter exists for that custodian. Every other real claim returns *Insufficient Data*, which is the correct answer rather than a gap. [`docs/spec/packs/israel.md`](docs/spec/packs/israel.md) records what remains blocked.
 
 ```
 python3 scripts/check_spec.py                    # document consistency
-python3 -m pytest tests/                         # 224 tests, 18 criteria
+python3 -m pytest tests/                         # 384 tests, 18 criteria
+python3 scripts/fuzz_shapes.py --all             # every claim shape
 PYTHONPATH=. python3 cli/verify.py "prices rose over the last three years \
   due to governmental incompetence" --jurisdiction ZZ
 ```
@@ -75,6 +78,7 @@ It also converts §7's six prose principles into criteria that can fail a build.
 | `packs/` | Custodian packs — who is authoritative for which measure in which jurisdiction |
 | `cli/` | Verify a claim, and sign one off |
 | `plugins/harvest/` | **Outside the engine.** Scans declared sources and accounts for candidate *claims*. It may reach the network; nothing in `engine/` may reach it |
+| `plugins/shapes/` | Claim-shape fuzzing. A harness, so it drives the engine — but nothing in `engine/` may reach it either |
 | `sources/` | Source declarations for the harvester. See [`sources/README.md`](sources/README.md) |
 | `tests/conformance/` | One file per acceptance criterion, plus the static import-graph assertions |
 
