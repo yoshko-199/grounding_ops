@@ -1,7 +1,8 @@
-# Custodian pack — Israel. ADMITTED, and deliberately tiny.
+# Custodian pack — Israel. ADMITTED, and deliberately narrow.
 #
-# One custodian, one measure. Everything here was taken from the Bank of
-# Israel's own current publications, read and quoted rather than recalled:
+# One custodian, three measures — the representative rates of the US dollar,
+# the euro and sterling. Everything here was taken from the Bank of Israel's
+# own current publications, read and quoted rather than recalled:
 #
 #   Explanatory Notes to the Representative Exchange Rates
 #     https://www.boi.org.il/en/economic-roles/financial-markets/
@@ -12,13 +13,20 @@
 #   Extracting representative exchange rates from the new series database
 #     https://www.boi.org.il/media/tzxbuhhj/
 #
-# Why one measure. A pack must be complete to load, but it need not be broad.
-# A pack declaring one fully-confirmed measure routes claims about that measure
-# and returns Insufficient Data for everything else, which is the correct
-# answer for everything else. Twenty half-filled measures would not load at
-# all, and if they did they would be the failure this system exists to
-# prevent. The remaining measures stay in docs/spec/packs/israel.md marked
-# [confirm] until someone opens the custodian's publication for each.
+# Why so few. A pack must be complete to load, but it need not be broad. A
+# pack declaring only fully-confirmed measures routes claims about those and
+# returns Insufficient Data for everything else, which is the correct answer
+# for everything else. Twenty half-filled measures would not load at all, and
+# if they did they would be the failure this system exists to prevent. The
+# rest stay in docs/spec/packs/israel.md marked [confirm] until someone opens
+# the custodian's publication for each.
+#
+# Declaring sibling measures has a consequence worth expecting: a claim about
+# "the representative exchange rate", naming no currency, now matches several
+# equally and routes nowhere. That is the measure-identity rule working. The
+# claim genuinely does not say which rate it means, and binding it to the
+# dollar because the dollar was declared first would answer a question nobody
+# asked.
 #
 # Languages: English only, and that is a real limitation rather than an
 # oversight. Claims about Israel mostly arrive in Hebrew; there is no Hebrew
@@ -28,10 +36,11 @@
 # is invisible from the output. Declaring English only means Hebrew claims
 # return Insufficient Data, which is visible.
 #
-# No adapter exists for this custodian, and none can be written from an
-# environment whose egress policy blocks boi.org.il. The pack therefore routes
-# correctly and retrieves nothing. That is a more honest answer than "no
-# jurisdiction could be established", and it is not a verified claim.
+# An adapter exists (engine/custodians/boi.py), wired behind the CLI's --live
+# flag. It has never run against the live endpoint: the environment this was
+# written in blocks the Bank's hosts, so a --live run reports that the Bank
+# could not be reached. That is a more honest answer than "no jurisdiction
+# could be established", and it is still not a verified claim.
 
 [header]
 jurisdiction_id = "IL"
@@ -154,6 +163,139 @@ Representative Exchange Rates, last updated 17/07/2024."""
 Representative Exchange Rates, note 5, last updated 17/07/2024."""
   linked_series_available = false
 
+
+[[measures]]
+id = "fx_representative_eur"
+name = "Representative exchange rate, euro"
+definition = """Indicative exchange rate of the euro in terms of the \
+shekel. Computed from the representative rate of the US dollar and the rate of \
+the euro against the US dollar on the international markets at the moment \
+the dollar rate is determined, rather than sampled directly from interbank \
+trading in this currency."""
+custodian_id = "boi"
+series_identifier = "BOI.STATISTICS/EXR/1.0:DATA_TYPE=OF00,CURRENCY=EUR"
+unit = "NIS per EUR"
+# Observed from the custodian's published rate table, which quotes every
+# currency to four decimal places.
+published_precision = 0.0001
+discrete = false
+known_confusions = [
+  """**Cross-derived, not sampled.** This rate is computed from the dollar rate \
+and an international cross rate. It is not an independent observation of the \
+euro-shekel market, and a claim treating it as one is claiming more than the \
+Bank publishes.""",
+  """Not a commercial rate. The representative rate is not necessarily identical \
+with rates quoted by commercial banks to their customers, with buying or selling \
+rates of banknotes, checks and transfers, or with interbank rates.""",
+  """Not a transaction rate, and not binding. It is indicative, and binds a \
+foreign-currency-indexed transaction only where the parties stipulated it in \
+advance.""",
+]
+admissible_baselines = ["prior_period"]
+admissible_windows = ["monthly_average", "annual_average"]
+admissible_source_ref = """Bank of Israel, Exchange Rates page — daily change \
+column, and the monthly and annual average exchange rate extracts offered there."""
+
+  # Same register as the dollar rate, and for the reason the Explanatory Notes
+  # give: the Bank describes one determination method, and every non-dollar
+  # rate is computed from the dollar rate at the moment it is determined. A
+  # change to how the dollar rate is set is therefore a change to this series
+  # too. None carries a linked series.
+
+  [[measures.series_breaks]]
+  effective_date = 1986-08-01
+  kind = "coverage"
+  custodian_notice_ref = """Bank of Israel, Explanatory Notes to the \
+Representative Exchange Rates, note 3, last updated 17/07/2024."""
+  linked_series_available = false
+
+  [[measures.series_breaks]]
+  effective_date = 1990-05-24
+  kind = "methodology"
+  custodian_notice_ref = """Bank of Israel, Explanatory Notes to the \
+Representative Exchange Rates, last updated 17/07/2024."""
+  linked_series_available = false
+
+  [[measures.series_breaks]]
+  effective_date = 1995-04-03
+  kind = "methodology"
+  custodian_notice_ref = """Bank of Israel, Explanatory Notes to the \
+Representative Exchange Rates, last updated 17/07/2024."""
+  linked_series_available = false
+
+  [[measures.series_breaks]]
+  effective_date = 2006-02-21
+  kind = "methodology"
+  custodian_notice_ref = """Bank of Israel, Explanatory Notes to the \
+Representative Exchange Rates, note 5, last updated 17/07/2024."""
+  linked_series_available = false
+
+[[measures]]
+id = "fx_representative_gbp"
+name = "Representative exchange rate, pound sterling"
+definition = """Indicative exchange rate of the pound sterling in terms of the \
+shekel. Computed from the representative rate of the US dollar and the rate of \
+the pound sterling against the US dollar on the international markets at the moment \
+the dollar rate is determined, rather than sampled directly from interbank \
+trading in this currency."""
+custodian_id = "boi"
+series_identifier = "BOI.STATISTICS/EXR/1.0:DATA_TYPE=OF00,CURRENCY=GBP"
+unit = "NIS per GBP"
+# Observed from the custodian's published rate table, which quotes every
+# currency to four decimal places.
+published_precision = 0.0001
+discrete = false
+known_confusions = [
+  """**Cross-derived, not sampled.** This rate is computed from the dollar rate \
+and an international cross rate. It is not an independent observation of the \
+pound sterling-shekel market, and a claim treating it as one is claiming more than the \
+Bank publishes.""",
+  """Not a commercial rate. The representative rate is not necessarily identical \
+with rates quoted by commercial banks to their customers, with buying or selling \
+rates of banknotes, checks and transfers, or with interbank rates.""",
+  """Not a transaction rate, and not binding. It is indicative, and binds a \
+foreign-currency-indexed transaction only where the parties stipulated it in \
+advance.""",
+]
+admissible_baselines = ["prior_period"]
+admissible_windows = ["monthly_average", "annual_average"]
+admissible_source_ref = """Bank of Israel, Exchange Rates page — daily change \
+column, and the monthly and annual average exchange rate extracts offered there."""
+
+  # Same register as the dollar rate, and for the reason the Explanatory Notes
+  # give: the Bank describes one determination method, and every non-dollar
+  # rate is computed from the dollar rate at the moment it is determined. A
+  # change to how the dollar rate is set is therefore a change to this series
+  # too. None carries a linked series.
+
+  [[measures.series_breaks]]
+  effective_date = 1986-08-01
+  kind = "coverage"
+  custodian_notice_ref = """Bank of Israel, Explanatory Notes to the \
+Representative Exchange Rates, note 3, last updated 17/07/2024."""
+  linked_series_available = false
+
+  [[measures.series_breaks]]
+  effective_date = 1990-05-24
+  kind = "methodology"
+  custodian_notice_ref = """Bank of Israel, Explanatory Notes to the \
+Representative Exchange Rates, last updated 17/07/2024."""
+  linked_series_available = false
+
+  [[measures.series_breaks]]
+  effective_date = 1995-04-03
+  kind = "methodology"
+  custodian_notice_ref = """Bank of Israel, Explanatory Notes to the \
+Representative Exchange Rates, last updated 17/07/2024."""
+  linked_series_available = false
+
+  [[measures.series_breaks]]
+  effective_date = 2006-02-21
+  kind = "methodology"
+  custodian_notice_ref = """Bank of Israel, Explanatory Notes to the \
+Representative Exchange Rates, note 5, last updated 17/07/2024."""
+  linked_series_available = false
+
 # --------------------------------------------------------------------------
 # Routing rules
 # --------------------------------------------------------------------------
@@ -197,3 +339,30 @@ fuzzy_trigger_matching = true
   "comparative-discharge" = ["more than", "less than", "twice as", "half as", "worse than", "better than"]
   "evaluative-discharge" = ["mismanagement", "incompetence", "failure", "success", "disaster", "collapse"]
   "scope-discharge" = ["all", "every", "always", "never", "nobody", "everyone", "none"]
+
+[[routing_rules]]
+measure_id = "fx_representative_eur"
+custodian_id = "boi"
+rationale = """The representative rate of the euro against the shekel exists \
+only as the Bank's own computation from its dollar rate and an international \
+cross rate. No other body publishes this quantity."""
+alternatives_considered = [
+  """The European Central Bank publishes its own euro reference rates. Those are \
+the ECB's rates against other currencies, not the Bank of Israel's representative \
+rate, and the two are different quantities.""",
+  """Commercial banks and data vendors publish euro-shekel market rates. A market \
+rate is not the representative rate.""",
+]
+
+[[routing_rules]]
+measure_id = "fx_representative_gbp"
+custodian_id = "boi"
+rationale = """The representative rate of sterling against the shekel exists only \
+as the Bank's own computation from its dollar rate and an international cross \
+rate. No other body publishes this quantity."""
+alternatives_considered = [
+  """The Bank of England publishes sterling exchange rates. Those are its own \
+rates, not the Bank of Israel's representative rate.""",
+  """Commercial banks and data vendors publish sterling-shekel market rates. A \
+market rate is not the representative rate.""",
+]

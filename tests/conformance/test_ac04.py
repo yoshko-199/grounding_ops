@@ -74,3 +74,86 @@ def test_pack_version_is_available_for_the_routing_log(
     """AC-3 requires the bump to be recorded in routing_log.pack_version."""
     decision = route("prices rose in 2021", context, registry)
     assert decision.pack_version == "1.0.0-fixture"
+
+
+# ---------------------------------------------------------------------------
+# A contested binding must reach the reader with its reason intact.
+#
+# §6.1: two custodians measuring different things are "both reported, with the
+# definitional gap explained". The gap is what the routing rationale holds —
+# which measures matched equally well, and that they are not the same
+# quantity. Reporting the generic "no custodian settles this" instead is true
+# and useless: it hides that two custodians settle neighbouring questions and
+# the claim never said which it meant.
+#
+# The path existed and was never taken. No fixture claim produces a tie, so it
+# surfaced only when a real pack declared sibling measures.
+# ---------------------------------------------------------------------------
+
+import pathlib
+
+LIVE_PACKS = pathlib.Path(__file__).resolve().parents[2] / "packs" / "live"
+
+AMBIGUOUS = "the representative exchange rate fell in 2026"
+SPECIFIC = "the euro representative rate fell in 2026"
+
+
+def _il_context():
+    from datetime import date
+
+    from engine.codes import JurisdictionCode, LanguageCode
+    from engine.context import ClaimContext
+
+    return ClaimContext(
+        jurisdiction=JurisdictionCode("IL"),
+        language=LanguageCode("en"),
+        stated_at=date(2026, 8, 26),
+    )
+
+
+def _live_registry():
+    from engine.packs.registry import PackRegistry
+
+    if not LIVE_PACKS.is_dir():
+        pytest.skip("no live pack directory")
+    return PackRegistry.from_directory(LIVE_PACKS)
+
+
+def test_an_ambiguous_claim_over_sibling_measures_does_not_route() -> None:
+    """Binding to the nearest sibling would answer a question nobody asked."""
+    from engine.verification.route import RoutingFailure, route
+
+    decision = route(AMBIGUOUS, _il_context(), _live_registry())
+    assert not decision.routed
+    assert decision.failure is RoutingFailure.CONTESTED_BY_DEFINITION
+    assert len(decision.contested) > 1
+
+
+def test_the_contested_reason_reaches_the_artifact(adapters, store) -> None:
+    """The regression: the rationale was computed, carried, and then dropped."""
+    from engine.custodians.fixture import build_fixture_custodians
+    from engine.pipeline import verify
+    from engine.verdicts import Verdict
+
+    run = verify(
+        AMBIGUOUS, _il_context(), _live_registry(), build_fixture_custodians(), store
+    )
+    rationale = run.artifact.verdict.rationale
+
+    assert run.artifact.verdict.label is Verdict.INSUFFICIENT_DATA
+    assert "measure different things" in rationale, (
+        f"the definitional gap was not explained; got {rationale!r}"
+    )
+    assert "No custodian of record settles this claim" not in rationale
+
+
+def test_naming_the_currency_routes_cleanly(store) -> None:
+    """The other half: disambiguating the claim must still bind."""
+    from engine.custodians.fixture import build_fixture_custodians
+    from engine.pipeline import verify
+
+    run = verify(
+        SPECIFIC, _il_context(), _live_registry(), build_fixture_custodians(), store
+    )
+    assert run.artifact.routing, "a claim naming its currency must route"
+    assert "euro" in run.artifact.routing[0].measure.lower()

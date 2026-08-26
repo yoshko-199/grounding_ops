@@ -144,6 +144,22 @@ def verify(
         reconstructs=rebuilt.does_reconstruct,
     )
 
+    # Where routing failed for a reason it can state, say that reason rather
+    # than the generic one. §6.1 requires a contested binding to be reported
+    # with "the definitional gap explained", and the gap is precisely what the
+    # routing rationale holds — which two measures matched equally well, and
+    # that they measure different things. Reporting "no custodian settles
+    # this" instead is true and useless: it hides that two custodians settle
+    # neighbouring questions and the claim did not say which it meant.
+    #
+    # The path existed and was never taken. No fixture claim produces a tie,
+    # so this surfaced only once a real pack declared sibling measures.
+    if not decision.routed and decision.rationale:
+        if proposed.label is Verdict.INSUFFICIENT_DATA:
+            proposed = ProposedVerdict(
+                proposed.label, _as_answer(decision.rationale)
+            )
+
     derived_elements = derive.derive(claim_text, claim_id, lexicon, tuple(assigned))
 
     artifact = Artifact(
@@ -178,6 +194,23 @@ def verify(
         unconfirmed_marker="UNCONFIRMED — proposed, not signed off",
     )
     return VerificationRun(artifact, tuple(assigned), derived_elements)
+
+
+#: §7.5's framing, which every Insufficient Data rationale keeps whatever
+#: else it says. AC-5 caught this being dropped: replacing the generic
+#: rationale with a specific one explained the gap and stopped calling the
+#: outcome an answer, and the criterion is about exactly that framing.
+_ANSWER_NOT_FAILURE = "This is an answer, not a failure to produce one."
+
+
+def _as_answer(rationale: str) -> str:
+    """A specific reason, still framed as an answer rather than a failure."""
+    reason = rationale.strip()
+    if not reason.endswith("."):
+        reason += "."
+    if "not a failure" in reason:
+        return reason
+    return f"{reason} {_ANSWER_NOT_FAILURE}"
 
 
 def _claimed_rise(claim_text: str) -> bool | None:
