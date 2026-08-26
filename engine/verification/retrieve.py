@@ -34,6 +34,15 @@ class PullOutcome:
     continuity: ContinuityOutcome = ContinuityOutcome(ContinuityStatus.NOT_APPLICABLE)
     blocked_status: ElementStatus | None = None
     detail: str = ""
+    #: Technical text about *why* a pull failed — a status code, a timeout,
+    #: a parse complaint. Deliberately separate from `detail`, which is
+    #: rendered. An adapter's error message is not a figure from a
+    #: retrieval, so any numeral in it fails AC-7's scan at the render
+    #: boundary; interpolating it into the reason turned every unreachable
+    #: custodian into a crash. This field keeps the diagnosis without
+    #: putting it in the artifact, where a proxy's status code has no
+    #: business appearing anyway.
+    diagnostic: str = ""
 
     @property
     def has_data(self) -> bool:
@@ -63,10 +72,11 @@ def pull(
         return PullOutcome(
             blocked_status=ElementStatus.UNREACHABLE,
             detail=(
-                f"{custodian.name} could not be reached this session ({exc}). This is "
+                f"{custodian.name} could not be reached this session. This is "
                 "distinct from the custodian having no figure for the element, and "
                 "must not be reported as Unverified"
             ),
+            diagnostic=str(exc),
         )
 
     if not observations:

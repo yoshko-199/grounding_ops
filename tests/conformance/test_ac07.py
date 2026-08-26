@@ -220,3 +220,67 @@ def test_the_derived_channel_is_not_a_general_bypass(
     payload.text("the government raised it to 30 percent")
     with pytest.raises(UnsourcedFigure, match="30"):
         payload.render()
+
+
+def test_an_adapter_error_carrying_a_numeral_still_renders(
+    registry, context, adapters, store
+) -> None:
+    """The third instance of one class, found by wiring the first real adapter.
+
+    An adapter's failure message is not a figure from a retrieval, so any
+    numeral in it — an HTTP status, a retry count, a port — fails AC-7's scan
+    at the render boundary. Interpolating it into the element reason turned
+    every unreachable custodian into a crash, which is the one path a real
+    deployment hits most.
+
+    The technical text now lives on `PullOutcome.diagnostic` and is not
+    rendered. A proxy's status code has no business in a verification artifact
+    regardless of whether it crashes one.
+    """
+    from engine.custodians.base import CustodianUnreachable
+
+    class _Exploding:
+        custodian_id = "zzstat"
+
+        def series(self, series_id: str):
+            raise CustodianUnreachable("zzstat", "proxy returned 403 after 3 retries")
+
+    adapters["zzstat"] = _Exploding()
+    run = verify(CLAIM, context, registry, adapters, store)
+
+    output = run.artifact.render()
+    assert "could not be reached" in output
+    assert "403" not in output, "the adapter's status code reached the artifact"
+
+
+def test_the_diagnostic_is_kept_even_though_it_is_not_rendered() -> None:
+    """Dropping the detail would trade a crash for an undiagnosable failure."""
+    from engine.custodians.base import CustodianUnreachable
+    from engine.packs.schema import Custodian, Measure
+    from engine.store.events import RetrievalStore
+    from engine.verification import retrieve
+
+    class _Exploding:
+        custodian_id = "x"
+
+        def series(self, series_id: str):
+            raise CustodianUnreachable("x", "proxy returned 403")
+
+    measure = Measure(
+        id="m", name="M", definition="d", custodian_id="x", series_identifier="S",
+        unit="u", published_precision=0.1, discrete=False, known_confusions=(),
+        admissible_baselines=(), admissible_windows=(), admissible_source_ref="r",
+    )
+    custodian = Custodian(
+        id="x", name="X Office", mandate="m", cadence="daily",
+        revision_policy="p", access_method="a", integrity_annotation="none known",
+    )
+
+    store = RetrievalStore()
+    try:
+        outcome = retrieve.pull(measure, custodian, _Exploding(), store)
+    finally:
+        store.close()
+
+    assert "403" not in outcome.detail
+    assert "403" in outcome.diagnostic

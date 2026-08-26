@@ -38,6 +38,7 @@ PYTHONPATH=. python3 cli/verify.py CLAIM [options]
 | `--language CODE` | `en` | ISO 639 code, lowercase. Selects the pack lexicon; falls back to English |
 | `--stated-at DATE` | today | ISO date the claim was made |
 | `--json` | off | Emit the artifact as JSON instead of text |
+| `--live` | off | Also wire adapters for custodians this deployment can reach. Off by default so a fixture answer is never mistaken for a real one |
 | `--claimant NAME` | none | Who said it. Displayed and stored, never routed |
 | `--venue NAME` | none | Where it was said. Displayed and stored, never routed |
 

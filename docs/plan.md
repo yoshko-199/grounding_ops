@@ -177,9 +177,13 @@ property of a signature or an import graph rather than a rule to remember:
 
 - **One real measure is admitted**, and no more. Every claim outside it returns
   Insufficient Data. This is 2.1.
-- **Custodian adapters are fixtures.** No network client exists, and AC-14
-  asserts none can be reached from the verification path. A real pack needs a
-  real adapter, written against that same contract.
+- **One real adapter exists**, for the Bank of Israel, wired only by the
+  composition root behind `--live`. AC-14 still holds: the verification path
+  reaches no network primitive by any static route, because nothing on it
+  imports the adapter. It has **never been run against the live endpoint** —
+  this environment blocks the Bank's hosts — so its tests prove the parsing
+  and the error taxonomy, not the URL. Every other custodian is still a
+  fixture or has no client at all.
 - **A pack can name a custodian this deployment has no client for**, which no
   fixture jurisdiction can produce, because fixtures ship their own adapters.
   Until admission surfaced it, that case reported as *Unverified* — asserting

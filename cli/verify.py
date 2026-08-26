@@ -15,6 +15,7 @@ from datetime import date
 
 from engine.codes import InvalidCode, LanguageCode
 from engine.custodians.fixture import build_fixture_custodians
+from engine.custodians.live import build_live_custodians
 from engine.ingest.split import RawProvenance, split
 from engine.packs.registry import PackRegistry
 from engine.pipeline import verify
@@ -32,6 +33,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--language", default="en", help="ISO 639 language code")
     parser.add_argument("--stated-at", default=None, help="ISO date the claim was made")
     parser.add_argument("--json", action="store_true", help="emit structured output")
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        help=(
+            "also wire adapters for custodians this deployment can reach. Off by "
+            "default: a run that silently went to the network would make it "
+            "impossible to tell a fixture answer from a real one"
+        ),
+    )
     # Attribution is accepted, retained, and displayed -- and never routed.
     parser.add_argument("--claimant", default=None, help="who said it (never routed)")
     parser.add_argument("--venue", default=None, help="where it was said (never routed)")
@@ -69,7 +79,10 @@ def main(argv: list[str] | None = None) -> int:
 
     registry = PackRegistry.from_directory(args.packs)
     store = RetrievalStore()
-    run = verify(args.claim, context, registry, build_fixture_custodians(), store)
+    adapters = build_fixture_custodians()
+    if args.live:
+        adapters.update(build_live_custodians())
+    run = verify(args.claim, context, registry, adapters, store)
 
     if args.json:
         payload = run.artifact.to_dict()
