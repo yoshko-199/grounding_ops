@@ -88,6 +88,9 @@ def assign(
             continuity=pull.continuity.status,
         )
 
+    if element.kind is ElementKind.TIME_PERIOD:
+        return _time_period(element, pull)
+
     if element.kind is ElementKind.DIRECTION:
         return _direction(element, pull, claim_text)
     if element.kind is ElementKind.SUPERLATIVE:
@@ -230,4 +233,60 @@ def _settled(
     return ElementOutcome(
         replace(element, status=status, tolerance_band=band, continuity_status=continuity),
         reason,
+    )
+
+
+def _time_period(element: Element, pull: PullOutcome) -> ElementOutcome:
+    """A period scopes the comparison; it is not a figure to compare.
+
+    This branch exists because its absence produced the worst class of error
+    the system can make. A time period was decomposed as a
+    :attr:`~engine.elements.ElementKind.QUANTITY`, so a claim like
+    "unemployment fell in 2021" had the *year* pulled out as the claimant's
+    figure and compared against the unemployment rate. Two thousand and
+    twenty-one does not equal four point two, so the element came back
+    Contradicted and the claim was labelled Substantially Inaccurate — with a
+    full citation trail behind it, on a claim the record supports.
+
+    That is a confident, fully-sourced, wrong answer about a true statement,
+    which is precisely what §3 and the whole verdict apparatus exist to
+    prevent. It bit any claim whose period named a year.
+
+    What a period *can* be checked for is coverage: whether the retrieved
+    series actually spans the period the claim scopes itself to. A claim about
+    a year the custodian does not cover is Unverified, and that is a real
+    finding rather than an arithmetic accident.
+    """
+    named = {m.group(0) for m in patterns.YEAR.finditer(element.fragment)}
+    if not named:
+        return _settled(
+            element,
+            ElementStatus.VERIFIED,
+            "a relative period, carried as the scope of the comparison rather than "
+            "as a figure to check",
+            continuity=pull.continuity.status,
+        )
+
+    covered = {
+        observation.reference_period[:4]
+        for observation in pull.observations
+        if observation.reference_period
+    }
+    missing = sorted(named - covered)
+    if missing:
+        return _settled(
+            element,
+            ElementStatus.UNVERIFIED,
+            f"the custodian was reached and the retrieved series does not cover "
+            f"{', '.join(missing)}. A period the record does not span cannot scope a "
+            "comparison",
+            continuity=pull.continuity.status,
+        )
+
+    return _settled(
+        element,
+        ElementStatus.VERIFIED,
+        "the retrieved series covers this period. A period scopes the comparison "
+        "and is not itself compared against a figure",
+        continuity=pull.continuity.status,
     )

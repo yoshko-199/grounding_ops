@@ -54,7 +54,7 @@ def decompose(claim_text: str, claim_id: ClaimId, lexicon: Lexicon) -> tuple[Ele
     candidates: list[_Candidate] = []
 
     for match in patterns.TIME_PERIOD.finditer(claim_text):
-        candidates.append(_Candidate(match.start(), match.end(), ElementKind.QUANTITY))
+        candidates.append(_Candidate(match.start(), match.end(), ElementKind.TIME_PERIOD))
 
     for match in patterns.RISE.finditer(claim_text):
         candidates.append(_Candidate(match.start(), match.end(), ElementKind.DIRECTION))

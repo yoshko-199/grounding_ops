@@ -38,6 +38,10 @@ TIME_PERIOD: Final = re.compile(
     re.I | re.X,
 )
 
+# Years named inside a time period, used to check the retrieved series
+# actually covers the period a claim scopes itself to.
+YEAR: Final = re.compile(r"(?<!\d)(19|20)\d{2}(?!\d)")
+
 RISE: Final = re.compile(
     r"\b(rose|rise|risen|rising|rises|increased|increases|increasing|grew|grown|grows|"
     r"climbed|climbs|doubled|tripled|surged|surges|up|higher)\b",
