@@ -33,6 +33,7 @@ steps for one task.
 | [Add a jurisdiction pack](how-to/add-a-jurisdiction-pack.md) | Make the engine able to route claims in a country it does not yet cover |
 | [Declare a harvest source](how-to/declare-a-harvest-source.md) | Point the claim harvester at a publication and its accounts |
 | [Sign off a verdict](how-to/sign-off-a-verdict.md) | Confirm, amend, or reject a proposed claim-level verdict |
+| [Fuzz claim shapes](how-to/fuzz-claim-shapes.md) | Find the defects the acceptance criteria cannot, after changing decomposition, derivation, verdicts, or rendering |
 
 ## Reference
 

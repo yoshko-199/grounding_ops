@@ -277,9 +277,15 @@ def _time_period(element: Element, pull: PullOutcome) -> ElementOutcome:
         return _settled(
             element,
             ElementStatus.UNVERIFIED,
-            f"the custodian was reached and the retrieved series does not cover "
-            f"{', '.join(missing)}. A period the record does not span cannot scope a "
-            "comparison",
+            # The year is deliberately not interpolated. A reason is prose, and
+            # §3 admits no figure into prose that no retrieval supports — AC-7
+            # caught three such leaks during the original build and this was a
+            # fourth, added by the fix above and found by shape fuzzing. The
+            # ledger already shows the fragment beside this reason, quoted from
+            # the claim, so naming the year here adds nothing but a crash.
+            "the custodian was reached and the retrieved series does not cover the "
+            "period this claim names. A period the record does not span cannot "
+            "scope a comparison",
             continuity=pull.continuity.status,
         )
 
