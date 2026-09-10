@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import sqlite3
 import sys
 from datetime import date
 
@@ -22,11 +23,22 @@ from engine.packs.registry import PackRegistry
 from engine.pipeline import verify
 from engine.store.events import RetrievalStore
 
+#: The repository root, so the default store is one database rather than one
+#: per working directory. Resolved the same way `scripts/harvest_corpus.py`
+#: resolves its own defaults.
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+
 #: Where retrievals live when the caller does not say. §8 makes a retrieval an
 #: event carrying a TTL, re-pulled when it expires and served when it has not —
 #: and none of that is observable while the store dies with the process, which
 #: is what `RetrievalStore()` with no path had been doing on every run.
-DEFAULT_STORE = ".grounding/store.db"
+#:
+#: Anchored to the root rather than left relative to the working directory. A
+#: cwd-relative default silently creates a second empty database when the
+#: command is run from a subdirectory, which restores exactly the re-pull-
+#: everything behaviour the path was added to remove — and scatters databases
+#: outside the repository while looking like it worked.
+DEFAULT_STORE = str(ROOT / ".grounding" / "store.db")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -45,9 +57,11 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_STORE,
         metavar="PATH",
         help=(
-            "retrieval store. Defaults to a repository-local database so a "
-            "retrieval outlives the process that made it; pass ':memory:' for a "
-            "run that remembers nothing"
+            "retrieval store. Defaults to a database under the repository root "
+            "so a retrieval outlives the process that made it, wherever the "
+            "command was run from; pass ':memory:' for a run that remembers "
+            "nothing. A relative path given here is relative to the working "
+            "directory, which is what typing one means"
         ),
     )
     parser.add_argument(
@@ -95,9 +109,18 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     registry = PackRegistry.from_directory(args.packs)
-    if args.store != ":memory:":
-        pathlib.Path(args.store).parent.mkdir(parents=True, exist_ok=True)
-    store = RetrievalStore(args.store)
+    try:
+        if args.store != ":memory:":
+            pathlib.Path(args.store).parent.mkdir(parents=True, exist_ok=True)
+        store = RetrievalStore(args.store)
+    except (OSError, sqlite3.Error) as exc:
+        # An unwritable directory, a path that is already a directory, a
+        # corrupt database, or a concurrent run holding the lock. All are
+        # operator errors and all reported the way this file reports the
+        # others: a traceback out of the store constructor reads as a crash
+        # in the engine, which is the one thing it is not.
+        print(f"error: cannot open retrieval store {args.store!r}: {exc}", file=sys.stderr)
+        return 2
     adapters = build_fixture_custodians()
     if args.live:
         adapters.update(build_live_custodians())

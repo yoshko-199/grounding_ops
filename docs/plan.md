@@ -187,9 +187,11 @@ property of a signature or an import graph rather than a rule to remember:
 ### 3.1 What is not done
 
 - **Retrievals persist; nothing else does.** `--store` defaults to a durable
-  database, so a retrieval outlives its process and the TTL is honoured across
-  runs — previously the CLI built an in-memory store per invocation and
-  re-pulled everything, which made §8's whole event model unobservable. The
+  database under the repository root, so a retrieval outlives its process and
+  the TTL is honoured across runs — previously the CLI built an in-memory store
+  per invocation, which made §8's whole event model unobservable. Note the
+  limit: the TTL de-duplicates recorded events, not custodian fetches, because
+  `pull()` asks the adapter for the series before consulting the store. The
   remaining fifteen tables in `engine/store/schema.sql` are still unwritten, so
   a claim's elements, verdict, reconstruction and sweep die with the process.
 - **One real measure is admitted**, and no more. Every claim outside it returns

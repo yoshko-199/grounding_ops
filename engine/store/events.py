@@ -190,45 +190,66 @@ class RetrievalStore:
         return retrieval
 
     def fresh(
-        self, series_id: str, reference_period: str, now: datetime | None = None
+        self,
+        series_id: str,
+        reference_period: str,
+        *,
+        custodian_id: str,
+        now: datetime | None = None,
     ) -> Retrieval | _Expired | None:
         """The most recent usable retrieval, or a reason there is none.
 
         Returns ``None`` when nothing was ever retrieved, :data:`EXPIRED`
         when a record exists but has aged past its TTL or been superseded.
         There is no argument that relaxes either condition.
+
+        ``custodian_id`` is required, and keyword-only so it cannot be passed
+        by accident. A series identifier is unique *within* a custodian and
+        nowhere else: two packs are free to name a series the same way, and
+        the column was already stored while the lookup ignored it. Making it
+        optional would leave the collision one forgetful call site away.
         """
         now = now or datetime.now(timezone.utc)
         row = self._db.execute(
             """
             SELECT * FROM retrievals
-            WHERE series_id = ? AND reference_period = ?
+            WHERE series_id = ? AND reference_period = ? AND custodian_id = ?
             ORDER BY retrieved_at DESC LIMIT 1
             """,
-            (series_id, reference_period),
+            (series_id, reference_period, custodian_id),
         ).fetchone()
         if row is None:
             return None
         retrieval = _row_to_retrieval(row)
         return retrieval if retrieval.is_fresh(now) else EXPIRED
 
-    def supersede_provisional(self, series_id: str, reference_period: str,
-                             now: datetime | None = None) -> int:
+    def supersede_provisional(
+        self,
+        series_id: str,
+        reference_period: str,
+        *,
+        custodian_id: str,
+        now: datetime | None = None,
+    ) -> int:
         """Invalidate provisional retrievals when a revision publishes (AC-9).
 
         Invalidation rather than deletion.  The record of what was believed,
         and when, is the point of storing events; a verdict pinned to a
         superseded print must become visibly invalid rather than quietly
         disappear.
+
+        Scoped by custodian for the same reason :meth:`fresh` is: invalidating
+        another custodian's identically-named series would be a silent data
+        loss rather than a collision anyone would notice.
         """
         now = now or datetime.now(timezone.utc)
         cursor = self._db.execute(
             """
             UPDATE retrievals SET superseded_at = ?
-            WHERE series_id = ? AND reference_period = ?
+            WHERE series_id = ? AND reference_period = ? AND custodian_id = ?
               AND revision_status = ? AND superseded_at IS NULL
             """,
-            (now.isoformat(), series_id, reference_period,
+            (now.isoformat(), series_id, reference_period, custodian_id,
              RevisionStatus.PROVISIONAL.value),
         )
         self._db.commit()

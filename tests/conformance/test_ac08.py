@@ -43,11 +43,11 @@ def test_expired_retrieval_is_not_served(pack, adapters, store) -> None:
 
     series_id = measure.series_identifier
     period = adapters["zzstat"].series(series_id)[-1].reference_period
-    assert store.fresh(series_id, period, NOW) not in (None, EXPIRED)
+    assert store.fresh(series_id, period, custodian_id="zzstat", now=NOW) not in (None, EXPIRED)
 
     # Age past the monthly TTL.
     later = NOW + timedelta(days=40)
-    assert store.fresh(series_id, period, later) is EXPIRED
+    assert store.fresh(series_id, period, custodian_id="zzstat", now=later) is EXPIRED
 
 
 def test_expired_retrieval_causes_a_re_pull(pack, adapters, store) -> None:
@@ -105,7 +105,7 @@ def test_superseded_provisional_is_not_fresh(pack, adapters, store) -> None:
 
     series_id = measure.series_identifier
     period = adapters["zzstat"].series(series_id)[-1].reference_period
-    assert store.fresh(series_id, period, NOW) not in (None, EXPIRED)
+    assert store.fresh(series_id, period, custodian_id="zzstat", now=NOW) not in (None, EXPIRED)
 
-    assert store.supersede_provisional(series_id, period, NOW) == 1
-    assert store.fresh(series_id, period, NOW) is EXPIRED
+    assert store.supersede_provisional(series_id, period, custodian_id="zzstat", now=NOW) == 1
+    assert store.fresh(series_id, period, custodian_id="zzstat", now=NOW) is EXPIRED

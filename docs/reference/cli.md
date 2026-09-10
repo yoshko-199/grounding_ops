@@ -38,17 +38,33 @@ PYTHONPATH=. python3 cli/verify.py CLAIM [options]
 | `--language CODE` | `en` | ISO 639 code, lowercase. Selects the pack lexicon; falls back to English |
 | `--stated-at DATE` | today | ISO date the claim was made |
 | `--json` | off | Emit the artifact as JSON instead of text |
-| `--store PATH` | `.grounding/store.db` | Retrieval store. Durable by default, so a retrieval outlives the process that made it and the TTL is honoured across runs. `:memory:` for a run that remembers nothing |
+| `--store PATH` | `<repo>/.grounding/store.db` | Retrieval store. Durable by default, and anchored to the repository root rather than the working directory. A relative path given here is relative to the working directory. `:memory:` for a run that remembers nothing |
 | `--live` | off | Also wire adapters for custodians this deployment can reach. Off by default so a fixture answer is never mistaken for a real one |
 | `--claimant NAME` | none | Who said it. Displayed and stored, never routed |
 | `--venue NAME` | none | Where it was said. Displayed and stored, never routed |
 
 ### What persists, and what does not
 
-Retrievals are written to `--store` and re-read on the next run: a claim
-verified twice inside a series' TTL pulls once, which is what §8 asks for. The
-database is a local artefact rather than a source of truth — every figure in it
-came from a custodian and can be pulled again.
+Retrievals are written to `--store` and re-read on the next run. The database
+is a local artefact rather than a source of truth — every figure in it came
+from a custodian and can be pulled again.
+
+**The TTL de-duplicates records, not fetches.** A claim verified twice inside a
+series' TTL still calls the custodian twice: `pull()` asks the adapter for the
+series before the store is consulted at all. What the second run does *not* do
+is record a second event. It reuses the stored retrieval, and therefore its
+id, so both verdicts pin to the same revision — which is the §8 property that
+matters. Avoiding the fetch as well would need the store to return a whole
+series by identifier, and freshness is keyed on reference period, which is not
+known until after the pull. That is a design change rather than a wording one,
+and it has not been made.
+
+Reuse requires an **exact** match. Every field a retrieval records — figure,
+revision status, unit, custodian, continuity status, caveat, linked series — is
+compared against what the pull would write, and any difference records a new
+event instead. So a revision published inside the TTL supersedes the
+provisional print rather than being discarded, and a cross-time claim does not
+inherit the `not_applicable` continuity of an earlier level claim.
 
 **The artifact itself is not yet stored.** `engine/store/schema.sql` declares
 tables for claims, elements, verdicts, discards, reconstructions and sweeps,
@@ -73,7 +89,7 @@ a route and get Insufficient Data, check the case of the code first.
 | Code | Meaning |
 |---|---|
 | `0` | An artifact was produced — **including Insufficient Data**, which is a verdict rather than a failure |
-| `2` | A malformed `--language` or `--stated-at` |
+| `2` | A malformed `--language` or `--stated-at`, or a `--store` that cannot be opened |
 
 A malformed `--jurisdiction` does **not** exit non-zero; see above.
 

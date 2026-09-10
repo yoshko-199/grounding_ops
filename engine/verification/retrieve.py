@@ -17,10 +17,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from engine.custodians.base import CustodianAdapter, CustodianUnreachable, Observation
+from engine.custodians.base import (
+    CustodianAdapter,
+    CustodianUnreachable,
+    Observation,
+    RevisionStatus,
+)
 from engine.elements import ContinuityStatus, ElementStatus
 from engine.packs.schema import Custodian, Measure
-from engine.store.events import EXPIRED, Retrieval, RetrievalStore
+from engine.store.events import Retrieval, RetrievalStore
 from engine.verification import continuity as continuity_check
 from engine.verification.continuity import ContinuityOutcome
 
@@ -131,19 +136,62 @@ def _record(
     outcome: ContinuityOutcome,
     now: datetime,
 ) -> Retrieval:
-    """Record one observation, reusing a fresh prior retrieval if one exists.
+    """Record one observation, reusing a prior retrieval only if it is identical.
 
-    Reuse is bounded by the TTL and nothing else. §8: "Every retrieval carries
-    a TTL derived from its custodian's publication cadence. Expired retrievals
-    are re-pulled, never served." There is no branch here that serves an
-    expired record under outage or rate limiting — AC-8 forbids it explicitly,
-    and calls it standard engineering practice everywhere else.
+    Two conditions, and the order matters. The TTL is the outer one. §8:
+    "Every retrieval carries a TTL derived from its custodian's publication
+    cadence. Expired retrievals are re-pulled, never served." There is no
+    branch here that serves an expired record under outage or rate limiting —
+    AC-8 forbids it explicitly, and calls it standard engineering practice
+    everywhere else.
+
+    Being fresh is not sufficient, which is the part that was missing. Reuse
+    is **deduplication of an identical event**, never a substitute for what
+    the custodian just said. Every field that would be written is compared,
+    and any difference records a new event.
+
+    That matters twice over, and both were live defects:
+
+    * **A revision published inside the TTL.** Returning the stored row threw
+      away the observation just pulled. Verdicts read ``observations`` and
+      citations read ``retrievals``, so the artifact cited a figure, and a
+      revision status, that the verdict was not computed from. §8 is explicit
+      that "verdicts pin to a specific revision"; citing one revision while
+      judging another pins to neither.
+    * **Continuity and the caveat are per-claim.** A level claim records
+      ``not_applicable`` rows. A cross-time claim against the same series and
+      periods then reused them, so the citation reported the wrong continuity
+      and the sweep lost a flip row — a verdict change, not a wording one.
+
+    Comparing everything written covers both with one condition. The cost is
+    that two differently-framed claims over one series keep two rows; that is
+    correct rather than wasteful, because §5 makes continuity status part of
+    the citation record, so they are genuinely two records.
     """
-    existing = store.fresh(observation.series_id, observation.reference_period, now)
-    if existing is not None and existing is not EXPIRED:
-        return existing  # type: ignore[return-value]
-
     caveat_parts = [p for p in (outcome.caveat, _measure_caveat(measure)) if p]
+    caveat = " ".join(caveat_parts) or None
+
+    existing = store.fresh(
+        observation.series_id,
+        observation.reference_period,
+        custodian_id=custodian.id,
+        now=now,
+    )
+    if isinstance(existing, Retrieval):
+        if _is_the_same_event(existing, observation, measure, outcome, caveat):
+            return existing
+        if _revision_published(existing, observation):
+            # §8: "Provisional retrievals are invalidated when a revision
+            # publishes." Until this call existed, nothing invoked it outside
+            # the tests, so a first print stayed servable for its whole TTL —
+            # up to a year on an annual cadence.
+            store.supersede_provisional(
+                observation.series_id,
+                observation.reference_period,
+                custodian_id=custodian.id,
+                now=now,
+            )
+
     return store.record(
         observation,
         custodian_id=custodian.id,
@@ -151,8 +199,48 @@ def _record(
         unit=measure.unit,
         continuity_status=outcome.status.value,
         now=now,
-        caveat=" ".join(caveat_parts) or None,
+        caveat=caveat,
         linked_series_used=outcome.linked_series_used,
+    )
+
+
+def _is_the_same_event(
+    existing: Retrieval,
+    observation: Observation,
+    measure: Measure,
+    outcome: ContinuityOutcome,
+    caveat: str | None,
+) -> bool:
+    """Whether recording would write exactly what is already stored.
+
+    Deliberately compares every field :meth:`RetrievalStore.record` writes
+    rather than the value alone. A subset would leave the reuse branch able to
+    return a row that differs from the pull in some field nobody thought to
+    check, which is the shape of the defect this replaced.
+    """
+    return (
+        existing.value == observation.value
+        and existing.revision_status is observation.revision_status
+        and existing.unit == measure.unit
+        and existing.continuity_status == outcome.status.value
+        and existing.caveat == caveat
+        and existing.linked_series_used == outcome.linked_series_used
+    )
+
+
+def _revision_published(existing: Retrieval, observation: Observation) -> bool:
+    """Whether a stored provisional print has been overtaken by a revision.
+
+    A changed value or a changed revision status, and nothing else. A stored
+    provisional row that differs only in continuity status is the *same*
+    print being cited for a different question, and superseding it there would
+    invalidate a record that is still perfectly good.
+    """
+    if existing.revision_status is not RevisionStatus.PROVISIONAL:
+        return False
+    return (
+        observation.revision_status is not RevisionStatus.PROVISIONAL
+        or observation.value != existing.value
     )
 
 
