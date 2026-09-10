@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import pathlib
 import sys
 from datetime import date
 
@@ -20,6 +21,12 @@ from engine.ingest.split import RawProvenance, split
 from engine.packs.registry import PackRegistry
 from engine.pipeline import verify
 from engine.store.events import RetrievalStore
+
+#: Where retrievals live when the caller does not say. §8 makes a retrieval an
+#: event carrying a TTL, re-pulled when it expires and served when it has not —
+#: and none of that is observable while the store dies with the process, which
+#: is what `RetrievalStore()` with no path had been doing on every run.
+DEFAULT_STORE = ".grounding/store.db"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -33,6 +40,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--language", default="en", help="ISO 639 language code")
     parser.add_argument("--stated-at", default=None, help="ISO date the claim was made")
     parser.add_argument("--json", action="store_true", help="emit structured output")
+    parser.add_argument(
+        "--store",
+        default=DEFAULT_STORE,
+        metavar="PATH",
+        help=(
+            "retrieval store. Defaults to a repository-local database so a "
+            "retrieval outlives the process that made it; pass ':memory:' for a "
+            "run that remembers nothing"
+        ),
+    )
     parser.add_argument(
         "--live",
         action="store_true",
@@ -78,11 +95,19 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     registry = PackRegistry.from_directory(args.packs)
-    store = RetrievalStore()
+    if args.store != ":memory:":
+        pathlib.Path(args.store).parent.mkdir(parents=True, exist_ok=True)
+    store = RetrievalStore(args.store)
     adapters = build_fixture_custodians()
     if args.live:
         adapters.update(build_live_custodians())
-    run = verify(args.claim, context, registry, adapters, store)
+    try:
+        run = verify(args.claim, context, registry, adapters, store)
+    finally:
+        # §8 keeps retrievals as events with a TTL. An event that dies with the
+        # process is not an event, and the store's commits are only durable if
+        # the connection closes cleanly.
+        store.close()
 
     if args.json:
         payload = run.artifact.to_dict()

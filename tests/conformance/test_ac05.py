@@ -63,8 +63,8 @@ def test_the_cli_exits_zero_for_insufficient_data(capsys) -> None:
     """A non-zero exit is exactly the error styling this criterion forbids."""
     from cli.verify import main
 
-    assert main([INSUFFICIENT, "--jurisdiction", "ZZ", "--packs", "packs/fixture"]) == 0
-    assert main([ORDINARY, "--jurisdiction", "ZZ", "--packs", "packs/fixture"]) == 0
+    assert main([INSUFFICIENT, "--jurisdiction", "ZZ", "--packs", "packs/fixture", "--store", ":memory:"]) == 0
+    assert main([ORDINARY, "--jurisdiction", "ZZ", "--packs", "packs/fixture", "--store", ":memory:"]) == 0
 
 
 def test_no_non_2xx_equivalent_in_the_structured_payload(
@@ -89,7 +89,7 @@ def test_a_malformed_date_is_reported_rather_than_raised(capsys) -> None:
     """
     from cli.verify import main
 
-    assert main([ORDINARY, "--stated-at", "2021-13-99", "--packs", "packs/fixture"]) == 2
+    assert main([ORDINARY, "--stated-at", "2021-13-99", "--packs", "packs/fixture", "--store", ":memory:"]) == 2
     assert "not a date" in capsys.readouterr().err
 
 
@@ -102,8 +102,8 @@ def test_an_unresolvable_jurisdiction_is_an_answer_not_an_error(capsys) -> None:
     """
     from cli.verify import main
 
-    assert main([ORDINARY, "--jurisdiction", "zz", "--packs", "packs/fixture"]) == 0
-    assert main([ORDINARY, "--jurisdiction", "not-a-code", "--packs", "packs/fixture"]) == 0
+    assert main([ORDINARY, "--jurisdiction", "zz", "--packs", "packs/fixture", "--store", ":memory:"]) == 0
+    assert main([ORDINARY, "--jurisdiction", "not-a-code", "--packs", "packs/fixture", "--store", ":memory:"]) == 0
 
 
 # ---------------------------------------------------------------------------

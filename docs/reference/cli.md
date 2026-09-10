@@ -38,9 +38,23 @@ PYTHONPATH=. python3 cli/verify.py CLAIM [options]
 | `--language CODE` | `en` | ISO 639 code, lowercase. Selects the pack lexicon; falls back to English |
 | `--stated-at DATE` | today | ISO date the claim was made |
 | `--json` | off | Emit the artifact as JSON instead of text |
+| `--store PATH` | `.grounding/store.db` | Retrieval store. Durable by default, so a retrieval outlives the process that made it and the TTL is honoured across runs. `:memory:` for a run that remembers nothing |
 | `--live` | off | Also wire adapters for custodians this deployment can reach. Off by default so a fixture answer is never mistaken for a real one |
 | `--claimant NAME` | none | Who said it. Displayed and stored, never routed |
 | `--venue NAME` | none | Where it was said. Displayed and stored, never routed |
+
+### What persists, and what does not
+
+Retrievals are written to `--store` and re-read on the next run: a claim
+verified twice inside a series' TTL pulls once, which is what §8 asks for. The
+database is a local artefact rather than a source of truth — every figure in it
+came from a custodian and can be pulled again.
+
+**The artifact itself is not yet stored.** `engine/store/schema.sql` declares
+tables for claims, elements, verdicts, discards, reconstructions and sweeps,
+and nothing writes them. A verdict still dies with the process that produced
+it, so `element_set_hash` cannot yet be checked after the fact the way §8
+intends.
 
 ### Case sensitivity of `--jurisdiction`
 

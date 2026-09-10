@@ -186,6 +186,12 @@ property of a signature or an import graph rather than a rule to remember:
 
 ### 3.1 What is not done
 
+- **Retrievals persist; nothing else does.** `--store` defaults to a durable
+  database, so a retrieval outlives its process and the TTL is honoured across
+  runs — previously the CLI built an in-memory store per invocation and
+  re-pulled everything, which made §8's whole event model unobservable. The
+  remaining fifteen tables in `engine/store/schema.sql` are still unwritten, so
+  a claim's elements, verdict, reconstruction and sweep die with the process.
 - **One real measure is admitted**, and no more. Every claim outside it returns
   Insufficient Data. This is 2.1.
 - **One real adapter exists**, for the Bank of Israel, wired only by the

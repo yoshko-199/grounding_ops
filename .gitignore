@@ -8,3 +8,7 @@ __pycache__/
 # Harvested corpora and the harvest fetch cache are local artefacts:
 # a test input produced by scripts/harvest_corpus.py, never a source of truth.
 corpus/
+
+# The default retrieval store. A local artefact, never a source of truth:
+# every figure in it came from a custodian and can be pulled again.
+.grounding/
