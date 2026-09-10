@@ -284,3 +284,70 @@ def test_invalid_pack_raises_rather_than_loading_partially(
     with pytest.raises(PackInvalid) as exc:
         load(path)
     assert exc.value.failures
+
+
+# ---------------------------------------------------------------------------
+# Markup.
+#
+# Pack prose is copied verbatim into plain-text artifacts — a measure's first
+# known confusion becomes the framing caveat on every citation line for that
+# measure. Emphasis markers therefore reach the reader as literal characters
+# beside a custodian's name.
+#
+# Found by review after the euro and sterling measures shipped with
+# "**Cross-derived, not sampled.**" as their first confusion.
+# ---------------------------------------------------------------------------
+
+
+def test_bold_markup_in_a_confusion_does_not_load(tmp_path: pathlib.Path) -> None:
+    failures = _failures(
+        tmp_path,
+        "Month-over-month change against year-over-year change.",
+        "**Month-over-month** change against year-over-year change.",
+    )
+    assert "contains markup" in failures
+    assert "'**'" in failures
+
+
+def test_backticks_in_a_definition_do_not_load(tmp_path: pathlib.Path) -> None:
+    failures = _failures(
+        tmp_path,
+        "Index of consumer prices against a fixed basket and base year.",
+        "Index of `consumer prices` against a fixed basket and base year.",
+    )
+    assert "contains markup" in failures
+
+
+def test_an_html_tag_in_a_mandate_does_not_load(tmp_path: pathlib.Path) -> None:
+    failures = _failures(
+        tmp_path,
+        "Fixture national statistical office",
+        "Fixture <b>national</b> statistical office",
+    )
+    assert "contains markup" in failures
+
+
+def test_the_markup_check_does_not_fire_on_ordinary_prose(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The control that keeps the guard from being a nuisance.
+
+    A single asterisk, an inequality, and an em dash are ordinary punctuation
+    in a custodian's own wording. Rejecting them would push pack authors toward
+    paraphrasing the source, which is the opposite of the point.
+    """
+    failures = _failures(
+        tmp_path,
+        "Month-over-month change against year-over-year change.",
+        "Month-over-month change* against year-over-year change — see <0 cases.",
+    )
+    assert "contains markup" not in failures
+
+
+def test_the_admitted_live_pack_carries_no_markup() -> None:
+    """The regression: this pack shipped with bold in it."""
+    live = pathlib.Path(__file__).resolve().parents[2] / "packs" / "live" / "il.toml"
+    if not live.exists():
+        pytest.skip("no live pack")
+    report = validate(live)
+    assert report.admitted, "\n".join(report.failures)

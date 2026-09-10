@@ -126,7 +126,17 @@ def test_an_ambiguous_claim_over_sibling_measures_does_not_route() -> None:
     decision = route(AMBIGUOUS, _il_context(), _live_registry())
     assert not decision.routed
     assert decision.failure is RoutingFailure.CONTESTED_BY_DEFINITION
-    assert len(decision.contested) > 1
+
+    # The member ids, not just the count. `len(contested) > 1` passed while the
+    # set was (euro, sterling) and the dollar — the directly-sampled rate this
+    # claim most plausibly means — was missing, because the euro and sterling
+    # definitions echoed "representative" from their own names and outscored
+    # it. A count assertion cannot see that.
+    assert {m.id for m in decision.contested} == {
+        "fx_representative_usd",
+        "fx_representative_eur",
+        "fx_representative_gbp",
+    }
 
 
 def test_the_contested_reason_reaches_the_artifact(adapters, store) -> None:

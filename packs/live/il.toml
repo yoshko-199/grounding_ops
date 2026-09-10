@@ -180,7 +180,7 @@ unit = "NIS per EUR"
 published_precision = 0.0001
 discrete = false
 known_confusions = [
-  """**Cross-derived, not sampled.** This rate is computed from the dollar rate \
+  """Cross-derived, not sampled. This rate is computed from the dollar rate \
 and an international cross rate. It is not an independent observation of the \
 euro-shekel market, and a claim treating it as one is claiming more than the \
 Bank publishes.""",
@@ -246,7 +246,7 @@ unit = "NIS per GBP"
 published_precision = 0.0001
 discrete = false
 known_confusions = [
-  """**Cross-derived, not sampled.** This rate is computed from the dollar rate \
+  """Cross-derived, not sampled. This rate is computed from the dollar rate \
 and an international cross rate. It is not an independent observation of the \
 pound sterling-shekel market, and a claim treating it as one is claiming more than the \
 Bank publishes.""",

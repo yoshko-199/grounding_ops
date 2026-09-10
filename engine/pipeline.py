@@ -78,7 +78,22 @@ def verify(
 
     lexicon = pack.lexicon(context.language) or pack.lexicon(LanguageCode("en"))
     if lexicon is None:
-        return _unrouted(claim_text, decision)
+        # Its own reason, not the routing decision's. Routing may well have
+        # *succeeded* by this point, so reusing its rationale made the verdict
+        # say "bound to <measure> on the measure's published name" for a claim
+        # that failed because the pack declares no lexicon for its language —
+        # a confident sentence about the wrong thing entirely.
+        return _unrouted(
+            claim_text,
+            decision,
+            reason=(
+                f"the pack for {decision.jurisdiction} declares no lexicon for "
+                f"{context.language} and no English fallback, so the claim could not "
+                "be decomposed. Interface §3.6: a language declared without a lexicon "
+                "under-fires silently, and under-firing invisibly is worse than "
+                "declining visibly"
+            ),
+        )
 
     # Decomposition precedes the scope gate's branch. §9.10: a claim routed out
     # at Stage 1 still surfaces its derived elements, so the elements they are
@@ -154,11 +169,12 @@ def verify(
     #
     # The path existed and was never taken. No fixture claim produces a tie,
     # so this surfaced only once a real pack declared sibling measures.
-    if not decision.routed and decision.rationale:
-        if proposed.label is Verdict.INSUFFICIENT_DATA:
-            proposed = ProposedVerdict(
-                proposed.label, _as_answer(decision.rationale)
-            )
+    if (
+        decision.failure in _READER_FACING
+        and decision.rationale
+        and proposed.label is Verdict.INSUFFICIENT_DATA
+    ):
+        proposed = ProposedVerdict(proposed.label, _as_answer(decision.rationale))
 
     derived_elements = derive.derive(claim_text, claim_id, lexicon, tuple(assigned))
 
@@ -195,6 +211,19 @@ def verify(
     )
     return VerificationRun(artifact, tuple(assigned), derived_elements)
 
+
+#: Routing failures whose rationale is written for a reader, and may
+#: therefore replace the generic verdict sentence. The others are operator
+#: diagnostics: NO_ROUTING_RULE's rationale ends "a pack defect to be filed",
+#: which is true, useful in a log, and not something to hand someone asking
+#: whether a claim checks out. Same split as PullOutcome.diagnostic — the text
+#: stays on the decision, it just does not render.
+_READER_FACING = frozenset(
+    {
+        route.RoutingFailure.CONTESTED_BY_DEFINITION,
+        route.RoutingFailure.NO_MEASURE,
+    }
+)
 
 #: §7.5's framing, which every Insufficient Data rationale keeps whatever
 #: else it says. AC-5 caught this being dropped: replacing the generic
@@ -233,12 +262,25 @@ def _evaluative():
     return DerivationOperation.EVALUATIVE_DISCHARGE
 
 
-def _unrouted(claim_text: str, decision: route.RoutingDecision) -> VerificationRun:
+def _unrouted(
+    claim_text: str,
+    decision: route.RoutingDecision,
+    reason: str | None = None,
+) -> VerificationRun:
+    """Insufficient Data before a pack or a lexicon was available.
+
+    The rationale goes through :func:`_as_answer` like every other one. It did
+    not, and so the no-jurisdiction and no-pack verdicts silently lost §7.5's
+    framing — the exact regression AC-5 exists to catch, one function away
+    from the helper written to prevent it.
+    """
     verdict = ProposedVerdict(
         Verdict.INSUFFICIENT_DATA,
-        decision.rationale
-        or "No custodian of record settles this claim. This is an answer, not a "
-        "failure to produce one.",
+        _as_answer(
+            reason
+            or decision.rationale
+            or "No custodian of record settles this claim"
+        ),
     )
     return VerificationRun(
         Artifact(

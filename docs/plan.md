@@ -45,13 +45,16 @@ Everything that can be settled on paper is settled. What remains needs either so
 
 ### 2.1 Admit the Israel pack — the only thing blocking a trial
 
-**One measure is now admitted.** [`packs/live/il.toml`](../packs/live/il.toml) loads, declaring the Bank of Israel and its representative US dollar rate, with every field taken from the Bank's own current publications. A pack must be complete to load but need not be broad: one confirmed measure routes claims about that measure and returns Insufficient Data for everything else, which is the correct answer for everything else. Twenty half-filled measures would not load at all.
+**Three measures are now admitted.** [`packs/live/il.toml`](../packs/live/il.toml) loads, declaring the Bank of Israel and its representative rates for the US dollar, the euro and sterling, with every field taken from the Bank's own current publications. A pack must be complete to load but need not be broad: confirmed measures route claims about themselves and return Insufficient Data for everything else, which is the correct answer for everything else. Twenty half-filled measures would not load at all.
+
+An adapter for the Bank exists and is wired behind the CLI's `--live` flag. It has never run against the live endpoint, because this environment blocks the Bank's hosts, so a live run reports that the custodian could not be reached.
 
 Three things that only became visible by doing it:
 
 - **The hardest blocker was the easiest for this custodian.** Break registers were expected to be the worst of the seven. The Bank publishes a prose history of every change to how the representative rate is determined, with dates — a coverage change in 1986, methodology changes in 1990 and 1995, a sampling-window change in 2006. That *is* a break register; it simply had to be read. Whether other custodians publish the same is unknown and should not be assumed.
 - **Two entries in the draft were wrong in the plausible direction.** It recorded the rate as "fixed per date and not revised" with integrity annotation "none known". The Bank's own notes say the rates have no official or legal standing, are not published in the Official Gazette, are indicative rather than transactional, and that it reserves absolute discretion to change them without notice. Neither error was careless; both are what confident recollection produces, which is the whole argument for the rule.
 - **A real pack reaches a state no fixture can.** It names a custodian this deployment has no client for. That is recorded at 3.1 and was a live defect until admission surfaced it.
+- **Sibling measures reach another.** Declaring three rates from one custodian exposed a scoring flaw in the binder that no single-measure pack could: a claim token appearing in both a measure's name and its definition was counted twice, so a definition echoing its own name outranked a sibling that said the same thing once. The contested set named the wrong pair. Fixed at the root rather than by rewording the pack, so which siblings get reported depends on measure identity rather than on whose prose repeats a word.
 
 Seven blockers listed in [`spec/packs/israel.md`](spec/packs/israel.md#6-admission-blockers). Three are substantial research and **must be done with the custodians' publications open**, not from recollection — a pack populated from memory is the exact failure the spec exists to prevent, and it would be self-refuting to introduce it here:
 
@@ -100,6 +103,14 @@ The `israeli-fact-checker` skill's method (`SKILL.md` Step 1, `references/domain
 - **Presenting baseline data beside an out-of-scope claim.** The skill does; §9.10 does not. A human analyst can judge whether a given series is relevant to a claim it does not address. A pipeline cannot, and a custodian's figure displayed next to a proposition it does not address is §9.6's shape reached by a different route.
 
 Where the two agree and the engine was wrong, the engine changed: §9.10 exists because the skill is right that an out-of-scope claim should not produce silence.
+
+### 2.2b Only the first known confusion ever renders
+
+`retrieve._measure_caveat` takes `known_confusions[0]` and drops the rest, so a measure declaring four confusions surfaces one on its citations and hides three. The dollar rate declares four; readers see the first.
+
+Interface §3.3 records confusions because the measure is "routinely mistaken" for its neighbours and the mistake changes the answer while leaving the headline number recognisable. Surfacing one of four is a partial defence, and which one is decided by pack ordering rather than by relevance to the claim in hand.
+
+Left as it is deliberately. It is pre-existing, affects every pack including the fixture, and joining all of them would lengthen every citation line in every artifact — a change worth making on its own evidence rather than as a side-effect of a review that happened to notice it. Two directions are open and they are not the same: render all of them, or select the one relevant to the bound element. The second is better and needs a rule for relevance that does not yet exist.
 
 ### 2.3 Anchoring across paraphrase
 
