@@ -20,6 +20,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from engine.elements import DerivationOperation
+from engine.packs.schema import Lexicon, SurfaceCategory
 from engine.verification import patterns
 
 
@@ -58,25 +60,34 @@ _EXPLANATIONS = {
 }
 
 
-def classify(claim_text: str, evaluative_triggers: tuple[str, ...],
-             causal_triggers: tuple[str, ...]) -> ScopeOutcome:
+def classify(claim_text: str, lexicon: Lexicon) -> ScopeOutcome:
     """Classify a claim for scope.
 
-    ``evaluative_triggers`` and ``causal_triggers`` come from the pack
-    lexicon (interface §3.6) rather than from this module, so that adding a
-    language is adding pack data.
+    Evaluative and causal triggers, and the rise/fall/prediction vocabulary
+    below, all come from the pack lexicon (interface §3.6) rather than from
+    this module, so that adding a language is adding pack data rather than
+    changing this function.
     """
     lowered = claim_text.lower()
+    vocabulary = lexicon.surface_vocabulary
+    rise = vocabulary[SurfaceCategory.RISE]
+    fall = vocabulary[SurfaceCategory.FALL]
 
     has_quantity = bool(patterns.NUMBER.search(claim_text))
-    has_direction = bool(patterns.RISE.search(claim_text) or patterns.FALL.search(claim_text))
+    has_direction = patterns.matches_any(claim_text, rise) or patterns.matches_any(claim_text, fall)
     has_period = bool(patterns.TIME_PERIOD.search(claim_text))
     quantitative = has_quantity or has_direction or has_period
 
-    if patterns.PREDICTION.search(claim_text) and not _has_past_anchor(claim_text):
+    if patterns.matches_any(
+        claim_text, vocabulary[SurfaceCategory.PREDICTION]
+    ) and not _has_past_anchor(claim_text, rise, fall):
         return _out(OutOfScopeReason.PREDICTION)
 
     if not quantitative:
+        causal_triggers = lexicon.derivation_triggers.get(DerivationOperation.CAUSAL_DISCHARGE, ())
+        evaluative_triggers = lexicon.derivation_triggers.get(
+            DerivationOperation.EVALUATIVE_DISCHARGE, ()
+        )
         causal = any(t in lowered for t in causal_triggers)
         evaluative = any(t in lowered for t in evaluative_triggers)
         if causal:
@@ -88,7 +99,9 @@ def classify(claim_text: str, evaluative_triggers: tuple[str, ...],
     return ScopeOutcome(in_scope=True)
 
 
-def _has_past_anchor(claim_text: str) -> bool:
+def _has_past_anchor(
+    claim_text: str, rise: tuple[str, ...], fall: tuple[str, ...]
+) -> bool:
     """Whether the claim also asserts something about the record.
 
     "Inflation rose last year and will rise again" contains a checkable
@@ -96,8 +109,8 @@ def _has_past_anchor(claim_text: str) -> bool:
     second half would discard a verifiable assertion; the prediction becomes
     an out-of-scope element at Stage 2 instead.
     """
-    return bool(patterns.TIME_PERIOD.search(claim_text)) and bool(
-        patterns.RISE.search(claim_text) or patterns.FALL.search(claim_text)
+    return bool(patterns.TIME_PERIOD.search(claim_text)) and (
+        patterns.matches_any(claim_text, rise) or patterns.matches_any(claim_text, fall)
     )
 
 

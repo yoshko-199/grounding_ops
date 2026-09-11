@@ -14,15 +14,10 @@ span exists before the fragment does.  AC-18 tests exactly this distinction,
 because "a span found by searching for text the system generated proves only
 that the system is self-consistent."
 
-**On the English vocabularies.**  Directional and predictive surface forms
-live in :mod:`engine.verification.patterns` rather than in a pack, which sits
-uneasily beside §9.4's rule that the pipeline contains no jurisdiction-
-specific logic.  The defence is that they are properties of a *language*, not
-a jurisdiction, and the fixture pack declares one language.  It is a real
-edge: a second language would need them declared alongside the lexicon's
-derivation triggers, and the pack interface has no block for that today.
-Recorded rather than papered over — under-firing here is silent, which is the
-failure mode interface §3.6 warns about for triggers.
+Directional and predictive surface forms come from the lexicon's
+``surface_vocabulary`` (interface v1.4), not from a hardcoded English list —
+see :mod:`engine.verification.patterns` for why that migration happened and
+what is still language-general.
 """
 
 from __future__ import annotations
@@ -32,7 +27,7 @@ from dataclasses import dataclass
 
 from engine.elements import Element, ElementKind
 from engine.ids import ClaimId, ElementId
-from engine.packs.schema import Lexicon
+from engine.packs.schema import Lexicon, SurfaceCategory
 from engine.spans import Span
 from engine.verification import patterns
 
@@ -56,15 +51,17 @@ def decompose(claim_text: str, claim_id: ClaimId, lexicon: Lexicon) -> tuple[Ele
     for match in patterns.TIME_PERIOD.finditer(claim_text):
         candidates.append(_Candidate(match.start(), match.end(), ElementKind.TIME_PERIOD))
 
-    for match in patterns.RISE.finditer(claim_text):
+    for match in patterns.finditer_any(claim_text, lexicon.surface_vocabulary[SurfaceCategory.RISE]):
         candidates.append(_Candidate(match.start(), match.end(), ElementKind.DIRECTION))
-    for match in patterns.FALL.finditer(claim_text):
+    for match in patterns.finditer_any(claim_text, lexicon.surface_vocabulary[SurfaceCategory.FALL]):
         candidates.append(_Candidate(match.start(), match.end(), ElementKind.DIRECTION))
 
     for match in patterns.NUMBER.finditer(claim_text):
         candidates.append(_Candidate(match.start(), match.end(), ElementKind.QUANTITY))
 
-    for match in patterns.PREDICTION.finditer(claim_text):
+    for match in patterns.finditer_any(
+        claim_text, lexicon.surface_vocabulary[SurfaceCategory.PREDICTION]
+    ):
         candidates.append(_Candidate(match.start(), match.end(), ElementKind.PREDICTION))
 
     # Out-of-scope fragments are elements too. They are decomposed, marked,

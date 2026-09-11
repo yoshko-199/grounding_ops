@@ -147,6 +147,7 @@ every claim in it.
 | `element_slot_order` | list of string | yes | The order element surfaces compose in |
 | `fuzzy_trigger_matching` | bool | no | Default `false`. See below |
 | `names` | list of string | no | Default empty. See below |
+| `surface_vocabulary` | table | yes | See below |
 | `derivation_triggers` | table | yes | See below |
 
 ### `composition_connectives`
@@ -178,6 +179,25 @@ the pack's own `jurisdiction_id`, which is matched case-sensitively.
 Leaving this empty is not an error. Rule 1 then never fires on this pack's
 jurisdiction by name, and resolution falls through to the `jurisdiction_hint`
 (rule 2) exactly as it did before this field existed.
+
+### `[lexicons.surface_vocabulary]`
+
+Three required keys — `rise`, `fall`, `prediction` — each a list of phrases
+in this language. Used by decomposition, the scope gate, element verdicts,
+and the robustness sweep to recognise direction and predictive claims,
+instead of a hardcoded English list. Matched word-boundary exact against the
+claim text, case-insensitively.
+
+An empty list for a key is a deliberate statement that this language has no
+such vocabulary, not an omission — the loader rejects a lexicon missing any
+of the three keys outright.
+
+```toml
+[lexicons.surface_vocabulary]
+rise = ["rose", "rise", "increased", "up", "higher"]
+fall = ["fell", "fall", "decreased", "down", "lower"]
+prediction = ["will", "expected to", "projected"]
+```
 
 ### `[lexicons.derivation_triggers]`
 

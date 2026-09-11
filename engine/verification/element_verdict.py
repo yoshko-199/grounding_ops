@@ -17,7 +17,7 @@ from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
 
 from engine.elements import Element, ElementKind, ElementStatus, ToleranceBand
-from engine.packs.schema import Measure
+from engine.packs.schema import Lexicon, Measure, SurfaceCategory
 from engine.verification import patterns, tolerance
 from engine.verification.retrieve import PullOutcome
 
@@ -34,6 +34,7 @@ def assign(
     measure: Measure | None,
     pull: PullOutcome | None,
     claim_text: str,
+    lexicon: Lexicon,
 ) -> ElementOutcome:
     """Assign a final status to one element."""
     if element.is_out_of_scope:
@@ -92,7 +93,7 @@ def assign(
         return _time_period(element, pull)
 
     if element.kind is ElementKind.DIRECTION:
-        return _direction(element, pull, claim_text)
+        return _direction(element, pull, claim_text, lexicon)
     if element.kind is ElementKind.SUPERLATIVE:
         return _superlative(element, pull)
     return _quantity(element, measure, pull)
@@ -123,11 +124,15 @@ def _out_of_scope(element: Element) -> ElementOutcome:
     )
 
 
-def _direction(element: Element, pull: PullOutcome, claim_text: str) -> ElementOutcome:
+def _direction(
+    element: Element, pull: PullOutcome, claim_text: str, lexicon: Lexicon
+) -> ElementOutcome:
     """§9.2 — binary on sign, at any magnitude."""
-    claimed_rise = bool(patterns.RISE.search(element.fragment))
-    if not claimed_rise and not patterns.FALL.search(element.fragment):
-        claimed_rise = bool(patterns.RISE.search(claim_text))
+    vocabulary = lexicon.surface_vocabulary
+    rise, fall = vocabulary[SurfaceCategory.RISE], vocabulary[SurfaceCategory.FALL]
+    claimed_rise = patterns.matches_any(element.fragment, rise)
+    if not claimed_rise and not patterns.matches_any(element.fragment, fall):
+        claimed_rise = patterns.matches_any(claim_text, rise)
 
     first = pull.observations[0].value
     last = pull.observations[-1].value

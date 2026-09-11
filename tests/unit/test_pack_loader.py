@@ -375,3 +375,33 @@ def test_names_defaults_to_empty_when_absent(tmp_path: pathlib.Path) -> None:
     lexicon = pack.lexicon(pack.header.languages[0])
     assert lexicon is not None
     assert lexicon.names == ()
+
+
+# -- interface v1.4: surface_vocabulary (rise/fall/prediction) --------------
+
+
+def test_pack_loads_the_surface_vocabulary() -> None:
+    from engine.packs.schema import SurfaceCategory
+
+    pack = load(FIXTURE)
+    lexicon = pack.lexicon(pack.header.languages[0])
+    assert lexicon is not None
+    assert "rose" in lexicon.surface_vocabulary[SurfaceCategory.RISE]
+    assert "fell" in lexicon.surface_vocabulary[SurfaceCategory.FALL]
+    assert "projected" in lexicon.surface_vocabulary[SurfaceCategory.PREDICTION]
+
+
+def test_surface_vocabulary_missing_a_category_is_rejected(tmp_path: pathlib.Path) -> None:
+    """Required, on the same footing as derivation_triggers: all three
+    categories must be keyed, an empty list only where declared explicitly."""
+    failures = _failures(tmp_path, "prediction = [", "removed_prediction_key = [")
+    assert "surface_vocabulary" in failures
+    assert "prediction" in failures
+
+
+def test_missing_surface_vocabulary_block_entirely_is_rejected(tmp_path: pathlib.Path) -> None:
+    path = _mutated(tmp_path, "[lexicons.surface_vocabulary]", "[lexicons.renamed_block]")
+    report = validate(path)
+    assert not report.admitted
+    failures = "\n".join(report.failures)
+    assert "surface_vocabulary" in failures

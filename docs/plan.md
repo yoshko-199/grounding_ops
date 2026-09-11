@@ -141,6 +141,24 @@ Closing it means a `names[]` field on the jurisdiction header, per declared lang
 
 ### 2.5 Language vocabularies outside the lexicon
 
+> **DONE — interface v1.4, landed on `claude/reload-skills-vlw05p`.**
+> `Lexicon.surface_vocabulary` (required, keyed `rise`/`fall`/`prediction`
+> via the new `SurfaceCategory` enum) replaces the hardcoded
+> `patterns.RISE`/`FALL`/`PREDICTION` regexes at all four call sites:
+> `decompose.decompose`, `scope_gate.classify` (now takes the whole lexicon
+> rather than two extracted trigger tuples, since it needed three more),
+> `element_verdict.assign`/`_direction`, and `pipeline._claimed_rise`. Both
+> shipped packs declare the same English words the old regexes did — moved,
+> not reinvented — except **"by 20XX"**, a bare future year, which needed a
+> digit wildcard no plain phrase list can express and had no test coverage;
+> dropped rather than faked, and recorded here as the one behavioural
+> narrowing this migration makes. `tests/unit/test_surface_vocabulary.py`
+> proves the fallback is actually gone, not just quiet, by declaring
+> vocabulary that shares no words with the old regexes and asserting the old
+> English words (e.g. "rose") do nothing once undeclared. Gate green at 508
+> tests, 6 groups, 3,360 shapes. Hebrew vocabulary for the Israel pack is
+> its own follow-up, needing a real bilingual source — not attempted here.
+
 Directional and predictive surface forms — *rose*, *fell*, *will*, *expected to* — currently live in the pipeline (`engine/verification/patterns.py`) rather than in a pack. They are properties of a language rather than of a jurisdiction, which is why they are not obviously pack data, and the fixture declares one language so nothing yet forces the question.
 
 A second language forces it. Interface §3.6 already declares derivation triggers and connectives per language; these belong in the same block. Until they are there, decomposition under-fires on any language but English, and §3.6's own warning applies — the failure is invisible from the output, because an under-decomposed claim looks exactly like a simpler claim.

@@ -258,3 +258,23 @@ fuzzy_trigger_matching = true
   "comparative-discharge" = ["more than", "less than", "twice as", "half as", "worse than", "better than"]
   "evaluative-discharge" = ["incompetence", "failure", "success", "mismanagement", "disaster", "triumph"]
   "scope-discharge" = ["all", "every", "always", "never", "nobody", "everyone", "none"]
+
+  [lexicons.surface_vocabulary]
+  # Migrated verbatim from the hardcoded English regexes in
+  # engine/verification/patterns.py (interface v1.4). "by 20XX" is dropped
+  # deliberately: it needed a digit wildcard the vocabulary format does not
+  # support, and no test exercised it -- see docs/plan.md §2.5 for the note.
+  rise = [
+    "rose", "rise", "risen", "rising", "rises", "increased", "increases",
+    "increasing", "grew", "grown", "grows", "climbed", "climbs", "doubled",
+    "tripled", "surged", "surges", "up", "higher",
+  ]
+  fall = [
+    "fell", "fall", "fallen", "falling", "falls", "decreased", "decreases",
+    "decreasing", "dropped", "drops", "declined", "declines", "halved",
+    "shrank", "shrunk", "plunged", "plunges", "down", "lower",
+  ]
+  prediction = [
+    "will", "shall", "going to", "expected to", "forecast to",
+    "forecasted to", "next year", "next month", "next quarter", "projected",
+  ]

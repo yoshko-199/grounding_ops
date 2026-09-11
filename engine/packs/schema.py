@@ -20,6 +20,26 @@ from engine.codes import JurisdictionCode, LanguageCode
 from engine.elements import DerivationOperation
 
 
+class SurfaceCategory(Enum):
+    """Interface v1.4, §3.6.  A closed set of language-general surface forms.
+
+    Not derivation operations — nothing here discharges into a derived
+    element. ``RISE``/``FALL`` decide an element's direction (§9.2) and scope
+    a claim's quantitative content (§4 Stage 1); ``PREDICTION`` decides
+    whether a claim is about the future with no past anchor. All three used
+    to be English-only regexes in :mod:`engine.verification.patterns`, which
+    is exactly the "pipeline hardcodes one language" failure interface §9.4
+    forbids for everything else. Closed and versioned with the interface for
+    the same reason :class:`DerivationOperation` is: an implementer able to
+    invent a fourth category could shape what the pipeline sees without a
+    pack-review trail.
+    """
+
+    RISE = "rise"
+    FALL = "fall"
+    PREDICTION = "prediction"
+
+
 class BreakKind(Enum):
     """Interface §3.5."""
 
@@ -133,6 +153,16 @@ class Lexicon:
     composition_connectives: tuple[str, ...]
     forbidden_connectives: tuple[str, ...]
     element_slot_order: tuple[str, ...]
+    # Interface v1.4. Required, on the same footing as `derivation_triggers`
+    # above and for the same reason: no default, so every direct construction
+    # (loader and test) states it explicitly rather than inheriting silence.
+    # Every language a pack declares must say what its rise/fall/prediction
+    # surface forms are, instead of the pipeline silently reaching for
+    # patterns.py's English list. Silent inheritance is exactly the failure
+    # this closes — a Hebrew claim decomposed against English direction words
+    # doesn't error, it just quietly finds none, which looks identical to a
+    # claim that had no direction in it.
+    surface_vocabulary: dict[SurfaceCategory, tuple[str, ...]]
     # Interface v1.2. Pack data, versioned and reviewable, on the same footing
     # as the trigger lists themselves (AC-3). Off unless a pack says otherwise.
     fuzzy_trigger_matching: bool = False

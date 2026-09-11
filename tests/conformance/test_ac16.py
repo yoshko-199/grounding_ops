@@ -135,7 +135,7 @@ def test_element_and_derived_element_are_distinct_types() -> None:
 
 from engine.codes import LanguageCode  # noqa: E402
 from engine.ids import ClaimId  # noqa: E402
-from engine.packs.schema import Lexicon  # noqa: E402
+from engine.packs.schema import Lexicon, SurfaceCategory  # noqa: E402
 from engine.verification.derive import (  # noqa: E402
     IMPLICATION_PREFIX,
     InadmissibleDerivation,
@@ -159,6 +159,7 @@ LEXICON = Lexicon(
     composition_connectives=("and", ", "),
     forbidden_connectives=("because", "due to"),
     element_slot_order=("time_period", "entity", "measure", "direction", "quantity"),
+    surface_vocabulary={category: () for category in SurfaceCategory},
 )
 
 
@@ -302,6 +303,7 @@ FUZZY_LEXICON = Lexicon(
     composition_connectives=("and", ", "),
     forbidden_connectives=("because", "due to", "therefore"),
     element_slot_order=("time_period", "entity", "measure", "direction", "quantity"),
+    surface_vocabulary={category: () for category in SurfaceCategory},
     fuzzy_trigger_matching=True,
 )
 

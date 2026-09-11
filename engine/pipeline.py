@@ -26,6 +26,7 @@ from engine.elements import (
 )
 from engine.ids import ClaimId
 from engine.packs.registry import PackRegistry
+from engine.packs.schema import Lexicon, SurfaceCategory
 from engine.render.artifact import Artifact, DiscardEntry, RoutingNote
 from engine.store.events import RetrievalStore
 from engine.verification import (
@@ -132,11 +133,7 @@ def verify(
         # inadmissible and must not reach Stage 3.
         raise ValueError("; ".join(anchoring_failures))
 
-    gate = scope_gate.classify(
-        claim_text,
-        lexicon.derivation_triggers.get(_evaluative(), ()),
-        lexicon.derivation_triggers.get(_causal(), ()),
-    )
+    gate = scope_gate.classify(claim_text, lexicon)
     if not gate.in_scope:
         return _out_of_scope(claim_text, claim_id, context, decision, gate, elements, lexicon)
 
@@ -154,7 +151,7 @@ def verify(
     assigned: list[Element] = []
     reasons: dict[str, str] = {}
     for element in elements:
-        outcome = element_verdict.assign(element, decision.measure, pull, claim_text)
+        outcome = element_verdict.assign(element, decision.measure, pull, claim_text, lexicon)
         assigned.append(outcome.element)
         reasons[outcome.element.id.value] = outcome.reason
 
@@ -172,7 +169,7 @@ def verify(
         sweep.run(
             decision.measure,
             pull.retrievals,
-            claimed_rise=_claimed_rise(claim_text),
+            claimed_rise=_claimed_rise(claim_text, lexicon),
             discarded=discarded,
         )
         if pull and pull.retrievals and decision.measure
@@ -272,24 +269,13 @@ def _as_answer(rationale: str) -> str:
     return f"{reason} {_ANSWER_NOT_FAILURE}"
 
 
-def _claimed_rise(claim_text: str) -> bool | None:
-    if patterns.RISE.search(claim_text):
+def _claimed_rise(claim_text: str, lexicon: Lexicon) -> bool | None:
+    vocabulary = lexicon.surface_vocabulary
+    if patterns.matches_any(claim_text, vocabulary[SurfaceCategory.RISE]):
         return True
-    if patterns.FALL.search(claim_text):
+    if patterns.matches_any(claim_text, vocabulary[SurfaceCategory.FALL]):
         return False
     return None
-
-
-def _causal():
-    from engine.elements import DerivationOperation
-
-    return DerivationOperation.CAUSAL_DISCHARGE
-
-
-def _evaluative():
-    from engine.elements import DerivationOperation
-
-    return DerivationOperation.EVALUATIVE_DISCHARGE
 
 
 def _unrouted(
@@ -340,7 +326,7 @@ def _out_of_scope(
     decision: route.RoutingDecision,
     gate: scope_gate.ScopeOutcome,
     elements: tuple[Element, ...],
-    lexicon,
+    lexicon: Lexicon,
 ) -> VerificationRun:
     """§4 Stage 1 — routed out with an explanation, and no verdict.
 
@@ -361,7 +347,7 @@ def _out_of_scope(
     assigned: list[Element] = []
     reasons: dict[str, str] = {}
     for element in elements:
-        outcome = element_verdict.assign(element, None, None, claim_text)
+        outcome = element_verdict.assign(element, None, None, claim_text, lexicon)
         assigned.append(outcome.element)
         reasons[outcome.element.id.value] = outcome.reason
 

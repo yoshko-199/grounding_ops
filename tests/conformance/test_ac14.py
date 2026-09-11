@@ -123,7 +123,7 @@ def test_registry_has_no_fallback_pack(registry: PackRegistry) -> None:
     assert registry.get(None) is None
 
 
-def test_a_custodian_with_no_adapter_is_unreachable_not_unverified() -> None:
+def test_a_custodian_with_no_adapter_is_unreachable_not_unverified(pack) -> None:
     """The collapse a real pack makes reachable for the first time.
 
     A pack may name a custodian this deployment has no client for. No fixture
@@ -150,11 +150,13 @@ def test_a_custodian_with_no_adapter_is_unreachable_not_unverified() -> None:
     class _Measure:
         name = "Some measure"
 
-    bound_but_unpulled = element_verdict.assign(element, _Measure(), None, "rose")
+    lexicon = pack.lexicon(LanguageCode("en"))
+
+    bound_but_unpulled = element_verdict.assign(element, _Measure(), None, "rose", lexicon)
     assert bound_but_unpulled.element.status is ElementStatus.UNREACHABLE
     assert "never consulted" in bound_but_unpulled.reason
 
-    unbound = element_verdict.assign(element, None, None, "rose")
+    unbound = element_verdict.assign(element, None, None, "rose", lexicon)
     assert unbound.element.status is ElementStatus.UNVERIFIED
     assert "no measure was bound" in unbound.reason
 

@@ -27,6 +27,7 @@ from engine.packs.schema import (
     Pack,
     RoutingRule,
     SeriesBreak,
+    SurfaceCategory,
 )
 
 REQUIRED_BLOCKS = ("header", "custodians", "measures", "routing_rules", "lexicons")
@@ -334,12 +335,25 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
     if not raw.get("element_slot_order"):
         failures.append(f"lexicon {language}: element_slot_order is required (§9.9.1)")
 
+    vocabulary_raw = raw.get("surface_vocabulary", {})
+    vocabulary: dict[SurfaceCategory, tuple[str, ...]] = {}
+    for category in SurfaceCategory:
+        if category.value not in vocabulary_raw:
+            failures.append(
+                f"lexicon {language}: surface_vocabulary is missing {category.value!r}. "
+                "All three categories must be keyed; declare an empty list explicitly "
+                "where this language genuinely has no such vocabulary"
+            )
+            continue
+        vocabulary[category] = tuple(vocabulary_raw[category.value])
+
     return Lexicon(
         language=language,
         derivation_triggers=triggers,
         composition_connectives=composition,
         forbidden_connectives=forbidden,
         element_slot_order=tuple(raw.get("element_slot_order", ())),
+        surface_vocabulary=vocabulary,
         fuzzy_trigger_matching=bool(raw.get("fuzzy_trigger_matching", False)),
         # Interface v1.3, optional. Absent means "no declared name in this
         # language", which is a conservative under-fire of §9.8.2 rule 1, not

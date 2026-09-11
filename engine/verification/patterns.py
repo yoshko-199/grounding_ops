@@ -1,16 +1,23 @@
 """Shared surface patterns for Stages 1 and 2.
 
-These are language-general shapes — numerals, date forms, directional verbs.
-Anything whose surface form is jurisdictional or language-specific lives in a
-pack lexicon (interface §3.6), not here, because §9.4 puts all jurisdictional
-knowledge in packs and none in the pipeline.
+These are language-general shapes — numerals, date forms. Anything whose
+surface form is language-specific, not just jurisdiction-specific, lives in a
+pack lexicon (interface §3.6) instead: directional (rise/fall) and predictive
+vocabulary moved there in v1.4, as :class:`~engine.packs.schema.SurfaceCategory`,
+because a pack that declared a language without a lexicon block for its own
+direction words under-fired on every claim in that language, silently.
 
-The English directional and predictive vocabularies below are the one place
-that boundary is uncomfortable, and it is worth naming rather than hiding:
-they are properties of a language, not of a jurisdiction, and the pack
-interface has no language-vocabulary block outside the lexicon's derivation
-triggers.  A second language would want them declared alongside those.  See
-the note in ``decompose.py``.
+What is still here and still English-shaped: ``NUMBER`` and ``TIME_PERIOD``
+recognise digit and date shapes, not words, and month names are the one
+partly-lexical exception inside ``TIME_PERIOD`` — not moved in this pass, and
+worth the same scrutiny this module's directional vocabulary just received.
+
+:func:`matches_any` and :func:`finditer_any` are the lexicon-vocabulary
+counterpart to the compiled patterns below: given the phrases a pack declares
+for one :class:`~engine.packs.schema.SurfaceCategory`, they find them in
+claim text with the same word-boundary exactness the old hardcoded regexes
+had, so moving a category out of this module changed *where* the phrases live,
+not *how* they are matched.
 """
 
 from __future__ import annotations
@@ -42,23 +49,30 @@ TIME_PERIOD: Final = re.compile(
 # actually covers the period a claim scopes itself to.
 YEAR: Final = re.compile(r"(?<!\d)(19|20)\d{2}(?!\d)")
 
-RISE: Final = re.compile(
-    r"\b(rose|rise|risen|rising|rises|increased|increases|increasing|grew|grown|grows|"
-    r"climbed|climbs|doubled|tripled|surged|surges|up|higher)\b",
-    re.I,
-)
+def matches_any(text: str, phrases: tuple[str, ...]) -> bool:
+    """Whether any lexicon-declared phrase occurs in ``text``.
 
-FALL: Final = re.compile(
-    r"\b(fell|fall|fallen|falling|falls|decreased|decreases|decreasing|dropped|drops|"
-    r"declined|declines|halved|shrank|shrunk|plunged|plunges|down|lower)\b",
-    re.I,
-)
+    Word-boundary exact and case-insensitive — the same exactness the old
+    ``RISE``/``FALL``/``PREDICTION`` compiled patterns had, now applied to
+    pack-declared phrases instead of a hardcoded English alternation.
+    """
+    return any(
+        re.search(rf"\b{re.escape(phrase)}\b", text, re.I) for phrase in phrases
+    )
 
-PREDICTION: Final = re.compile(
-    r"\b(will|shall|going\ to|expected\ to|forecast(?:ed)?\ to|next\ (?:year|month|quarter)|"
-    r"by\ 20\d{2}|projected)\b",
-    re.I | re.X,
-)
+
+def finditer_any(text: str, phrases: tuple[str, ...]) -> list[re.Match[str]]:
+    """Every match of every lexicon-declared phrase, unordered.
+
+    Callers that need span order sort the result — see
+    ``decompose._resolve_overlaps``, which already sorts its candidates and
+    would do so again regardless of the order matches arrive in here.
+    """
+    return [
+        match
+        for phrase in phrases
+        for match in re.finditer(rf"\b{re.escape(phrase)}\b", text, re.I)
+    ]
 
 # Tokens carrying no measure identity, dropped before measure binding so that
 # an incidental "the" does not count as evidence for a measure named "The
