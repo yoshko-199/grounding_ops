@@ -106,6 +106,30 @@ Where the two agree and the engine was wrong, the engine changed: §9.10 exists 
 
 ### 2.2b Only the first known confusion ever renders
 
+> **DONE — landed on `claude/reload-skills-vlw05p`.** `_measure_caveat` now
+> renders every declared confusion, joined into one caveat, instead of
+> `known_confusions[0]`. The dollar rate's citation now carries all four of
+> its declared confusions instead of one.
+>
+> The other direction this section named — selecting the confusion relevant
+> to the bound element — was considered and rejected for now, not merely
+> deferred. Reading what `known_confusions` actually contains in both packs:
+> most entries are general framing about the measure's *nature* ("not a
+> commercial rate", "nominal against real") with no reliable signal in claim
+> text at all — "nominal against real" shares no vocabulary with "prices rose
+> 3% last year", so keyword matching would drop it from every real claim,
+> which is a *worse* failure than the ordering bug this closes: a selection
+> rule that looks principled but quietly omits the caveat that applied is
+> harder for a reader to notice than "only the first one ever shows". A
+> minority of confusions do correlate with a claim shape —
+> `price_index`'s "month-over-month against year-over-year" is genuinely
+> about which window a claim invokes — but the pack schema has no field
+> distinguishing those from the general ones, and classifying every existing
+> confusion in both packs by guesswork now is exactly the kind of judgment
+> call this system exists to keep out of the pipeline. A real relevance rule
+> needs the pack schema to say, per confusion, which claim shapes it applies
+> to — genuine v1.5 work, not a rule this function can infer from prose.
+
 `retrieve._measure_caveat` takes `known_confusions[0]` and drops the rest, so a measure declaring four confusions surfaces one on its citations and hides three. The dollar rate declares four; readers see the first.
 
 Interface §3.3 records confusions because the measure is "routinely mistaken" for its neighbours and the mistake changes the answer while leaving the headline number recognisable. Surfacing one of four is a partial defence, and which one is decided by pack ordering rather than by relevance to the claim in hand.

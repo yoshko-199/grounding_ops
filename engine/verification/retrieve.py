@@ -250,6 +250,32 @@ def _measure_caveat(measure: Measure) -> str | None:
     Surfacing these is not decoration. The pack records them because the
     measure is "routinely mistaken" for its neighbours, and the mistake
     changes the answer while leaving the headline number recognisable.
+
+    Renders every declared confusion, not the first (docs/plan.md §2.2b).
+    That was the original behaviour, and it was wrong: a measure declaring
+    four confusions — the Bank of Israel's dollar rate does — surfaced one
+    in its citations and hid three, chosen by pack ordering rather than by
+    anything about the claim being checked.
+
+    The alternative considered was selecting the one relevant to the bound
+    element. Reading what `known_confusions` actually contains in both packs
+    ruled it out rather than merely delaying it: most declared confusions are
+    general framing about the measure's *nature* — "not a commercial rate",
+    "not a transaction rate", "nominal against real" — with no reliable
+    signal in the claim text at all. "Nominal against real" shares no
+    vocabulary with "prices rose 3% last year", so a real-instance claim
+    would never surface it under keyword matching, which is a *worse* failure
+    than today's ordering bug: a selection rule that looks principled but
+    quietly drops the caveat that actually applied is harder for a reader to
+    notice than "only the first one ever shows". A minority of confusions
+    *do* correlate with a claim shape — `price_index`'s "month-over-month
+    against year-over-year" is genuinely about which window a claim invokes —
+    but the pack schema has no field distinguishing those from the general
+    ones, and inventing a per-confusion relevance tag now means classifying
+    every existing confusion in both packs by guesswork, which is exactly the
+    kind of judgment call this system exists to keep out of the pipeline.
+    That classification is real pack-interface work — a v1.5 candidate — not
+    a rule this function can safely infer from prose.
     """
     real = [c for c in measure.known_confusions if c.strip().lower() != "none known"]
-    return f"Framing: {real[0]}" if real else None
+    return f"Framing: {' '.join(real)}" if real else None
