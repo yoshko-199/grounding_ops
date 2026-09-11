@@ -203,21 +203,27 @@ its TTL and the schema does not yet carry that finer relationship.
 ## cli/signoff.py
 
 ```
-PYTHONPATH=. python3 cli/signoff.py ACTION --reviewer NAME --proposed LABEL [options]
+PYTHONPATH=. python3 cli/signoff.py ACTION [options]
 ```
 
 ### Arguments
 
 | Argument | Required | Description |
 |---|---|---|
-| `ACTION` | yes | `confirm`, `amend`, or `reject` |
+| `ACTION` | yes | `list`, `confirm`, `amend`, or `reject` |
+
+`list` takes only `--store` and prints every claim whose current verdict is
+still proposed. The other three actions decide one claim's verdict, sourced
+either from the store (`--claim-id`) or given directly (`--proposed`).
 
 ### Options
 
 | Option | Required | Description |
 |---|---|---|
-| `--reviewer NAME` | yes | Who is signing off |
-| `--proposed LABEL` | yes | The label the pipeline proposed |
+| `--reviewer NAME` | yes, except for `list` | Who is signing off |
+| `--claim-id ID` | one of this or `--proposed` | Read the proposal from `--store` by claim id, and persist the decision back into it |
+| `--proposed LABEL` | one of this or `--claim-id` | The label given directly, with a placeholder rationale. Writes nothing anywhere |
+| `--store PATH` | no | `<repo>/.grounding/store.db` by default. Read by `list` and by `--claim-id`; ignored by `--proposed` |
 | `--label LABEL` | `amend` only | The amended label |
 | `--rationale TEXT` | `amend` only | Why the label changed. The gate refuses an amendment without it |
 
@@ -225,19 +231,38 @@ PYTHONPATH=. python3 cli/signoff.py ACTION --reviewer NAME --proposed LABEL [opt
 `false`, `indeterminate`, `insufficient_data`.
 
 There is deliberately no option that reaches an element status, a retrieval,
-the discard ledger, the flip table, or a pack.
+the discard ledger, the flip table, or a pack — with `--claim-id`, this holds
+for the persisted decision too: `engine.store.signoff_writer` writes the new
+`verdicts` row, and `engine.signoff` itself never gains an import path to the
+store (§9.1 rule 2, AC-10).
+
+### What persists, and how
+
+`verdicts` is append-only (§8: a validity window, not a boolean). Signing off
+does not edit the proposed row — it closes that row's window
+(`valid_until`) and inserts a new one carrying the decision, `label`,
+`state`, `confirmed_by`, `confirmed_at`, and, for an amendment,
+`amended_from_label` and `amendment_rationale`. `list` and `--claim-id` both
+read the row with `valid_until IS NULL`, so a claim already decided has none
+to load — a second sign-off attempt fails with
+`no open proposed verdict for claim id ...` rather than silently overwriting
+the first decision.
 
 ### Exit codes
 
 | Code | Meaning |
 |---|---|
-| `0` | The action was accepted |
-| `2` | The gate refused it, or `--label` was missing for `amend` |
+| `0` | The action was accepted (or, for `list`, the store was read) |
+| `2` | The gate refused it; `--label` was missing for `amend`; neither or both of `--claim-id`/`--proposed` were given; the store could not be opened; or `--claim-id` named a claim with no open proposed verdict |
 
 ### Output
 
-`state`, `label`, `reviewer`, `exportable`, plus `amended from` and
-`rationale` when the label changed.
+`list`: one line per proposed claim — id, label, and the start of its text —
+or `Nothing is awaiting review.`
+
+`confirm`/`amend`/`reject`: `state`, `label`, `reviewer`, `exportable`, plus
+`amended from` and `rationale` when the label changed, plus `claim id` when
+`--claim-id` was used.
 
 ---
 

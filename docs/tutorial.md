@@ -266,6 +266,13 @@ There is deliberately no flag on this command that could reach an element
 status, a retrieval, or the discard ledger. A reviewer can change what the
 system *concluded*; they cannot change what it *found*.
 
+This used `--proposed` to try the gate on a label typed by hand. The real
+workflow signs off a claim you actually verified, by the id `cli/verify.py`
+printed: `cli/signoff.py list` shows what is awaiting review, and
+`cli/signoff.py confirm --claim-id <ID> --reviewer "..."` reads the real
+rationale from the store and writes the decision back into it. See
+[how to sign off a verdict](how-to/sign-off-a-verdict.md).
+
 ---
 
 ## What you learned

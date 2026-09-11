@@ -103,9 +103,20 @@ def _load(store: RetrievalStore, claim_id: str) -> dict | None:
         "SELECT * FROM reconstructions WHERE claim_id = ? ORDER BY revision DESC LIMIT 1",
         (claim_id,),
     ).fetchone()
+    # The current verdict is the row with an open validity window
+    # (`valid_until IS NULL`) -- `engine.store.signoff_writer` closes a row's
+    # window the moment sign-off supersedes it, so at most one is ever open.
+    # `proposed_at` is *not* the right ordering key here: a signed-off row
+    # deliberately keeps the original proposal's `proposed_at` (§8 tracks
+    # when a label was first proposed, not when each later decision landed),
+    # so two rows for one claim can tie on it, and DESC-by-that-column would
+    # pick between them arbitrarily. Falling back to `rowid` covers a claim
+    # with no open row -- not reachable today, but a query that only works
+    # for the common case is worse than one that says which case it is in.
     verdict = conn.execute(
-        "SELECT * FROM verdicts WHERE claim_id = ? ORDER BY proposed_at DESC LIMIT 1",
-        (claim_id,),
+        "SELECT * FROM verdicts WHERE claim_id = ? AND valid_until IS NULL", (claim_id,)
+    ).fetchone() or conn.execute(
+        "SELECT * FROM verdicts WHERE claim_id = ? ORDER BY rowid DESC LIMIT 1", (claim_id,)
     ).fetchone()
 
     citations = conn.execute(

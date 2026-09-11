@@ -167,8 +167,14 @@ rather than skipped:
 3. **AC-6 has a harness, and it was built before the verification path.** The
    import-graph assertion that `engine.verification` cannot reach
    `engine.ingest.identity` landed in the first code commit.
-4. **Sign-off tooling exists** as `cli/signoff.py`, narrowed to the claim-level
-   label at the API boundary.
+4. **Sign-off tooling exists and now closes the loop.** `cli/signoff.py`
+   remains narrowed to the claim-level label at the API boundary, and can now
+   list what is awaiting review and sign off a specific claim by the id
+   `cli/verify.py` printed — `engine.store.signoff_writer` persists the
+   decision as a new, append-only `verdicts` row rather than editing the
+   proposed one, and `engine.signoff` itself gained no import path to the
+   store in the process (a dedicated test asserts that, the same way AC-6's
+   own test asserts it of identity).
 
 **What the structural properties cost, and where they are enforced.** Each is a
 property of a signature or an import graph rather than a rule to remember:
@@ -212,13 +218,19 @@ property of a signature or an import graph rather than a rule to remember:
   What is still missing: `reconstructions` and `verdicts` are append-only
   tables in the schema, but nothing yet re-verifies an *existing* claim by id
   to add a second revision — every `verify()` call today starts from claim
-  text and produces revision 1. Citations are persisted as an ordered list per
-  claim (a new `citations` table, not in the v0.5 spec's schema sketch, needed
-  because a retrieval can be reused across many claims inside its TTL and so
-  cannot carry a single owning claim as a column on itself) rather than linked
-  to the specific element each one verified — the pipeline binds one measure
-  per claim today, not per element, so that finer link has nothing to attach
-  to yet.
+  text and produces revision 1. That absence now reaches sign-off too:
+  `cli/signoff.py` reads and closes the single open `verdicts` row for a
+  claim, which is correct today because nothing yet produces a second one,
+  but it means "confirm this claim, then a retrieval expires and the figure
+  changes, then a reviewer sees the new proposal" is not a path that exists
+  yet either — the pipeline has no notion of re-verifying a claim it has
+  already seen. Citations are persisted as an ordered list per claim (a new
+  `citations` table, not in the v0.5 spec's schema sketch, needed because a
+  retrieval can be reused across many claims inside its TTL and so cannot
+  carry a single owning claim as a column on itself) rather than linked to
+  the specific element each one verified — the pipeline binds one measure per
+  claim today, not per element, so that finer link has nothing to attach to
+  yet.
 - **One real measure is admitted**, and no more. Every claim outside it returns
   Insufficient Data. This is 2.1.
 - **One real adapter exists**, for the Bank of Israel, wired only by the
