@@ -22,6 +22,8 @@ from engine.ingest.split import RawProvenance, split
 from engine.packs.registry import PackRegistry
 from engine.pipeline import verify
 from engine.store.events import RetrievalStore
+from engine.store.identity_writer import write_identity
+from engine.store.writer import write_pack, write_verification
 
 #: The repository root, so the default store is one database rather than one
 #: per working directory. Resolved the same way `scripts/harvest_corpus.py`
@@ -126,6 +128,16 @@ def main(argv: list[str] | None = None) -> int:
         adapters.update(build_live_custodians())
     try:
         run = verify(args.claim, context, registry, adapters, store)
+        # §8's other fifteen tables, written here rather than inside `verify`
+        # itself: persistence is composition-root bookkeeping, not a
+        # verification rule, and `engine.store.writer` is not importable from
+        # `engine.verification` for exactly that reason. Identity is written
+        # by a second, separate module — see its docstring for why one
+        # function among these would not do.
+        if run.decision and run.decision.pack:
+            write_pack(store, run.decision.pack)
+        write_verification(store, run)
+        write_identity(store, run.claim_id, identity)
     finally:
         # §8 keeps retrievals as events with a TTL. An event that dies with the
         # process is not an event, and the store's commits are only durable if
@@ -135,6 +147,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         payload = run.artifact.to_dict()
         payload["attribution"] = {"claimant": identity.name, "venue": identity.venue}
+        payload["claim_id"] = str(run.claim_id)
         print(json.dumps(payload, indent=2))
     else:
         print(run.artifact.render())
@@ -142,6 +155,7 @@ def main(argv: list[str] | None = None) -> int:
             print("ATTRIBUTION (recorded, never routed)")
             print(f"  claimant: {identity.name or '-'}")
             print(f"  venue:    {identity.venue or '-'}")
+        print(f"claim id: {run.claim_id}  (pass to cli/show.py to read this back)")
 
     return 0
 

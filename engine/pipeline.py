@@ -11,7 +11,7 @@ presentation by another route and never passes through here.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from engine.codes import LanguageCode
@@ -50,9 +50,34 @@ _CROSS_TIME = frozenset({ElementKind.DIRECTION, ElementKind.SUPERLATIVE})
 
 @dataclass(frozen=True, slots=True)
 class VerificationRun:
+    """What one call to :func:`verify` produces.
+
+    ``claim_id``, ``context`` and ``decision`` exist on this type so that a
+    composition-root persistence layer (`engine.store.writer`) can write the
+    remaining fifteen §8 tables without re-deriving anything `verify` already
+    computed. None of the three is new *information* reaching a new place:
+    ``context`` is exactly the :class:`~engine.context.ClaimContext` `verify`
+    was called with, ``decision`` is the routing decision already carried
+    into ``artifact.routing``, and ``claim_id`` is the identifier every
+    element on this run already holds. Note what is still absent —
+    :class:`~engine.ingest.identity.ClaimantIdentity` — because adding it here
+    would hand the pipeline's own return type an import path AC-6 forbids.
+
+    ``discard_reasons`` maps an element id to the reason text `verify` chose
+    for it, keyed the same way the artifact's own ledger construction already
+    is. The ledger (`artifact.ledger`) carries the reason as prose but not the
+    element id it belongs to — correct for rendering, where a `DiscardEntry`
+    is identified by its position, and insufficient for persistence, where
+    `discards.element_id` is a foreign key.
+    """
+
     artifact: Artifact
     elements: tuple[Element, ...]
     derived: tuple[DerivedElement, ...]
+    claim_id: ClaimId
+    context: ClaimContext
+    decision: "route.RoutingDecision | None" = None
+    discard_reasons: dict[str, str] = field(default_factory=dict)
 
 
 def verify(
@@ -74,7 +99,7 @@ def verify(
     # nothing derived. Interface §4.1 makes that Insufficient Data, and §7.5
     # requires it to render as an answer rather than as a failure.
     if pack is None:
-        return _unrouted(claim_text, decision)
+        return _unrouted(claim_text, claim_id, context, decision)
 
     lexicon = pack.lexicon(context.language) or pack.lexicon(LanguageCode("en"))
     if lexicon is None:
@@ -85,6 +110,8 @@ def verify(
         # a confident sentence about the wrong thing entirely.
         return _unrouted(
             claim_text,
+            claim_id,
+            context,
             decision,
             reason=(
                 f"the pack for {decision.jurisdiction} declares no lexicon for "
@@ -111,7 +138,7 @@ def verify(
         lexicon.derivation_triggers.get(_causal(), ()),
     )
     if not gate.in_scope:
-        return _out_of_scope(claim_text, claim_id, gate, elements, lexicon)
+        return _out_of_scope(claim_text, claim_id, context, decision, gate, elements, lexicon)
 
     pull = None
     if decision.routed and decision.custodian_id in adapters:
@@ -209,7 +236,10 @@ def verify(
         derived=derived_elements,
         unconfirmed_marker="UNCONFIRMED — proposed, not signed off",
     )
-    return VerificationRun(artifact, tuple(assigned), derived_elements)
+    return VerificationRun(
+        artifact, tuple(assigned), derived_elements,
+        claim_id=claim_id, context=context, decision=decision, discard_reasons=reasons,
+    )
 
 
 #: Routing failures whose rationale is written for a reader, and may
@@ -264,6 +294,8 @@ def _evaluative():
 
 def _unrouted(
     claim_text: str,
+    claim_id: ClaimId,
+    context: ClaimContext,
     decision: route.RoutingDecision,
     reason: str | None = None,
 ) -> VerificationRun:
@@ -295,12 +327,17 @@ def _unrouted(
         ),
         (),
         (),
+        claim_id=claim_id,
+        context=context,
+        decision=decision,
     )
 
 
 def _out_of_scope(
     claim_text: str,
     claim_id: ClaimId,
+    context: ClaimContext,
+    decision: route.RoutingDecision,
     gate: scope_gate.ScopeOutcome,
     elements: tuple[Element, ...],
     lexicon,
@@ -363,4 +400,8 @@ def _out_of_scope(
         ),
         tuple(assigned),
         derived_elements,
+        claim_id=claim_id,
+        context=context,
+        decision=decision,
+        discard_reasons=reasons,
     )

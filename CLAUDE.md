@@ -22,6 +22,7 @@ do:
 
 ```bash
 PYTHONPATH=. python3 cli/verify.py "CLAIM" --jurisdiction ZZ --packs packs/fixture
+PYTHONPATH=. python3 cli/show.py CLAIM_ID        # read a stored verification back, no re-verify
 PYTHONPATH=. python3 cli/signoff.py confirm --reviewer NAME --proposed accurate
 python3 scripts/harvest_corpus.py --dry-run      # resolves the root itself
 ```

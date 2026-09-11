@@ -131,6 +131,22 @@ class RetrievalStore:
     def close(self) -> None:
         self._db.close()
 
+    @property
+    def connection(self) -> sqlite3.Connection:
+        """The underlying connection, for composition-root persistence code.
+
+        Not for verification. Every module under `engine.verification` uses
+        only the typed methods above; the artifact writer at the composition
+        root (`engine.store.writer`, `engine.store.identity_writer`) needs the
+        raw connection because §8's other fifteen tables have no typed API of
+        their own, and duplicating one here would be schema drift waiting to
+        happen. Exposing the connection is safe precisely because nothing that
+        must not reach the store's *tables* is the thing this property
+        restricts — AC-14 and AC-10 restrict which modules import this class
+        at all, not which of its methods they call once they have.
+        """
+        return self._db
+
     def record(
         self,
         observation: Observation,

@@ -186,14 +186,39 @@ property of a signature or an import graph rather than a rule to remember:
 
 ### 3.1 What is not done
 
-- **Retrievals persist; nothing else does.** `--store` defaults to a durable
-  database under the repository root, so a retrieval outlives its process and
-  the TTL is honoured across runs — previously the CLI built an in-memory store
-  per invocation, which made §8's whole event model unobservable. Note the
-  limit: the TTL de-duplicates recorded events, not custodian fetches, because
-  `pull()` asks the adapter for the series before consulting the store. The
-  remaining fifteen tables in `engine/store/schema.sql` are still unwritten, so
-  a claim's elements, verdict, reconstruction and sweep die with the process.
+- **Retrievals persist, and now so does everything else `verify()` produces.**
+  `--store` defaults to a durable database under the repository root, so a
+  retrieval outlives its process and the TTL is honoured across runs —
+  previously the CLI built an in-memory store per invocation, which made §8's
+  whole event model unobservable. Note the limit: the TTL de-duplicates
+  recorded events, not custodian fetches, because `pull()` asks the adapter
+  for the series before consulting the store.
+
+  `engine/store/writer.py` and `engine/store/identity_writer.py` write the
+  remaining tables in `engine/store/schema.sql`: claims, `claim_context`,
+  elements, discards, derived elements, verdicts, reconstructions, sweeps,
+  routing_log, and the pack/custodian/measure reference rows. Both live
+  outside `engine.verification` on purpose — persisting an artifact is
+  composition-root bookkeeping, not a verification rule — and
+  `identity_writer` is a second module rather than one function among the
+  first, because it is the one that imports `engine.ingest.identity`;
+  `tests/conformance/test_store_writer_isolation.py` asserts neither is
+  reachable from verification, the same way AC-6 already asserts that of
+  identity itself. `cli/show.py` is the read side: it looks a claim up by the
+  id `cli/verify.py` now prints, and re-renders it from stored rows with no
+  retrieval and no re-routing — see
+  [how to read back a stored verification](how-to/read-back-a-stored-verification.md).
+
+  What is still missing: `reconstructions` and `verdicts` are append-only
+  tables in the schema, but nothing yet re-verifies an *existing* claim by id
+  to add a second revision — every `verify()` call today starts from claim
+  text and produces revision 1. Citations are persisted as an ordered list per
+  claim (a new `citations` table, not in the v0.5 spec's schema sketch, needed
+  because a retrieval can be reused across many claims inside its TTL and so
+  cannot carry a single owning claim as a column on itself) rather than linked
+  to the specific element each one verified — the pipeline binds one measure
+  per claim today, not per element, so that finer link has nothing to attach
+  to yet.
 - **One real measure is admitted**, and no more. Every claim outside it returns
   Insufficient Data. This is 2.1.
 - **One real adapter exists**, for the Bank of Israel, wired only by the

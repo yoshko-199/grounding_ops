@@ -170,7 +170,11 @@ def test_a_missing_lexicon_says_so_rather_than_echoing_the_routing_text() -> Non
     the pack declares no lexicon for its language — a confident sentence about
     the wrong thing.
     """
-    from engine.codes import JurisdictionCode
+    from datetime import date
+
+    from engine.codes import JurisdictionCode, LanguageCode
+    from engine.context import ClaimContext
+    from engine.ids import ClaimId
     from engine.pipeline import _unrouted
     from engine.verification.route import JurisdictionRule, RoutingDecision
 
@@ -179,8 +183,14 @@ def test_a_missing_lexicon_says_so_rather_than_echoing_the_routing_text() -> Non
         jurisdiction_rule=JurisdictionRule.CONTEXT_HINT,
         rationale="bound to Representative exchange rate, euro on the measure's name",
     )
+    context = ClaimContext(
+        jurisdiction=JurisdictionCode("IL"), language=LanguageCode("en"),
+        stated_at=date(2022, 1, 1),
+    )
     run = _unrouted(
         "a claim",
+        ClaimId(),
+        context,
         routed_fine,
         reason="the pack declares no lexicon for this language and no English fallback",
     )

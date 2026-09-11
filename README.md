@@ -10,7 +10,7 @@ One real measure is admitted — the Bank of Israel representative US dollar rat
 
 ```
 python3 scripts/check_spec.py                    # document consistency
-python3 -m pytest tests/                         # 384 tests, 18 criteria
+python3 -m pytest tests/                         # 459 tests, 18 criteria
 python3 scripts/fuzz_shapes.py --all             # every claim shape
 PYTHONPATH=. python3 cli/verify.py "prices rose over the last three years \
   due to governmental incompetence" --jurisdiction ZZ
@@ -76,7 +76,7 @@ It also converts §7's six prose principles into criteria that can fail a build.
 |---|---|
 | `engine/` | The pipeline. Stages 0–11, no network client, no source it did not get from a loaded pack |
 | `packs/` | Custodian packs — who is authoritative for which measure in which jurisdiction |
-| `cli/` | Verify a claim, and sign one off |
+| `cli/` | Verify a claim, read a stored one back, and sign one off |
 | `plugins/harvest/` | **Outside the engine.** Scans declared sources and accounts for candidate *claims*. It may reach the network; nothing in `engine/` may reach it |
 | `plugins/shapes/` | Claim-shape fuzzing. A harness, so it drives the engine — but nothing in `engine/` may reach it either |
 | `sources/` | Source declarations for the harvester. See [`sources/README.md`](sources/README.md) |

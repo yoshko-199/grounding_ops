@@ -1,10 +1,11 @@
 # CLI reference
 
-Three commands. All are stdlib-only and run from the repository root.
+Four commands. All are stdlib-only and run from the repository root.
 
 | Command | Purpose |
 |---|---|
 | [`cli/verify.py`](#cliverifypy) | Verify a claim against a loaded pack |
+| [`cli/show.py`](#clishowpy) | Read back a stored verification by claim id, without re-verifying it |
 | [`cli/signoff.py`](#clisignoffpy) | Confirm, amend, or reject a proposed verdict |
 | [`scripts/harvest_corpus.py`](#scriptsharvest_corpuspy) | Harvest candidate claims from declared sources |
 
@@ -154,6 +155,48 @@ Seen in the discard ledger.
 `comparative-discharge`, `evaluative-discharge`, `scope-discharge`.
 
 A closed set, versioned with the specification.
+
+---
+
+## cli/show.py
+
+```
+PYTHONPATH=. python3 cli/show.py CLAIM_ID [options]
+```
+
+Reads back a verification `cli/verify.py` already persisted — the claim, its
+elements, its discard ledger, its latest verdict, its latest reconstruction,
+its citations, its sweep rows, and its derived elements. Performs no
+retrieval and resolves no route; every value comes from the store.
+
+### Arguments
+
+| Argument | Required | Description |
+|---|---|---|
+| `CLAIM_ID` | yes | The id `cli/verify.py` printed after the run to read back |
+
+### Options
+
+| Option | Default | Description |
+|---|---|---|
+| `--store PATH` | `<repo>/.grounding/store.db` | The database to read. Must match the `--store` the claim was verified against — a claim verified into `:memory:` cannot be read back at all, because nothing survived the process |
+| `--json` | off | Emit the stored record as JSON instead of text |
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | The claim was found and printed |
+| `2` | The store could not be opened, or no claim with that id was ever recorded |
+
+### What it does not do
+
+`reconstructions` and `verdicts` are append-only tables (§4 Stage 7, §9.1);
+this command reads only the latest row of each, not the trajectory. There is
+no `--revision` flag yet. Citations are read back as an ordered list of what
+a claim's artifact cited — not linked to which specific element each
+retrieval verified, because a retrieval can be reused across claims inside
+its TTL and the schema does not yet carry that finer relationship.
 
 ---
 
