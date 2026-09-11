@@ -233,6 +233,11 @@ alternatives_considered = [
 
 [[lexicons]]
 language = "en"
+# A fictional demonym for a fictional jurisdiction, on the same footing as
+# ZZ's fictional custodians -- here to exercise interface v1.3's names[]
+# resolution path (§9.8.2 rule 1) without inventing anything about a real
+# country.
+names = ["Zeeland"]
 composition_connectives = ["and", ", ", "; ", "then"]
 forbidden_connectives = [
   "because", "because of", "due to", "caused by", "thanks to",

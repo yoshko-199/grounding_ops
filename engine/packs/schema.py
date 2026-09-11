@@ -136,6 +136,15 @@ class Lexicon:
     # Interface v1.2. Pack data, versioned and reviewable, on the same footing
     # as the trigger lists themselves (AC-3). Off unless a pack says otherwise.
     fuzzy_trigger_matching: bool = False
+    # Interface v1.3. The demonyms and short forms a claim in this language may
+    # use for the jurisdiction — "Israel", not just "IL". §9.8.2 rule 1 binds a
+    # claim that names its own jurisdiction "because it needs no provenance at
+    # all", but the rule was implemented against the header's bare code, which
+    # real claims almost never carry. Optional and empty by default: a pack
+    # that declares none simply keeps today's behaviour, falling through to
+    # rule 2 — conservative, not broken, the same failure mode §9.8.3 already
+    # accepts everywhere else a rule does not fire.
+    names: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

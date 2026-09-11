@@ -120,6 +120,19 @@ Whether anchoring attaches to the received text or the original utterance is unr
 
 ### 2.4 Pack-declared jurisdiction names
 
+> **DONE — interface v1.3, landed on `claude/reload-skills-vlw05p`.** `Lexicon`
+> gained an optional `names` field (empty by default, so every pack that
+> declares none sees exactly the pre-v1.3 behaviour), and
+> `engine/verification/route.py`'s `resolve_jurisdiction` checks it —
+> word-boundary exact, case-insensitive — after the code check and before
+> falling through to the context hint. `packs/live/il.toml` now declares
+> `names = ["Israel"]`; the ZZ fixture declares the fictional `["Zeeland"]`
+> for test coverage, in keeping with the fixture's own already-fictional
+> naming. Implemented as a field on `Lexicon` rather than literally on the
+> jurisdiction header the way the paragraph below first phrased it — Lexicon
+> is already the pack's per-language block (§3.6), and a name is exactly as
+> language-scoped as a derivation trigger is.
+
 Surfaced by implementation, not by review. §9.8.2's first resolution rule binds a claim that names its own jurisdiction — *"inflation in Israel"* — and it is the preferred rule precisely because it needs no provenance at all. But a pack declares a `jurisdiction_id` and no names, so the pipeline has nothing to match *"Israel"* against without embedding country knowledge, which §9.4 forbids outright.
 
 The implementation matches the jurisdiction **code** as a standalone token, which works for a fixture and almost never for a real claim. Rule 1 therefore rarely fires, and claims fall through to the `jurisdiction_hint`. The failure is conservative — an unresolved jurisdiction is Insufficient Data, never a guess — but it silently disables the one rule that needs no provenance, which is the opposite of the intended ordering.

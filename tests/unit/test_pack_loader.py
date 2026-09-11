@@ -351,3 +351,27 @@ def test_the_admitted_live_pack_carries_no_markup() -> None:
         pytest.skip("no live pack")
     report = validate(live)
     assert report.admitted, "\n".join(report.failures)
+
+
+# -- interface v1.3: lexicon-declared jurisdiction names --------------------
+
+
+def test_pack_loads_the_declared_names() -> None:
+    """The fixture declares one for exactly this coverage."""
+    pack = load(FIXTURE)
+    lexicon = pack.lexicon(pack.header.languages[0])
+    assert lexicon is not None
+    assert lexicon.names == ("Zeeland",)
+
+
+def test_names_defaults_to_empty_when_absent(tmp_path: pathlib.Path) -> None:
+    """Optional, and absence is not a validation failure — §9.8.2 rule 1
+    simply gets nothing to match beyond the code, which is the pre-v1.3
+    behaviour exactly."""
+    path = _mutated(tmp_path, 'names = ["Zeeland"]\n', "")
+    report = validate(path)
+    assert report.admitted, "\n".join(report.failures)
+    pack = load(path)
+    lexicon = pack.lexicon(pack.header.languages[0])
+    assert lexicon is not None
+    assert lexicon.names == ()

@@ -107,6 +107,52 @@ def test_rule_1_explicit_in_the_claim_text(registry: PackRegistry) -> None:
     assert decision.jurisdiction == JurisdictionCode("ZZ")
 
 
+def test_rule_1_fires_on_a_declared_name_not_only_the_code(registry: PackRegistry) -> None:
+    """Interface v1.3: a lexicon's ``names[]`` closes the gap docs/plan.md §2.4
+    describes -- real claims say "Israel", not "IL", and the code-only check
+    left rule 1 almost never firing. ZZ's fixture lexicon declares the
+    fictional demonym "Zeeland" for exactly this."""
+    context = ClaimContext(None, LanguageCode("en"), date(2022, 1, 1))
+    decision = route("prices in Zeeland rose in 2021", context, registry)
+    assert decision.jurisdiction_rule is JurisdictionRule.EXPLICIT_IN_TEXT
+    assert decision.jurisdiction == JurisdictionCode("ZZ")
+
+
+def test_a_declared_name_matches_case_insensitively(registry: PackRegistry) -> None:
+    """A claimant's capitalisation of a proper noun is not the maintainer's
+    to control, unlike the two-letter code, which stays case-sensitive."""
+    context = ClaimContext(None, LanguageCode("en"), date(2022, 1, 1))
+    decision = route("prices in zeeland rose in 2021", context, registry)
+    assert decision.jurisdiction == JurisdictionCode("ZZ")
+
+
+def test_a_declared_name_does_not_match_as_a_substring(registry: PackRegistry) -> None:
+    """Word-boundary exactness, the same guarantee the code check already has."""
+    context = ClaimContext(None, LanguageCode("en"), date(2022, 1, 1))
+    decision = route("prices in Newzeelandia rose in 2021", context, registry)
+    assert decision.jurisdiction_rule is not JurisdictionRule.EXPLICIT_IN_TEXT
+
+
+def test_a_pack_declaring_no_names_falls_through_to_the_context_hint(
+    tmp_path: pathlib.Path,
+) -> None:
+    """A pack that opts out of ``names[]`` sees exactly the pre-v1.3 behaviour:
+    no match in the text, so rule 2 decides."""
+    source = FIXTURE.read_text(encoding="utf-8").replace('names = ["Zeeland"]', "")
+    (tmp_path / "zz.toml").write_text(source, encoding="utf-8")
+    registry = PackRegistry.from_directory(tmp_path)
+    pack = registry.get(JurisdictionCode("ZZ"))
+    assert pack is not None and pack.lexicon(LanguageCode("en")).names == (), (
+        "the pack fixture used here must actually declare no names"
+    )
+
+    context = ClaimContext(JurisdictionCode("ZZ"), LanguageCode("en"), date(2022, 1, 1))
+    decision = route("prices in Zeeland rose in 2021", context, registry)
+    assert decision.jurisdiction_rule is JurisdictionRule.CONTEXT_HINT, (
+        "with no declared name, 'Zeeland' must not resolve rule 1"
+    )
+
+
 def test_rule_2_the_context_hint(registry: PackRegistry, context: ClaimContext) -> None:
     decision = route("prices rose in 2021", context, registry)
     assert decision.jurisdiction_rule is JurisdictionRule.CONTEXT_HINT

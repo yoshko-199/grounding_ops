@@ -341,6 +341,10 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
         forbidden_connectives=forbidden,
         element_slot_order=tuple(raw.get("element_slot_order", ())),
         fuzzy_trigger_matching=bool(raw.get("fuzzy_trigger_matching", False)),
+        # Interface v1.3, optional. Absent means "no declared name in this
+        # language", which is a conservative under-fire of §9.8.2 rule 1, not
+        # a validation failure — see the field's docstring in schema.py.
+        names=tuple(raw.get("names", ())),
     )
 
 

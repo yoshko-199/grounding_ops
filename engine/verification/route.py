@@ -76,17 +76,32 @@ def resolve_jurisdiction(
     names its own jurisdiction has told the pipeline what it needs without
     anything crossing the ingest boundary.
 
-    **A known limit.** Rule 1 is implemented by looking for a loaded pack's
-    jurisdiction *code* as a standalone token. Real claims say "Israel", not
-    "IL", and matching the name would require the pack to declare its names —
-    a header field the interface does not have. Until it does, rule 1 fires
-    only on claims that carry a code, and everything else falls through to
-    rule 2. The failure is conservative: an unresolved jurisdiction is
-    Insufficient Data, never a guess.
+    Real claims say "Israel", not "IL", so the code check alone used to leave
+    rule 1 firing on almost nothing — see the note this replaced, still true
+    of the code check by itself: matching only the bare code is exact but
+    rare. Interface v1.3 gives a lexicon an optional ``names`` field for
+    exactly this — the demonyms and short forms a claim in that language may
+    use — and a declared name is checked with the same word-boundary
+    exactness as the code, case-insensitively, because a proper noun a
+    claimant typed is not guaranteed to carry the maintainer's capitalisation.
+
+    A pack that declares no names for a language falls straight through to
+    rule 2, which is the pre-v1.3 behaviour exactly — nothing about this rule
+    changes for a pack that opts out, and the failure stays conservative: an
+    unresolved jurisdiction is Insufficient Data, never a guess.
     """
     for code in registry.jurisdictions:
         if re.search(rf"\b{re.escape(code)}\b", claim_text):
             return JurisdictionCode(code), JurisdictionRule.EXPLICIT_IN_TEXT
+
+    for code in registry.jurisdictions:
+        pack = registry.get(JurisdictionCode(code))
+        if pack is None:
+            continue
+        for lexicon in pack.lexicons:
+            for name in lexicon.names:
+                if re.search(rf"\b{re.escape(name)}\b", claim_text, re.I):
+                    return JurisdictionCode(code), JurisdictionRule.EXPLICIT_IN_TEXT
 
     if context.jurisdiction is not None and registry.covers(context.jurisdiction):
         return context.jurisdiction, JurisdictionRule.CONTEXT_HINT

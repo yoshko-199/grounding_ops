@@ -146,6 +146,7 @@ every claim in it.
 | `forbidden_connectives` | list of string | yes | Connectives that may never appear in a reconstruction |
 | `element_slot_order` | list of string | yes | The order element surfaces compose in |
 | `fuzzy_trigger_matching` | bool | no | Default `false`. See below |
+| `names` | list of string | no | Default empty. See below |
 | `derivation_triggers` | table | yes | See below |
 
 ### `composition_connectives`
@@ -163,6 +164,20 @@ or more: below that, ordinary words sit one edit from declared triggers.
 
 Spans are still taken from the position of the word in the claim, never from
 the declared phrase, so anchoring is unaffected.
+
+### `names`
+
+Demonyms and short forms a claim in this language may use for the
+jurisdiction — `["Israel"]`, not the code `"IL"`. Used by §9.8.2's first
+jurisdiction-resolution rule, which prefers a claim that names its own
+jurisdiction because doing so "needs no provenance at all". Matched
+word-boundary exact against the claim text, case-insensitively — a claimant's
+capitalisation of a proper noun is not something a maintainer controls, unlike
+the pack's own `jurisdiction_id`, which is matched case-sensitively.
+
+Leaving this empty is not an error. Rule 1 then never fires on this pack's
+jurisdiction by name, and resolution falls through to the `jurisdiction_hint`
+(rule 2) exactly as it did before this field existed.
 
 ### `[lexicons.derivation_triggers]`
 

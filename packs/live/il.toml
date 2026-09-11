@@ -322,6 +322,9 @@ currencies, which say nothing about the shekel.""",
 
 [[lexicons]]
 language = "en"
+# Not a custodian-sourced fact -- the country's own standard English name,
+# on the same footing as jurisdiction_id itself. Interface v1.3, §9.8.2 rule 1.
+names = ["Israel"]
 composition_connectives = ["and", ", ", "; ", "then"]
 forbidden_connectives = [
   "because", "because of", "due to", "caused by", "thanks to",
