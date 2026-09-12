@@ -138,6 +138,24 @@ Left as it is deliberately. It is pre-existing, affects every pack including the
 
 ### 2.3 Anchoring across paraphrase
 
+> **NARROWED, not resolved — see v0.5 §10 item 4's addendum for the full
+> argument.** The implementation holds exactly one text buffer per claim,
+> and `Span` resolves positionally against it and nothing else — so
+> "anchor to the original utterance" was never a choice between two
+> mechanisms the code already has; it is a request for a second reference
+> frame the type system does not contain, on the order of the §9.8.1
+> provenance split rather than a parameter to an existing function.
+> Mechanically, anchoring always attaches to the received text, because
+> today it is the only text there is, and that much was never actually
+> open. What remains open is one level up: whether §9.7.5's bar needs a
+> further qualifier when the received text is itself known to be someone
+> else's rendering of the claimant's words — and the system has no
+> provenance-of-text flag today to attach that qualifier to, even if the
+> presentation rule were decided. This is deliberately not resolved here;
+> a normative answer needs a decision on whether ingest should carry such a
+> flag at all, weighed against §9.4's resistance to any field that could
+> smuggle judgment into the pipeline.
+
 §9.7.1 anchors every derived element to a span of the original. Claims that arrive paraphrased — reported speech, translation, a transcribed screenshot — have spans that do not correspond to what the claimant actually said.
 
 Whether anchoring attaches to the received text or the original utterance is unresolved, and it is not a technicality: §9.7.5 forbids presenting a derived implication as something the claimant asserted, and under paraphrase the two can diverge enough to change who is responsible for the implication. Needs a decision before Stage 9 ships.
@@ -303,10 +321,28 @@ property of a signature or an import graph rather than a rule to remember:
   than about the record, which is the distinction §6.1 and AC-14 exist to
   keep. The engine therefore routes real claims to the Bank of Israel and
   verifies none of them, and says so in those words.
-- **Two gaps found while building** are recorded at 2.4 and 2.5: packs declare
-  no jurisdiction *names*, and directional vocabulary still sits in the pipeline
-  rather than in a lexicon. Both under-fire silently, which is why they are
-  written down rather than left to be rediscovered.
+- **Three gaps found while building are closed**: 2.4 (jurisdiction names),
+  2.5 (direction/prediction vocabulary), and 2.2b (only the first known
+  confusion rendering) — see each section for what landed and, for 2.2b, why
+  the more ambitious fix was rejected rather than attempted.
+- **Packaging.** `pip install -e .` now installs `grounding-verify`,
+  `grounding-show`, and `grounding-signoff` as console scripts (see
+  [installing the three CLIs](reference/cli.md#installing-the-three-clis)),
+  verified by an actual editable install in a scratch environment, not just a
+  parseable `pyproject.toml`. `scripts/*.py` deliberately stay
+  `python3 scripts/foo.py` — they already locate the repository root
+  themselves, for a development-tooling use case the trial-facing commands
+  do not share. A non-editable `pip install .` run from outside a clone is
+  not supported yet: packs and sources are read from the filesystem at
+  runtime, not packaged as installed data.
+- **Diagnostics.** `--diagnostics` on `cli/verify.py` prints the routing
+  rationale and, when a custodian could not be reached, the technical detail
+  behind it (`PullOutcome.diagnostic`) — after the artifact, never inside it.
+  Most of what this exposes was already visible another way (the `ROUTING`
+  section, or folded into the verdict for a contested or unmatched measure);
+  the genuine gap was a measure bound with no routing rule for it, whose
+  rationale was kept out of the reader-facing verdict on purpose and had
+  nowhere else to go before this flag existed.
 - **No source is admitted.** `plugins/harvest` runs, and the only declaration
   shipped is a fixture pointed at a reserved domain and disabled. The harvester
   is therefore exercised end to end and has collected nothing, which is the

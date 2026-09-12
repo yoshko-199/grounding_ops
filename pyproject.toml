@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "grounding-ops"
 version = "0.5.0"
@@ -7,6 +11,24 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
+
+# Console scripts for the three trial-facing commands only. Deliberately not
+# scripts/*.py: harvest_corpus.py, check_spec.py and fuzz_shapes.py are
+# development tooling that already locates the repository root itself
+# (harvest_corpus.py's own docstring: "needs no PYTHONPATH"), and turning
+# them into installed entry points would mean giving up that self-location
+# for a use case — a trial analyst verifying claims — that never calls them.
+[project.scripts]
+grounding-verify = "cli.verify:main"
+grounding-show = "cli.show:main"
+grounding-signoff = "cli.signoff:main"
+
+[tool.setuptools.packages.find]
+include = ["engine*", "cli*", "plugins*"]
+# tests/ carries __init__.py at every level (so pytest can import fixtures
+# across directories) and would otherwise be discovered as installable
+# packages by the default "*" include pattern.
+exclude = ["tests*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

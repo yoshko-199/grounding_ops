@@ -16,12 +16,36 @@ Two checking commands are also available:
 | `python3 scripts/check_spec.py [-v]` | Document consistency checks; `-v` lists what passed |
 | `python3 -m pytest tests/` | Conformance and unit suites |
 
+## Installing the three CLIs
+
+```
+pip install -e .
+```
+
+Installs `grounding-verify`, `grounding-show`, and `grounding-signoff` as
+console scripts, so a trial no longer needs `PYTHONPATH=.` — every usage
+block below shows both forms. `pip install -e .` (editable) is the supported
+mode: it points the console scripts at this checkout rather than copying it,
+so pack files, the default retrieval store path, and everything else that
+resolves relative to the repository keep working unchanged. A non-editable
+`pip install .` run from outside a clone would not carry `packs/` or
+`sources/` with it — those are read from the filesystem at runtime, not
+packaged as installed data — so it is not a supported way to run this
+tool yet.
+
+Deliberately not `scripts/harvest_corpus.py`, `scripts/check_spec.py`, or
+`scripts/fuzz_shapes.py`: they are development tooling that already locates
+the repository root itself, and installing them as entry points would only
+give up that self-location for a use case — a trial analyst verifying claims
+— that never calls them. Run those with `python3 scripts/<name>.py` either way.
+
 ---
 
 ## cli/verify.py
 
 ```
 PYTHONPATH=. python3 cli/verify.py CLAIM [options]
+grounding-verify CLAIM [options]              # after pip install -e .
 ```
 
 ### Arguments
@@ -43,6 +67,24 @@ PYTHONPATH=. python3 cli/verify.py CLAIM [options]
 | `--live` | off | Also wire adapters for custodians this deployment can reach. Off by default so a fixture answer is never mistaken for a real one |
 | `--claimant NAME` | none | Who said it. Displayed and stored, never routed |
 | `--venue NAME` | none | Where it was said. Displayed and stored, never routed |
+| `--diagnostics` | off | Print the routing rationale and, if a custodian was unreachable, the technical detail behind it. Printed *after* the artifact, never inside it — see below |
+
+### Diagnostics
+
+`--diagnostics` prints a section after the artifact (or a sibling
+`"diagnostics"` key in `--json` output): the routing rationale, always, and
+the pull's technical diagnostic when a custodian could not be reached — a
+status code, a timeout, an exception message.
+
+This is operator information, not part of the verified record, and it is
+kept structurally apart from `Artifact.render()` and `Artifact.to_dict()` for
+that reason: a proxy's status code has no business inside a citation, and a
+numeral inside one would fail AC-7's render-time scan if it ever reached the
+artifact. The routing rationale is *usually* visible another way already —
+in the `ROUTING` section for a routed claim, and folded into the verdict for
+a contested or unmatched measure — but a measure bound with no routing rule
+declared for it (a pack defect) keeps its rationale out of the reader-facing
+verdict on purpose, and had nowhere else to surface before this flag.
 
 ### What persists, and what does not
 
@@ -162,6 +204,7 @@ A closed set, versioned with the specification.
 
 ```
 PYTHONPATH=. python3 cli/show.py CLAIM_ID [options]
+grounding-show CLAIM_ID [options]             # after pip install -e .
 ```
 
 Reads back a verification `cli/verify.py` already persisted — the claim, its
@@ -204,6 +247,7 @@ its TTL and the schema does not yet carry that finer relationship.
 
 ```
 PYTHONPATH=. python3 cli/signoff.py ACTION [options]
+grounding-signoff ACTION [options]            # after pip install -e .
 ```
 
 ### Arguments

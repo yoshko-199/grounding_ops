@@ -23,6 +23,18 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install --upgrade pip pytest
 
+      # docs/plan.md's packaging milestone: pip install -e . should make a
+      # trial not depend on PYTHONPATH=.. Installing it here, and actually
+      # running the console script it produces, is what proves that rather
+      # than only that pyproject.toml parses.
+      - name: Editable install and console scripts
+        run: |
+          python -m pip install -e .
+          grounding-verify \
+            "prices rose over the last three years due to governmental incompetence" \
+            --jurisdiction ZZ --packs packs/fixture --store :memory: \
+            | grep -q "MISLEADING"
+
       - name: Specification consistency
         run: python3 scripts/check_spec.py -v
 

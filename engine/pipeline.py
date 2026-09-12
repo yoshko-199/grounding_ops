@@ -70,6 +70,14 @@ class VerificationRun:
     element id it belongs to — correct for rendering, where a `DiscardEntry`
     is identified by its position, and insufficient for persistence, where
     `discards.element_id` is a foreign key.
+
+    ``diagnostic`` is the technical text behind an unreachable custodian —
+    `PullOutcome.diagnostic` (`engine.verification.retrieve`), e.g. a proxy
+    status code or a timeout. It is never in the artifact: a numeral in it
+    would fail AC-7's render-time scan, and a proxy's status code has no
+    business appearing in a verified record regardless. It exists on this
+    type so an operator flag (`cli/verify.py --diagnostics`) can print it
+    *outside* the artifact, which is the only place it may ever surface.
     """
 
     artifact: Artifact
@@ -79,6 +87,7 @@ class VerificationRun:
     context: ClaimContext
     decision: "route.RoutingDecision | None" = None
     discard_reasons: dict[str, str] = field(default_factory=dict)
+    diagnostic: str = ""
 
 
 def verify(
@@ -236,6 +245,7 @@ def verify(
     return VerificationRun(
         artifact, tuple(assigned), derived_elements,
         claim_id=claim_id, context=context, decision=decision, discard_reasons=reasons,
+        diagnostic=pull.diagnostic if pull else "",
     )
 
 

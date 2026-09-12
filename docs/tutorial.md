@@ -6,7 +6,10 @@ verify part of one, decline to answer at all, and surface an implication it
 will not put a label on.
 
 You need Python 3.11 or later and a checkout of this repository. Nothing else —
-there are no dependencies to install.
+there are no dependencies to install. Every command below runs with
+`PYTHONPATH=.` and needs nothing more; if you would rather install the
+commands once and drop that prefix, see
+[installing the three CLIs](reference/cli.md#installing-the-three-clis).
 
 **About twenty minutes.** Type the commands rather than skimming them; each one
 shows you something the next one builds on.

@@ -78,6 +78,18 @@ def main(argv: list[str] | None = None) -> int:
     # Attribution is accepted, retained, and displayed -- and never routed.
     parser.add_argument("--claimant", default=None, help="who said it (never routed)")
     parser.add_argument("--venue", default=None, help="where it was said (never routed)")
+    parser.add_argument(
+        "--diagnostics",
+        action="store_true",
+        help=(
+            "also print the routing rationale and, if a custodian could not be "
+            "reached, the technical detail behind it. Printed separately, after "
+            "the artifact, never inside it: this is operator information about "
+            "why a pull failed technically -- a status code, a timeout -- not "
+            "part of the verified record, and a numeral in it must never be "
+            "mistaken for one AC-7 would have to account for"
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -148,6 +160,13 @@ def main(argv: list[str] | None = None) -> int:
         payload = run.artifact.to_dict()
         payload["attribution"] = {"claimant": identity.name, "venue": identity.venue}
         payload["claim_id"] = str(run.claim_id)
+        if args.diagnostics:
+            # A sibling key, not nested under anything `to_dict()` produced --
+            # this is not part of the artifact and must not be mistaken for it.
+            payload["diagnostics"] = {
+                "routing_rationale": run.decision.rationale if run.decision else "",
+                "pull_diagnostic": run.diagnostic,
+            }
         print(json.dumps(payload, indent=2))
     else:
         print(run.artifact.render())
@@ -156,6 +175,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  claimant: {identity.name or '-'}")
             print(f"  venue:    {identity.venue or '-'}")
         print(f"claim id: {run.claim_id}  (pass to cli/show.py to read this back)")
+        if args.diagnostics:
+            print()
+            print("DIAGNOSTICS (operator information, not part of the verified record)")
+            if run.decision and run.decision.rationale:
+                print(f"  routing:  {run.decision.rationale}")
+            else:
+                print("  routing:  (no routing rationale recorded)")
+            if run.diagnostic:
+                print(f"  pull:     {run.diagnostic}")
 
     return 0
 

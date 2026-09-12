@@ -10,11 +10,16 @@ One real measure is admitted — the Bank of Israel representative US dollar rat
 
 ```
 python3 scripts/check_spec.py                    # document consistency
-python3 -m pytest tests/                         # 513 tests, 18 criteria
+python3 -m pytest tests/                         # 524 tests, 18 criteria
 python3 scripts/fuzz_shapes.py --all             # every claim shape
 PYTHONPATH=. python3 cli/verify.py "prices rose over the last three years \
   due to governmental incompetence" --jurisdiction ZZ
 ```
+
+`pip install -e .` installs `grounding-verify`, `grounding-show`, and
+`grounding-signoff` as console scripts, so `grounding-verify "..." --jurisdiction ZZ`
+works without the `PYTHONPATH=.` prefix — see the
+[CLI reference](docs/reference/cli.md#installing-the-three-clis).
 
 ---
 
