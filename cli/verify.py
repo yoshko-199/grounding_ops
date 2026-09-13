@@ -42,6 +42,16 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 #: outside the repository while looking like it worked.
 DEFAULT_STORE = str(ROOT / ".grounding" / "store.db")
 
+#: Anchored to the root for the same reason `DEFAULT_STORE` is, and it became
+#: load-bearing the moment `pip install -e .` made `grounding-verify` runnable
+#: from anywhere. A cwd-relative default resolves to nothing outside the
+#: checkout, and an empty pack set is not an error the engine can report: no
+#: pack covers the jurisdiction, so every claim returns Insufficient Data —
+#: a confident answer produced because the packs were never found. Interface
+#: §3.6's rule applies to the operator surface too: under-firing invisibly is
+#: worse than declining visibly.
+DEFAULT_PACKS = str(ROOT / "packs" / "fixture")
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -49,7 +59,16 @@ def main(argv: list[str] | None = None) -> int:
         description="Verify a claim against an authoritative custodian of record.",
     )
     parser.add_argument("claim", help="the claim text to verify")
-    parser.add_argument("--packs", default="packs/fixture", help="directory of pack files")
+    parser.add_argument(
+        "--packs",
+        default=DEFAULT_PACKS,
+        help=(
+            "directory of pack files. Defaults to the fixture packs under the "
+            "repository root, so the installed command works from any working "
+            "directory; a relative path given here is relative to the working "
+            "directory, matching --store"
+        ),
+    )
     parser.add_argument("--jurisdiction", default=None, help="ISO jurisdiction code hint")
     parser.add_argument("--language", default="en", help="ISO 639 language code")
     parser.add_argument("--stated-at", default=None, help="ISO date the claim was made")
@@ -120,6 +139,29 @@ def main(argv: list[str] | None = None) -> int:
         )
     except InvalidCode as exc:
         print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    # A pack directory that is missing, or that holds no packs, is an operator
+    # error and not a verdict. Left unchecked it reaches the reader as
+    # Insufficient Data — "no jurisdiction could be established" — which is
+    # the correct sentence for a claim no pack covers and a badly misleading
+    # one for a claim whose packs were simply never loaded. The two are
+    # indistinguishable in the output, which is exactly the confusion §6.1
+    # keeps Unverified and Unreachable apart to avoid.
+    packs_dir = pathlib.Path(args.packs)
+    if not packs_dir.is_dir():
+        print(
+            f"error: no pack directory at {args.packs!r}. Nothing would be loaded, "
+            "and every claim would return Insufficient Data for the wrong reason",
+            file=sys.stderr,
+        )
+        return 2
+    if not any(packs_dir.glob("*.toml")):
+        print(
+            f"error: {args.packs!r} contains no pack files. Nothing would be loaded, "
+            "and every claim would return Insufficient Data for the wrong reason",
+            file=sys.stderr,
+        )
         return 2
 
     registry = PackRegistry.from_directory(args.packs)

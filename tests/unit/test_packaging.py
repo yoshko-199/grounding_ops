@@ -54,7 +54,57 @@ def test_console_scripts_only_cover_the_trial_facing_clis() -> None:
 
 def test_packages_find_excludes_tests() -> None:
     """tests/ carries __init__.py at every level for pytest's own benefit and
-    must not be picked up as an installable package alongside engine/cli/plugins."""
+    must not be picked up as an installable package alongside engine and cli."""
     data = _pyproject()
     find = data["tool"]["setuptools"]["packages"]["find"]
     assert "tests*" in find["exclude"]
+
+
+# -- the packs default, which packaging made load-bearing --------------------
+
+
+def test_the_default_packs_directory_is_anchored_to_the_repository() -> None:
+    """Console scripts made running from outside the checkout normal, and a
+    cwd-relative default resolves to nothing there. The failure was silent:
+    an empty registry renders "no jurisdiction could be established", which
+    is the right sentence for an uncovered claim and the wrong one for packs
+    that were never found."""
+    import cli.verify
+
+    default = pathlib.Path(cli.verify.DEFAULT_PACKS)
+    assert default.is_absolute()
+    assert default.is_relative_to(cli.verify.ROOT)
+    assert any(default.glob("*.toml")), "the anchored default points at no packs"
+
+
+def test_a_missing_packs_directory_exits_2_rather_than_verifying(tmp_path, capsys) -> None:
+    from cli.verify import main
+
+    code = main(
+        ["prices rose", "--jurisdiction", "ZZ", "--store", ":memory:",
+         "--packs", str(tmp_path / "not-there")]
+    )
+    assert code == 2
+    assert "no pack directory" in capsys.readouterr().err
+
+
+def test_an_empty_packs_directory_exits_2_rather_than_verifying(tmp_path, capsys) -> None:
+    from cli.verify import main
+
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    code = main(
+        ["prices rose", "--jurisdiction", "ZZ", "--store", ":memory:", "--packs", str(empty)]
+    )
+    assert code == 2
+    assert "no pack files" in capsys.readouterr().err
+
+
+def test_the_wheel_would_not_ship_the_network_capable_plugins_package() -> None:
+    """`plugins.harvest` is the one package in the tree that may reach the
+    network. No console script imports it, and the tooling that does runs
+    from a checkout, so it has no reason to be in an installed environment."""
+    data = _pyproject()
+    include = data["tool"]["setuptools"]["packages"]["find"]["include"]
+    assert include == ["engine*", "cli*"]
+    assert not any(pattern.startswith("plugins") for pattern in include)

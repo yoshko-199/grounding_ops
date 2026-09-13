@@ -109,9 +109,23 @@ def pull(
         try:
             linked = adapter.series(outcome.linked_series_used)
         except CustodianUnreachable as exc:
+            # The same split as the primary pull above, and for the same
+            # reason. This branch used to interpolate `exc` into `detail`,
+            # which is rendered: a custodian's message routinely carries a
+            # status code, `detail` becomes the element's discard reason, and
+            # a numeral in reason prose fails AC-7's render-time scan. The
+            # result was that a linked-series outage crashed the render
+            # instead of degrading the element to Unreachable — on the one
+            # path where a break makes the linked series load-bearing.
             return PullOutcome(
                 blocked_status=ElementStatus.UNREACHABLE,
-                detail=f"linked series unreachable: {exc}",
+                detail=(
+                    f"{custodian.name} could not be reached this session for the "
+                    "linked series spanning a break in this measure. This is "
+                    "distinct from the custodian having no figure for the element, "
+                    "and must not be reported as Unverified"
+                ),
+                diagnostic=str(exc),
             )
         if linked:
             observations = linked

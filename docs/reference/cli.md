@@ -26,12 +26,27 @@ Installs `grounding-verify`, `grounding-show`, and `grounding-signoff` as
 console scripts, so a trial no longer needs `PYTHONPATH=.` — every usage
 block below shows both forms. `pip install -e .` (editable) is the supported
 mode: it points the console scripts at this checkout rather than copying it,
-so pack files, the default retrieval store path, and everything else that
-resolves relative to the repository keep working unchanged. A non-editable
-`pip install .` run from outside a clone would not carry `packs/` or
-`sources/` with it — those are read from the filesystem at runtime, not
-packaged as installed data — so it is not a supported way to run this
-tool yet.
+so `--packs` and `--store` both default to paths under the repository and
+resolve the same way from any working directory.
+
+That is true because both defaults are anchored to the repository root, not
+because the working directory happens to be right. A relative path *given*
+to either flag is still resolved against the working directory, which is
+what typing one means. A `--packs` directory that does not exist, or that
+holds no pack files, exits `2` rather than loading nothing: an empty pack
+set is not an error the engine can report, because every claim then returns
+Insufficient Data, and "no pack covers this jurisdiction" is the right
+sentence for a genuinely uncovered claim and a badly misleading one for
+packs that were simply never found.
+
+A non-editable `pip install .` run from outside a clone would not carry
+`packs/` or `sources/` with it — those are read from the filesystem at
+runtime, not packaged as installed data — so it is not a supported way to
+run this tool yet. The wheel contains `engine` and `cli` only. `plugins` is
+deliberately excluded: `plugins.harvest` is the one network-capable package
+in the tree, no console script imports it, and the development tooling that
+does use it runs from a checkout and puts the repository root on `sys.path`
+itself.
 
 Deliberately not `scripts/harvest_corpus.py`, `scripts/check_spec.py`, or
 `scripts/fuzz_shapes.py`: they are development tooling that already locates
@@ -58,7 +73,7 @@ grounding-verify CLAIM [options]              # after pip install -e .
 
 | Option | Default | Description |
 |---|---|---|
-| `--packs DIR` | `packs/fixture` | Directory of pack TOML files |
+| `--packs DIR` | `<repo>/packs/fixture` | Directory of pack TOML files. Anchored to the repository root, like `--store`. A missing directory, or one with no pack files, exits `2` |
 | `--jurisdiction CODE` | none | Two-letter uppercase jurisdiction hint. Used only when the claim text does not resolve one itself |
 | `--language CODE` | `en` | ISO 639 code, lowercase. Selects the pack lexicon; falls back to English |
 | `--stated-at DATE` | today | ISO date the claim was made |
@@ -109,11 +124,14 @@ event instead. So a revision published inside the TTL supersedes the
 provisional print rather than being discarded, and a cross-time claim does not
 inherit the `not_applicable` continuity of an earlier level claim.
 
-**The artifact itself is not yet stored.** `engine/store/schema.sql` declares
-tables for claims, elements, verdicts, discards, reconstructions and sweeps,
-and nothing writes them. A verdict still dies with the process that produced
-it, so `element_set_hash` cannot yet be checked after the fact the way §8
-intends.
+**The artifact is stored too.** `engine/store/writer.py` writes claims,
+elements, discards, derived elements, verdicts, reconstructions, sweeps,
+citations and the routing log; `engine/store/identity_writer.py` writes
+claimant identity separately. [`cli/show.py`](#clishowpy) reads a claim back
+by id, which is what makes `element_set_hash` checkable after the fact the
+way §8 intends. What is still absent is re-verification: every run starts
+from claim text and produces revision 1, so the append-only
+`reconstructions` and `verdicts` tables never yet hold a second row.
 
 ### Case sensitivity of `--jurisdiction`
 
@@ -132,7 +150,7 @@ a route and get Insufficient Data, check the case of the code first.
 | Code | Meaning |
 |---|---|
 | `0` | An artifact was produced — **including Insufficient Data**, which is a verdict rather than a failure |
-| `2` | A malformed `--language` or `--stated-at`, or a `--store` that cannot be opened |
+| `2` | A malformed `--language` or `--stated-at`, a `--store` that cannot be opened, or a `--packs` directory that is missing or holds no packs |
 
 A malformed `--jurisdiction` does **not** exit non-zero; see above.
 

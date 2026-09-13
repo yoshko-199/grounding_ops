@@ -13,7 +13,9 @@ fail AC-7's render-time scan if it ever reached `Artifact.render()`.
 
 from __future__ import annotations
 
+import json
 import pathlib
+from dataclasses import replace
 from datetime import date
 
 from engine.codes import JurisdictionCode, LanguageCode
@@ -104,8 +106,6 @@ def test_diagnostics_flag_is_silent_by_default(tmp_path, capsys) -> None:
 
 
 def test_diagnostics_reach_the_json_payload_as_a_sibling_key(tmp_path, capsys) -> None:
-    import json
-
     from cli.verify import main
 
     assert main(
@@ -121,8 +121,6 @@ def test_diagnostics_reach_the_json_payload_as_a_sibling_key(tmp_path, capsys) -
 
 
 def test_json_payload_carries_no_diagnostics_key_by_default(tmp_path, capsys) -> None:
-    import json
-
     from cli.verify import main
 
     assert main(
@@ -130,3 +128,42 @@ def test_json_payload_carries_no_diagnostics_key_by_default(tmp_path, capsys) ->
     ) == 0
     payload = json.loads(capsys.readouterr().out)
     assert "diagnostics" not in payload
+
+
+# -- the AC-7 carve-out, pinned as policy rather than left as an accident ----
+
+
+def test_a_numeral_bearing_diagnostic_prints_but_never_enters_the_artifact() -> None:
+    """`--diagnostics` is the one output surface that does not go through
+    `engine/render/figures.py`'s numeral-sourcing scan, and it has to be: a
+    custodian's unreachable message is usually *only* interesting because of
+    the status code in it, and routing it through a scan that fails on
+    unsourced numerals would either strip it or crash.
+
+    That carve-out is safe exactly because the text never reaches the
+    artifact — so this asserts both halves at once, with a diagnostic that
+    does carry a numeral. Without this test, the exemption reads as an
+    oversight in an otherwise strictly enforced invariant rather than as the
+    deliberate split `PullOutcome.diagnostic` was introduced to make.
+    """
+    registry = PackRegistry.from_directory(PACKS)
+    store = RetrievalStore(":memory:")
+    try:
+        adapters = build_fixture_custodians()
+        adapters["zzstat"].unreachable = True
+        run = verify(CLAIM, _context(), registry, adapters, store)
+    finally:
+        store.close()
+
+    # The fixture's message carries no digits, so assert the property on a
+    # diagnostic that does -- the real BoI adapter reports status codes.
+    run = replace(run, diagnostic="custodian 'boi' unreachable: edge.boi.gov.il answered 403")
+
+    rendered = run.artifact.render()
+    assert "403" not in rendered, "a diagnostic numeral reached the artifact"
+
+    payload = run.artifact.to_dict()
+    assert "403" not in json.dumps(payload), "a diagnostic numeral reached the structured artifact"
+
+    # And it is still what the operator sees.
+    assert "403" in run.diagnostic

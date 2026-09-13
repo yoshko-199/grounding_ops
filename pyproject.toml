@@ -24,7 +24,14 @@ grounding-show = "cli.show:main"
 grounding-signoff = "cli.signoff:main"
 
 [tool.setuptools.packages.find]
-include = ["engine*", "cli*", "plugins*"]
+# Only what the installed commands import. `plugins` is deliberately absent:
+# `plugins.harvest` is the one network-capable package in the tree, the three
+# console scripts never import it, and an install that carries it puts code
+# that may reach the network into an environment that has no use for it. The
+# development tooling that does use it (`scripts/fuzz_shapes.py`,
+# `scripts/harvest_corpus.py`) runs from a checkout and puts the repository
+# root on `sys.path` itself, so nothing needs it installed.
+include = ["engine*", "cli*"]
 # tests/ carries __init__.py at every level (so pytest can import fixtures
 # across directories) and would otherwise be discovered as installable
 # packages by the default "*" include pattern.

@@ -329,7 +329,13 @@ property of a signature or an import graph rather than a rule to remember:
   `grounding-show`, and `grounding-signoff` as console scripts (see
   [installing the three CLIs](reference/cli.md#installing-the-three-clis)),
   verified by an actual editable install in a scratch environment, not just a
-  parseable `pyproject.toml`. `scripts/*.py` deliberately stay
+  parseable `pyproject.toml`. `--packs` is anchored to the repository root
+  like `--store`, and a missing or empty pack directory now exits `2`: a
+  cwd-relative default resolved to nothing outside the checkout, and an
+  empty pack set is not an error the engine can report — every claim returns
+  Insufficient Data, which reads as "no pack covers this" when the truth is
+  "the packs were never found". The wheel carries `engine` and `cli` only;
+  `plugins.harvest`, the one network-capable package, is not installed. `scripts/*.py` deliberately stay
   `python3 scripts/foo.py` — they already locate the repository root
   themselves, for a development-tooling use case the trial-facing commands
   do not share. A non-editable `pip install .` run from outside a clone is
