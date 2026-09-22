@@ -27,19 +27,23 @@ jobs:
       # trial not depend on PYTHONPATH=.. Installing it here, and actually
       # running the console script it produces, is what proves that rather
       # than only that pyproject.toml parses.
-      # `shell: bash` rather than the default `bash -e {0}`: it adds
-      # `-o pipefail`, so the console script's own exit status decides this
-      # step rather than grep's. Without it a command that failed while still
-      # printing the matched word would pass, which is the kind of check that
-      # looks like a check and is not one.
+      # The output is captured, not piped into grep. Capturing lets the
+      # console script's own exit status decide the step: under the default
+      # `bash -e`, a failing `output=$(...)` fails the step even if it printed
+      # the matched word. Piping into `grep -q` needed pipefail for that, and
+      # pipefail left the step one output-size change away from flaky: grep -q
+      # exits on its first match, so once the output outgrows a single stdout
+      # flush the script's last write can hit a closed pipe (BrokenPipeError,
+      # exit 120) and fail a step whose verdict was correct. A here-string
+      # feeds grep from a finished buffer instead.
       - name: Editable install and console scripts
-        shell: bash
         run: |
           python -m pip install -e .
-          grounding-verify \
+          output=$(grounding-verify \
             "prices rose over the last three years due to governmental incompetence" \
-            --jurisdiction ZZ --packs packs/fixture --store :memory: \
-            | grep -q "MISLEADING"
+            --jurisdiction ZZ --packs packs/fixture --store :memory:)
+          echo "$output"
+          grep -q "MISLEADING" <<<"$output"
 
       - name: Specification consistency
         run: python3 scripts/check_spec.py -v
