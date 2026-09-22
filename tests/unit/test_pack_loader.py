@@ -284,3 +284,124 @@ def test_invalid_pack_raises_rather_than_loading_partially(
     with pytest.raises(PackInvalid) as exc:
         load(path)
     assert exc.value.failures
+
+
+# ---------------------------------------------------------------------------
+# Markup.
+#
+# Pack prose is copied verbatim into plain-text artifacts — a measure's first
+# known confusion becomes the framing caveat on every citation line for that
+# measure. Emphasis markers therefore reach the reader as literal characters
+# beside a custodian's name.
+#
+# Found by review after the euro and sterling measures shipped with
+# "**Cross-derived, not sampled.**" as their first confusion.
+# ---------------------------------------------------------------------------
+
+
+def test_bold_markup_in_a_confusion_does_not_load(tmp_path: pathlib.Path) -> None:
+    failures = _failures(
+        tmp_path,
+        "Month-over-month change against year-over-year change.",
+        "**Month-over-month** change against year-over-year change.",
+    )
+    assert "contains markup" in failures
+    assert "'**'" in failures
+
+
+def test_backticks_in_a_definition_do_not_load(tmp_path: pathlib.Path) -> None:
+    failures = _failures(
+        tmp_path,
+        "Index of consumer prices against a fixed basket and base year.",
+        "Index of `consumer prices` against a fixed basket and base year.",
+    )
+    assert "contains markup" in failures
+
+
+def test_an_html_tag_in_a_mandate_does_not_load(tmp_path: pathlib.Path) -> None:
+    failures = _failures(
+        tmp_path,
+        "Fixture national statistical office",
+        "Fixture <b>national</b> statistical office",
+    )
+    assert "contains markup" in failures
+
+
+def test_the_markup_check_does_not_fire_on_ordinary_prose(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The control that keeps the guard from being a nuisance.
+
+    A single asterisk, an inequality, and an em dash are ordinary punctuation
+    in a custodian's own wording. Rejecting them would push pack authors toward
+    paraphrasing the source, which is the opposite of the point.
+    """
+    failures = _failures(
+        tmp_path,
+        "Month-over-month change against year-over-year change.",
+        "Month-over-month change* against year-over-year change — see <0 cases.",
+    )
+    assert "contains markup" not in failures
+
+
+def test_the_admitted_live_pack_carries_no_markup() -> None:
+    """The regression: this pack shipped with bold in it."""
+    live = pathlib.Path(__file__).resolve().parents[2] / "packs" / "live" / "il.toml"
+    if not live.exists():
+        pytest.skip("no live pack")
+    report = validate(live)
+    assert report.admitted, "\n".join(report.failures)
+
+
+# -- interface v1.3: lexicon-declared jurisdiction names --------------------
+
+
+def test_pack_loads_the_declared_names() -> None:
+    """The fixture declares one for exactly this coverage."""
+    pack = load(FIXTURE)
+    lexicon = pack.lexicon(pack.header.languages[0])
+    assert lexicon is not None
+    assert lexicon.names == ("Zeeland",)
+
+
+def test_names_defaults_to_empty_when_absent(tmp_path: pathlib.Path) -> None:
+    """Optional, and absence is not a validation failure — §9.8.2 rule 1
+    simply gets nothing to match beyond the code, which is the pre-v1.3
+    behaviour exactly."""
+    path = _mutated(tmp_path, 'names = ["Zeeland"]\n', "")
+    report = validate(path)
+    assert report.admitted, "\n".join(report.failures)
+    pack = load(path)
+    lexicon = pack.lexicon(pack.header.languages[0])
+    assert lexicon is not None
+    assert lexicon.names == ()
+
+
+# -- interface v1.4: surface_vocabulary (rise/fall/prediction) --------------
+
+
+def test_pack_loads_the_surface_vocabulary() -> None:
+    from engine.packs.schema import SurfaceCategory
+
+    pack = load(FIXTURE)
+    lexicon = pack.lexicon(pack.header.languages[0])
+    assert lexicon is not None
+    assert "rose" in lexicon.surface_vocabulary[SurfaceCategory.RISE]
+    assert "fell" in lexicon.surface_vocabulary[SurfaceCategory.FALL]
+    assert "projected" in lexicon.surface_vocabulary[SurfaceCategory.PREDICTION]
+
+
+def test_surface_vocabulary_missing_a_category_is_rejected(tmp_path: pathlib.Path) -> None:
+    """Required, on the same footing as derivation_triggers: all three
+    categories must be keyed, an empty list only where declared explicitly."""
+    failures = _failures(tmp_path, "prediction = [", "removed_prediction_key = [")
+    assert "surface_vocabulary" in failures
+    assert "prediction" in failures
+
+
+def test_missing_surface_vocabulary_block_entirely_is_rejected(tmp_path: pathlib.Path) -> None:
+    path = _mutated(tmp_path, "[lexicons.surface_vocabulary]", "[lexicons.renamed_block]")
+    report = validate(path)
+    assert not report.admitted
+    failures = "\n".join(report.failures)
+    assert "surface_vocabulary" in failures

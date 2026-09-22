@@ -155,6 +155,8 @@ def check_schema():
         "amendment_rationale", "amended_from_label", "source_attribution",
         "series_breaks", "derived_elements", "confirmed_by", "confirmed_at",
         "proposed_at", "continuity_status", "tolerance_band", "routing_log",
+        # a variable name (the string passed to verify()), not a schema column
+        "claim_text",
         # pack fields introduced by pack interface v1.1 §3.6, not columns
         "composition_connectives", "forbidden_connectives",
         "derivation_triggers", "element_slot_order", "fuzzy_trigger_matching",

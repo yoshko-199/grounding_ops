@@ -27,6 +27,7 @@ from engine.packs.schema import (
     Pack,
     RoutingRule,
     SeriesBreak,
+    SurfaceCategory,
 )
 
 REQUIRED_BLOCKS = ("header", "custodians", "measures", "routing_rules", "lexicons")
@@ -126,6 +127,7 @@ def _build(raw: dict[str, Any], path: str) -> tuple[Pack | None, list[str]]:
     if header is not None:
         failures.extend(_cross_checks(header, custodians, measures, routes, lexicons))
     failures.extend(_no_figures(raw))
+    failures.extend(_no_markup(raw))
 
     if failures or header is None:
         return None, failures
@@ -333,13 +335,30 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
     if not raw.get("element_slot_order"):
         failures.append(f"lexicon {language}: element_slot_order is required (§9.9.1)")
 
+    vocabulary_raw = raw.get("surface_vocabulary", {})
+    vocabulary: dict[SurfaceCategory, tuple[str, ...]] = {}
+    for category in SurfaceCategory:
+        if category.value not in vocabulary_raw:
+            failures.append(
+                f"lexicon {language}: surface_vocabulary is missing {category.value!r}. "
+                "All three categories must be keyed; declare an empty list explicitly "
+                "where this language genuinely has no such vocabulary"
+            )
+            continue
+        vocabulary[category] = tuple(vocabulary_raw[category.value])
+
     return Lexicon(
         language=language,
         derivation_triggers=triggers,
         composition_connectives=composition,
         forbidden_connectives=forbidden,
         element_slot_order=tuple(raw.get("element_slot_order", ())),
+        surface_vocabulary=vocabulary,
         fuzzy_trigger_matching=bool(raw.get("fuzzy_trigger_matching", False)),
+        # Interface v1.3, optional. Absent means "no declared name in this
+        # language", which is a conservative under-fire of §9.8.2 rule 1, not
+        # a validation failure — see the field's docstring in schema.py.
+        names=tuple(raw.get("names", ())),
     )
 
 
@@ -398,6 +417,44 @@ def _cross_checks(
     for extra in sorted(provided - declared):
         failures.append(f"lexicon declares language {extra!r}, absent from header.languages")
 
+    return failures
+
+
+# Markup a pack must not carry. Pack prose is copied verbatim into
+# plain-text artifacts — a measure's first known confusion becomes the framing
+# caveat on every citation line for that measure — so emphasis markers render
+# as literal characters beside a custodian's name. Caught at load rather than
+# left to a reviewer's eye, because it looks correct in the source file and
+# only looks wrong in the output.
+_MARKUP = re.compile(r"\*\*|__|`|<[a-z/][^>]*>", re.I)
+
+
+def _no_markup(raw: dict[str, Any]) -> list[str]:
+    """Pack text is rendered as plain text, so markup in it is a defect.
+
+    Found by review after the euro and sterling measures shipped with
+    ``**Cross-derived, not sampled.**`` as their first known confusion, which
+    put literal asterisks on every citation those measures produced.
+    """
+    failures: list[str] = []
+
+    def walk(node: Any, trail: str) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                walk(value, f"{trail}.{key}" if trail else key)
+        elif isinstance(node, (list, tuple)):
+            for i, value in enumerate(node):
+                walk(value, f"{trail}[{i}]")
+        elif isinstance(node, str):
+            match = _MARKUP.search(node)
+            if match:
+                failures.append(
+                    f"{trail} contains markup: {match.group(0)!r}. Pack text renders "
+                    "as plain text beside a custodian's name, so emphasis markers "
+                    "reach the reader as literal characters"
+                )
+
+    walk(raw, "")
     return failures
 
 

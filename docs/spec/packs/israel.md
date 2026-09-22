@@ -2,7 +2,7 @@
 
 **Pack version 0.1 (draft)** — reference instance of the [Custodian Pack Interface](../custodian-pack-interface.md).
 
-> **Status: one measure admitted, the rest not.** A minimal pack carrying the Bank of Israel's representative US dollar rate now loads and routes, and ships as [`packs/live/il.toml`](../../../packs/live/il.toml). Every field in it was taken from the Bank's own current publications, read and quoted rather than recalled.
+> **Status: three measures admitted, the rest not.** A narrow pack carrying the Bank of Israel's representative rates for the US dollar, the euro and sterling now loads and routes, and ships as [`packs/live/il.toml`](../../../packs/live/il.toml). Every field in it was taken from the Bank's own current publications, read and quoted rather than recalled.
 >
 > Everything else in this document remains **not admitted**. Fields marked **[confirm]** were not present in the source material and must be confirmed against the custodian's own current publication before they can load. They are deliberately left unfilled rather than filled from memory — a pack populated from recollection is the failure mode the whole spec exists to prevent, and it would be self-refuting to introduce it here.
 >
@@ -127,7 +127,7 @@ The `budget_executed` and `procurement` rows deserve attention: both produce bre
 
 ### What is now admitted
 
-[`packs/live/il.toml`](../../../packs/live/il.toml) loads. It declares one custodian (`boi`) and one measure (`fx_representative_usd`), and every blocker below is closed **for that measure only**:
+[`packs/live/il.toml`](../../../packs/live/il.toml) loads. It declares one custodian (`boi`) and three measures — `fx_representative_usd`, `fx_representative_eur`, `fx_representative_gbp` — and every blocker below is closed **for those three only**:
 
 | Blocker | How it was closed |
 |---|---|
@@ -142,7 +142,9 @@ The break register is worth dwelling on, because it was the blocker expected to 
 
 **Languages: English only.** Claims about Israel mostly arrive in Hebrew, there is no Hebrew lexicon, and directional vocabulary still sits in the pipeline rather than in a pack ([plan §2.5](../../plan.md#25-language-vocabularies-outside-the-lexicon)). Declaring Hebrew without a Hebrew lexicon would under-fire silently on every Hebrew claim; declaring English only makes Hebrew claims return Insufficient Data, which is visible.
 
-**It routes and verifies nothing.** No adapter exists for the Bank, and none can be written from an environment whose egress policy blocks `boi.org.il`. A covered claim binds the measure, names the custodian and its rationale, and returns Insufficient Data because the custodian was never reached. That is a better answer than "no jurisdiction could be established" and it is not a verified claim.
+**It routes and verifies nothing.** An adapter exists ([`engine/custodians/boi.py`](../../../engine/custodians/boi.py)), wired behind the CLI's `--live` flag, but it has never run against the live endpoint: the environment this was written in blocks the Bank's hosts. A covered claim binds the measure, names the custodian and its rationale, and returns Insufficient Data because the Bank could not be reached. That is a better answer than "no jurisdiction could be established" and it is still not a verified claim.
+
+**Declaring sibling measures is what surfaced the binder's scoring flaw.** A claim naming no currency now matches all three equally and routes nowhere, which is the measure-identity rule working. Getting there required fixing a bug no single-measure pack could expose: a claim token appearing in both a measure's name and its definition was scored twice, so a definition echoing its own name outranked a sibling that said the same thing once.
 
 ### Still blocked, for every other measure
 

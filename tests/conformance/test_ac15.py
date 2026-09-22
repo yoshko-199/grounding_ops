@@ -24,7 +24,7 @@ from engine.elements import (
 )
 from engine.figures import Figure
 from engine.ids import ClaimId, ElementId, RetrievalId
-from engine.packs.schema import Lexicon
+from engine.packs.schema import Lexicon, SurfaceCategory
 from engine.spans import Span
 from engine.verification.reconstruct import (
     ForbiddenConnective,
@@ -174,6 +174,7 @@ def test_composing_a_forbidden_connective_raises(element_set) -> None:
         composition_connectives=("because",),
         forbidden_connectives=("because",),
         element_slot_order=LEXICON.element_slot_order,
+        surface_vocabulary=LEXICON.surface_vocabulary,
     )
     # Two measures, so there is a join for the connective to occupy. A single
     # clause has no seam and would pass for the wrong reason.
@@ -308,4 +309,5 @@ LEXICON = Lexicon(
         "therefore", "which shows",
     ),
     element_slot_order=("time_period", "entity", "measure", "direction", "quantity"),
+    surface_vocabulary={category: () for category in SurfaceCategory},
 )

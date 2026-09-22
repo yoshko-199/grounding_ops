@@ -61,6 +61,25 @@ def bind(claim_text: str, pack: Pack) -> Binding:
     for measure in pack.measures:
         name_tokens = patterns.significant(measure.name) - {jurisdiction_token}
         definition_tokens = patterns.significant(measure.definition) - {jurisdiction_token}
+        # A token already counted as a name match does not count again as a
+        # definition match. Without this, a definition echoing its own name
+        # scores 4 for one word where a name alone scores 3 — so a measure whose
+        # definition happens to repeat its own title outranks a sibling that
+        # says the same thing once.
+        #
+        # That is not a hypothetical. The Bank of Israel pack declares three
+        # representative rates; the euro and sterling definitions say
+        # "computed from the representative rate of the US dollar", repeating
+        # "representative" from their own names, and the dollar's does not. On
+        # "the representative exchange rate", the two derived rates therefore
+        # outscored the directly-sampled one and the contested set reported
+        # the wrong pair — omitting the very rate the claim most plausibly
+        # meant.
+        #
+        # It also contradicts the weights' own rationale above: a name match is
+        # meant to be *stronger* evidence than a definition match, not
+        # stackable with it.
+        definition_tokens = definition_tokens - name_tokens
         score = (
             _NAME_WEIGHT * len(name_tokens & claim_tokens)
             + _DEFINITION_WEIGHT * len(definition_tokens & claim_tokens)
@@ -88,8 +107,12 @@ def bind(claim_text: str, pack: Pack) -> Binding:
             None,
             contested=tuple(leaders),
             rationale=(
-                "two declared measures match this claim equally well and measure "
-                "different things: "
+                # Phrased for any number of leaders. It read "two declared
+                # measures" while joining however many tied, so the first
+                # three-way tie rendered a sentence that contradicted its own
+                # list.
+                "more than one declared measure matches this claim equally well, "
+                "and they measure different things: "
                 + "; ".join(f"{m.name} ({m.custodian_id})" for m in leaders)
             ),
         )

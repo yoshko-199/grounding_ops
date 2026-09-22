@@ -23,6 +23,24 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install --upgrade pip pytest
 
+      # docs/plan.md's packaging milestone: pip install -e . should make a
+      # trial not depend on PYTHONPATH=.. Installing it here, and actually
+      # running the console script it produces, is what proves that rather
+      # than only that pyproject.toml parses.
+      # `shell: bash` rather than the default `bash -e {0}`: it adds
+      # `-o pipefail`, so the console script's own exit status decides this
+      # step rather than grep's. Without it a command that failed while still
+      # printing the matched word would pass, which is the kind of check that
+      # looks like a check and is not one.
+      - name: Editable install and console scripts
+        shell: bash
+        run: |
+          python -m pip install -e .
+          grounding-verify \
+            "prices rose over the last three years due to governmental incompetence" \
+            --jurisdiction ZZ --packs packs/fixture --store :memory: \
+            | grep -q "MISLEADING"
+
       - name: Specification consistency
         run: python3 scripts/check_spec.py -v
 

@@ -11,7 +11,7 @@ presentation by another route and never passes through here.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from engine.codes import LanguageCode
@@ -26,6 +26,7 @@ from engine.elements import (
 )
 from engine.ids import ClaimId
 from engine.packs.registry import PackRegistry
+from engine.packs.schema import Lexicon, SurfaceCategory
 from engine.render.artifact import Artifact, DiscardEntry, RoutingNote
 from engine.store.events import RetrievalStore
 from engine.verification import (
@@ -50,9 +51,43 @@ _CROSS_TIME = frozenset({ElementKind.DIRECTION, ElementKind.SUPERLATIVE})
 
 @dataclass(frozen=True, slots=True)
 class VerificationRun:
+    """What one call to :func:`verify` produces.
+
+    ``claim_id``, ``context`` and ``decision`` exist on this type so that a
+    composition-root persistence layer (`engine.store.writer`) can write the
+    remaining fifteen §8 tables without re-deriving anything `verify` already
+    computed. None of the three is new *information* reaching a new place:
+    ``context`` is exactly the :class:`~engine.context.ClaimContext` `verify`
+    was called with, ``decision`` is the routing decision already carried
+    into ``artifact.routing``, and ``claim_id`` is the identifier every
+    element on this run already holds. Note what is still absent —
+    :class:`~engine.ingest.identity.ClaimantIdentity` — because adding it here
+    would hand the pipeline's own return type an import path AC-6 forbids.
+
+    ``discard_reasons`` maps an element id to the reason text `verify` chose
+    for it, keyed the same way the artifact's own ledger construction already
+    is. The ledger (`artifact.ledger`) carries the reason as prose but not the
+    element id it belongs to — correct for rendering, where a `DiscardEntry`
+    is identified by its position, and insufficient for persistence, where
+    `discards.element_id` is a foreign key.
+
+    ``diagnostic`` is the technical text behind an unreachable custodian —
+    `PullOutcome.diagnostic` (`engine.verification.retrieve`), e.g. a proxy
+    status code or a timeout. It is never in the artifact: a numeral in it
+    would fail AC-7's render-time scan, and a proxy's status code has no
+    business appearing in a verified record regardless. It exists on this
+    type so an operator flag (`cli/verify.py --diagnostics`) can print it
+    *outside* the artifact, which is the only place it may ever surface.
+    """
+
     artifact: Artifact
     elements: tuple[Element, ...]
     derived: tuple[DerivedElement, ...]
+    claim_id: ClaimId
+    context: ClaimContext
+    decision: "route.RoutingDecision | None" = None
+    discard_reasons: dict[str, str] = field(default_factory=dict)
+    diagnostic: str = ""
 
 
 def verify(
@@ -74,11 +109,28 @@ def verify(
     # nothing derived. Interface §4.1 makes that Insufficient Data, and §7.5
     # requires it to render as an answer rather than as a failure.
     if pack is None:
-        return _unrouted(claim_text, decision)
+        return _unrouted(claim_text, claim_id, context, decision)
 
     lexicon = pack.lexicon(context.language) or pack.lexicon(LanguageCode("en"))
     if lexicon is None:
-        return _unrouted(claim_text, decision)
+        # Its own reason, not the routing decision's. Routing may well have
+        # *succeeded* by this point, so reusing its rationale made the verdict
+        # say "bound to <measure> on the measure's published name" for a claim
+        # that failed because the pack declares no lexicon for its language —
+        # a confident sentence about the wrong thing entirely.
+        return _unrouted(
+            claim_text,
+            claim_id,
+            context,
+            decision,
+            reason=(
+                f"the pack for {decision.jurisdiction} declares no lexicon for "
+                f"{context.language} and no English fallback, so the claim could not "
+                "be decomposed. Interface §3.6: a language declared without a lexicon "
+                "under-fires silently, and under-firing invisibly is worse than "
+                "declining visibly"
+            ),
+        )
 
     # Decomposition precedes the scope gate's branch. §9.10: a claim routed out
     # at Stage 1 still surfaces its derived elements, so the elements they are
@@ -90,13 +142,9 @@ def verify(
         # inadmissible and must not reach Stage 3.
         raise ValueError("; ".join(anchoring_failures))
 
-    gate = scope_gate.classify(
-        claim_text,
-        lexicon.derivation_triggers.get(_evaluative(), ()),
-        lexicon.derivation_triggers.get(_causal(), ()),
-    )
+    gate = scope_gate.classify(claim_text, lexicon)
     if not gate.in_scope:
-        return _out_of_scope(claim_text, claim_id, gate, elements, lexicon)
+        return _out_of_scope(claim_text, claim_id, context, decision, gate, elements, lexicon)
 
     pull = None
     if decision.routed and decision.custodian_id in adapters:
@@ -112,7 +160,7 @@ def verify(
     assigned: list[Element] = []
     reasons: dict[str, str] = {}
     for element in elements:
-        outcome = element_verdict.assign(element, decision.measure, pull, claim_text)
+        outcome = element_verdict.assign(element, decision.measure, pull, claim_text, lexicon)
         assigned.append(outcome.element)
         reasons[outcome.element.id.value] = outcome.reason
 
@@ -130,7 +178,7 @@ def verify(
         sweep.run(
             decision.measure,
             pull.retrievals,
-            claimed_rise=_claimed_rise(claim_text),
+            claimed_rise=_claimed_rise(claim_text, lexicon),
             discarded=discarded,
         )
         if pull and pull.retrievals and decision.measure
@@ -143,6 +191,23 @@ def verify(
         routed=decision.routed,
         reconstructs=rebuilt.does_reconstruct,
     )
+
+    # Where routing failed for a reason it can state, say that reason rather
+    # than the generic one. §6.1 requires a contested binding to be reported
+    # with "the definitional gap explained", and the gap is precisely what the
+    # routing rationale holds — which two measures matched equally well, and
+    # that they measure different things. Reporting "no custodian settles
+    # this" instead is true and useless: it hides that two custodians settle
+    # neighbouring questions and the claim did not say which it meant.
+    #
+    # The path existed and was never taken. No fixture claim produces a tie,
+    # so this surfaced only once a real pack declared sibling measures.
+    if (
+        decision.failure in _READER_FACING
+        and decision.rationale
+        and proposed.label is Verdict.INSUFFICIENT_DATA
+    ):
+        proposed = ProposedVerdict(proposed.label, _as_answer(decision.rationale))
 
     derived_elements = derive.derive(claim_text, claim_id, lexicon, tuple(assigned))
 
@@ -177,35 +242,73 @@ def verify(
         derived=derived_elements,
         unconfirmed_marker="UNCONFIRMED — proposed, not signed off",
     )
-    return VerificationRun(artifact, tuple(assigned), derived_elements)
+    return VerificationRun(
+        artifact, tuple(assigned), derived_elements,
+        claim_id=claim_id, context=context, decision=decision, discard_reasons=reasons,
+        diagnostic=pull.diagnostic if pull else "",
+    )
 
 
-def _claimed_rise(claim_text: str) -> bool | None:
-    if patterns.RISE.search(claim_text):
+#: Routing failures whose rationale is written for a reader, and may
+#: therefore replace the generic verdict sentence. The others are operator
+#: diagnostics: NO_ROUTING_RULE's rationale ends "a pack defect to be filed",
+#: which is true, useful in a log, and not something to hand someone asking
+#: whether a claim checks out. Same split as PullOutcome.diagnostic — the text
+#: stays on the decision, it just does not render.
+_READER_FACING = frozenset(
+    {
+        route.RoutingFailure.CONTESTED_BY_DEFINITION,
+        route.RoutingFailure.NO_MEASURE,
+    }
+)
+
+#: §7.5's framing, which every Insufficient Data rationale keeps whatever
+#: else it says. AC-5 caught this being dropped: replacing the generic
+#: rationale with a specific one explained the gap and stopped calling the
+#: outcome an answer, and the criterion is about exactly that framing.
+_ANSWER_NOT_FAILURE = "This is an answer, not a failure to produce one."
+
+
+def _as_answer(rationale: str) -> str:
+    """A specific reason, still framed as an answer rather than a failure."""
+    reason = rationale.strip()
+    if not reason.endswith("."):
+        reason += "."
+    if "not a failure" in reason:
+        return reason
+    return f"{reason} {_ANSWER_NOT_FAILURE}"
+
+
+def _claimed_rise(claim_text: str, lexicon: Lexicon) -> bool | None:
+    vocabulary = lexicon.surface_vocabulary
+    if patterns.matches_any(claim_text, vocabulary[SurfaceCategory.RISE]):
         return True
-    if patterns.FALL.search(claim_text):
+    if patterns.matches_any(claim_text, vocabulary[SurfaceCategory.FALL]):
         return False
     return None
 
 
-def _causal():
-    from engine.elements import DerivationOperation
+def _unrouted(
+    claim_text: str,
+    claim_id: ClaimId,
+    context: ClaimContext,
+    decision: route.RoutingDecision,
+    reason: str | None = None,
+) -> VerificationRun:
+    """Insufficient Data before a pack or a lexicon was available.
 
-    return DerivationOperation.CAUSAL_DISCHARGE
-
-
-def _evaluative():
-    from engine.elements import DerivationOperation
-
-    return DerivationOperation.EVALUATIVE_DISCHARGE
-
-
-def _unrouted(claim_text: str, decision: route.RoutingDecision) -> VerificationRun:
+    The rationale goes through :func:`_as_answer` like every other one. It did
+    not, and so the no-jurisdiction and no-pack verdicts silently lost §7.5's
+    framing — the exact regression AC-5 exists to catch, one function away
+    from the helper written to prevent it.
+    """
     verdict = ProposedVerdict(
         Verdict.INSUFFICIENT_DATA,
-        decision.rationale
-        or "No custodian of record settles this claim. This is an answer, not a "
-        "failure to produce one.",
+        _as_answer(
+            reason
+            or decision.rationale
+            or "No custodian of record settles this claim"
+        ),
     )
     return VerificationRun(
         Artifact(
@@ -220,15 +323,20 @@ def _unrouted(claim_text: str, decision: route.RoutingDecision) -> VerificationR
         ),
         (),
         (),
+        claim_id=claim_id,
+        context=context,
+        decision=decision,
     )
 
 
 def _out_of_scope(
     claim_text: str,
     claim_id: ClaimId,
+    context: ClaimContext,
+    decision: route.RoutingDecision,
     gate: scope_gate.ScopeOutcome,
     elements: tuple[Element, ...],
-    lexicon,
+    lexicon: Lexicon,
 ) -> VerificationRun:
     """§4 Stage 1 — routed out with an explanation, and no verdict.
 
@@ -249,7 +357,7 @@ def _out_of_scope(
     assigned: list[Element] = []
     reasons: dict[str, str] = {}
     for element in elements:
-        outcome = element_verdict.assign(element, None, None, claim_text)
+        outcome = element_verdict.assign(element, None, None, claim_text, lexicon)
         assigned.append(outcome.element)
         reasons[outcome.element.id.value] = outcome.reason
 
@@ -288,4 +396,8 @@ def _out_of_scope(
         ),
         tuple(assigned),
         derived_elements,
+        claim_id=claim_id,
+        context=context,
+        decision=decision,
+        discard_reasons=reasons,
     )

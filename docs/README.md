@@ -30,6 +30,7 @@ steps for one task.
 | Guide | For when you need to |
 |---|---|
 | [Verify a claim](how-to/verify-a-claim.md) | Check a specific claim, control the jurisdiction and date, or get machine-readable output |
+| [Read back a stored verification](how-to/read-back-a-stored-verification.md) | Look up a claim you verified earlier by its claim id, without re-verifying it |
 | [Add a jurisdiction pack](how-to/add-a-jurisdiction-pack.md) | Make the engine able to route claims in a country it does not yet cover |
 | [Declare a harvest source](how-to/declare-a-harvest-source.md) | Point the claim harvester at a publication and its accounts |
 | [Sign off a verdict](how-to/sign-off-a-verdict.md) | Confirm, amend, or reject a proposed claim-level verdict |

@@ -45,13 +45,16 @@ Everything that can be settled on paper is settled. What remains needs either so
 
 ### 2.1 Admit the Israel pack — the only thing blocking a trial
 
-**One measure is now admitted.** [`packs/live/il.toml`](../packs/live/il.toml) loads, declaring the Bank of Israel and its representative US dollar rate, with every field taken from the Bank's own current publications. A pack must be complete to load but need not be broad: one confirmed measure routes claims about that measure and returns Insufficient Data for everything else, which is the correct answer for everything else. Twenty half-filled measures would not load at all.
+**Three measures are now admitted.** [`packs/live/il.toml`](../packs/live/il.toml) loads, declaring the Bank of Israel and its representative rates for the US dollar, the euro and sterling, with every field taken from the Bank's own current publications. A pack must be complete to load but need not be broad: confirmed measures route claims about themselves and return Insufficient Data for everything else, which is the correct answer for everything else. Twenty half-filled measures would not load at all.
+
+An adapter for the Bank exists and is wired behind the CLI's `--live` flag. It has never run against the live endpoint, because this environment blocks the Bank's hosts, so a live run reports that the custodian could not be reached.
 
 Three things that only became visible by doing it:
 
 - **The hardest blocker was the easiest for this custodian.** Break registers were expected to be the worst of the seven. The Bank publishes a prose history of every change to how the representative rate is determined, with dates — a coverage change in 1986, methodology changes in 1990 and 1995, a sampling-window change in 2006. That *is* a break register; it simply had to be read. Whether other custodians publish the same is unknown and should not be assumed.
 - **Two entries in the draft were wrong in the plausible direction.** It recorded the rate as "fixed per date and not revised" with integrity annotation "none known". The Bank's own notes say the rates have no official or legal standing, are not published in the Official Gazette, are indicative rather than transactional, and that it reserves absolute discretion to change them without notice. Neither error was careless; both are what confident recollection produces, which is the whole argument for the rule.
 - **A real pack reaches a state no fixture can.** It names a custodian this deployment has no client for. That is recorded at 3.1 and was a live defect until admission surfaced it.
+- **Sibling measures reach another.** Declaring three rates from one custodian exposed a scoring flaw in the binder that no single-measure pack could: a claim token appearing in both a measure's name and its definition was counted twice, so a definition echoing its own name outranked a sibling that said the same thing once. The contested set named the wrong pair. Fixed at the root rather than by rewording the pack, so which siblings get reported depends on measure identity rather than on whose prose repeats a word.
 
 Seven blockers listed in [`spec/packs/israel.md`](spec/packs/israel.md#6-admission-blockers). Three are substantial research and **must be done with the custodians' publications open**, not from recollection — a pack populated from memory is the exact failure the spec exists to prevent, and it would be self-refuting to introduce it here:
 
@@ -101,13 +104,76 @@ The `israeli-fact-checker` skill's method (`SKILL.md` Step 1, `references/domain
 
 Where the two agree and the engine was wrong, the engine changed: §9.10 exists because the skill is right that an out-of-scope claim should not produce silence.
 
+### 2.2b Only the first known confusion ever renders
+
+> **DONE — landed on `claude/reload-skills-vlw05p`.** `_measure_caveat` now
+> renders every declared confusion, joined into one caveat, instead of
+> `known_confusions[0]`. The dollar rate's citation now carries all four of
+> its declared confusions instead of one.
+>
+> The other direction this section named — selecting the confusion relevant
+> to the bound element — was considered and rejected for now, not merely
+> deferred. Reading what `known_confusions` actually contains in both packs:
+> most entries are general framing about the measure's *nature* ("not a
+> commercial rate", "nominal against real") with no reliable signal in claim
+> text at all — "nominal against real" shares no vocabulary with "prices rose
+> 3% last year", so keyword matching would drop it from every real claim,
+> which is a *worse* failure than the ordering bug this closes: a selection
+> rule that looks principled but quietly omits the caveat that applied is
+> harder for a reader to notice than "only the first one ever shows". A
+> minority of confusions do correlate with a claim shape —
+> `price_index`'s "month-over-month against year-over-year" is genuinely
+> about which window a claim invokes — but the pack schema has no field
+> distinguishing those from the general ones, and classifying every existing
+> confusion in both packs by guesswork now is exactly the kind of judgment
+> call this system exists to keep out of the pipeline. A real relevance rule
+> needs the pack schema to say, per confusion, which claim shapes it applies
+> to — genuine v1.5 work, not a rule this function can infer from prose.
+
+`retrieve._measure_caveat` takes `known_confusions[0]` and drops the rest, so a measure declaring four confusions surfaces one on its citations and hides three. The dollar rate declares four; readers see the first.
+
+Interface §3.3 records confusions because the measure is "routinely mistaken" for its neighbours and the mistake changes the answer while leaving the headline number recognisable. Surfacing one of four is a partial defence, and which one is decided by pack ordering rather than by relevance to the claim in hand.
+
+Left as it is deliberately. It is pre-existing, affects every pack including the fixture, and joining all of them would lengthen every citation line in every artifact — a change worth making on its own evidence rather than as a side-effect of a review that happened to notice it. Two directions are open and they are not the same: render all of them, or select the one relevant to the bound element. The second is better and needs a rule for relevance that does not yet exist.
+
 ### 2.3 Anchoring across paraphrase
+
+> **NARROWED, not resolved — see v0.5 §10 item 4's addendum for the full
+> argument.** The implementation holds exactly one text buffer per claim,
+> and `Span` resolves positionally against it and nothing else — so
+> "anchor to the original utterance" was never a choice between two
+> mechanisms the code already has; it is a request for a second reference
+> frame the type system does not contain, on the order of the §9.8.1
+> provenance split rather than a parameter to an existing function.
+> Mechanically, anchoring always attaches to the received text, because
+> today it is the only text there is, and that much was never actually
+> open. What remains open is one level up: whether §9.7.5's bar needs a
+> further qualifier when the received text is itself known to be someone
+> else's rendering of the claimant's words — and the system has no
+> provenance-of-text flag today to attach that qualifier to, even if the
+> presentation rule were decided. This is deliberately not resolved here;
+> a normative answer needs a decision on whether ingest should carry such a
+> flag at all, weighed against §9.4's resistance to any field that could
+> smuggle judgment into the pipeline.
 
 §9.7.1 anchors every derived element to a span of the original. Claims that arrive paraphrased — reported speech, translation, a transcribed screenshot — have spans that do not correspond to what the claimant actually said.
 
 Whether anchoring attaches to the received text or the original utterance is unresolved, and it is not a technicality: §9.7.5 forbids presenting a derived implication as something the claimant asserted, and under paraphrase the two can diverge enough to change who is responsible for the implication. Needs a decision before Stage 9 ships.
 
 ### 2.4 Pack-declared jurisdiction names
+
+> **DONE — interface v1.3, landed on `claude/reload-skills-vlw05p`.** `Lexicon`
+> gained an optional `names` field (empty by default, so every pack that
+> declares none sees exactly the pre-v1.3 behaviour), and
+> `engine/verification/route.py`'s `resolve_jurisdiction` checks it —
+> word-boundary exact, case-insensitive — after the code check and before
+> falling through to the context hint. `packs/live/il.toml` now declares
+> `names = ["Israel"]`; the ZZ fixture declares the fictional `["Zeeland"]`
+> for test coverage, in keeping with the fixture's own already-fictional
+> naming. Implemented as a field on `Lexicon` rather than literally on the
+> jurisdiction header the way the paragraph below first phrased it — Lexicon
+> is already the pack's per-language block (§3.6), and a name is exactly as
+> language-scoped as a derivation trigger is.
 
 Surfaced by implementation, not by review. §9.8.2's first resolution rule binds a claim that names its own jurisdiction — *"inflation in Israel"* — and it is the preferred rule precisely because it needs no provenance at all. But a pack declares a `jurisdiction_id` and no names, so the pipeline has nothing to match *"Israel"* against without embedding country knowledge, which §9.4 forbids outright.
 
@@ -116,6 +182,24 @@ The implementation matches the jurisdiction **code** as a standalone token, whic
 Closing it means a `names[]` field on the jurisdiction header, per declared language: the demonyms and short forms a claim may use. Small, and it belongs to the pack rather than the pipeline.
 
 ### 2.5 Language vocabularies outside the lexicon
+
+> **DONE — interface v1.4, landed on `claude/reload-skills-vlw05p`.**
+> `Lexicon.surface_vocabulary` (required, keyed `rise`/`fall`/`prediction`
+> via the new `SurfaceCategory` enum) replaces the hardcoded
+> `patterns.RISE`/`FALL`/`PREDICTION` regexes at all four call sites:
+> `decompose.decompose`, `scope_gate.classify` (now takes the whole lexicon
+> rather than two extracted trigger tuples, since it needed three more),
+> `element_verdict.assign`/`_direction`, and `pipeline._claimed_rise`. Both
+> shipped packs declare the same English words the old regexes did — moved,
+> not reinvented — except **"by 20XX"**, a bare future year, which needed a
+> digit wildcard no plain phrase list can express and had no test coverage;
+> dropped rather than faked, and recorded here as the one behavioural
+> narrowing this migration makes. `tests/unit/test_surface_vocabulary.py`
+> proves the fallback is actually gone, not just quiet, by declaring
+> vocabulary that shares no words with the old regexes and asserting the old
+> English words (e.g. "rose") do nothing once undeclared. Gate green at 508
+> tests, 6 groups, 3,360 shapes. Hebrew vocabulary for the Israel pack is
+> its own follow-up, needing a real bilingual source — not attempted here.
 
 Directional and predictive surface forms — *rose*, *fell*, *will*, *expected to* — currently live in the pipeline (`engine/verification/patterns.py`) rather than in a pack. They are properties of a language rather than of a jurisdiction, which is why they are not obviously pack data, and the fixture declares one language so nothing yet forces the question.
 
@@ -156,8 +240,14 @@ rather than skipped:
 3. **AC-6 has a harness, and it was built before the verification path.** The
    import-graph assertion that `engine.verification` cannot reach
    `engine.ingest.identity` landed in the first code commit.
-4. **Sign-off tooling exists** as `cli/signoff.py`, narrowed to the claim-level
-   label at the API boundary.
+4. **Sign-off tooling exists and now closes the loop.** `cli/signoff.py`
+   remains narrowed to the claim-level label at the API boundary, and can now
+   list what is awaiting review and sign off a specific claim by the id
+   `cli/verify.py` printed — `engine.store.signoff_writer` persists the
+   decision as a new, append-only `verdicts` row rather than editing the
+   proposed one, and `engine.signoff` itself gained no import path to the
+   store in the process (a dedicated test asserts that, the same way AC-6's
+   own test asserts it of identity).
 
 **What the structural properties cost, and where they are enforced.** Each is a
 property of a signature or an import graph rather than a rule to remember:
@@ -175,11 +265,54 @@ property of a signature or an import graph rather than a rule to remember:
 
 ### 3.1 What is not done
 
+- **Retrievals persist, and now so does everything else `verify()` produces.**
+  `--store` defaults to a durable database under the repository root, so a
+  retrieval outlives its process and the TTL is honoured across runs —
+  previously the CLI built an in-memory store per invocation, which made §8's
+  whole event model unobservable. Note the limit: the TTL de-duplicates
+  recorded events, not custodian fetches, because `pull()` asks the adapter
+  for the series before consulting the store.
+
+  `engine/store/writer.py` and `engine/store/identity_writer.py` write the
+  remaining tables in `engine/store/schema.sql`: claims, `claim_context`,
+  elements, discards, derived elements, verdicts, reconstructions, sweeps,
+  routing_log, and the pack/custodian/measure reference rows. Both live
+  outside `engine.verification` on purpose — persisting an artifact is
+  composition-root bookkeeping, not a verification rule — and
+  `identity_writer` is a second module rather than one function among the
+  first, because it is the one that imports `engine.ingest.identity`;
+  `tests/conformance/test_store_writer_isolation.py` asserts neither is
+  reachable from verification, the same way AC-6 already asserts that of
+  identity itself. `cli/show.py` is the read side: it looks a claim up by the
+  id `cli/verify.py` now prints, and re-renders it from stored rows with no
+  retrieval and no re-routing — see
+  [how to read back a stored verification](how-to/read-back-a-stored-verification.md).
+
+  What is still missing: `reconstructions` and `verdicts` are append-only
+  tables in the schema, but nothing yet re-verifies an *existing* claim by id
+  to add a second revision — every `verify()` call today starts from claim
+  text and produces revision 1. That absence now reaches sign-off too:
+  `cli/signoff.py` reads and closes the single open `verdicts` row for a
+  claim, which is correct today because nothing yet produces a second one,
+  but it means "confirm this claim, then a retrieval expires and the figure
+  changes, then a reviewer sees the new proposal" is not a path that exists
+  yet either — the pipeline has no notion of re-verifying a claim it has
+  already seen. Citations are persisted as an ordered list per claim (a new
+  `citations` table, not in the v0.5 spec's schema sketch, needed because a
+  retrieval can be reused across many claims inside its TTL and so cannot
+  carry a single owning claim as a column on itself) rather than linked to
+  the specific element each one verified — the pipeline binds one measure per
+  claim today, not per element, so that finer link has nothing to attach to
+  yet.
 - **One real measure is admitted**, and no more. Every claim outside it returns
   Insufficient Data. This is 2.1.
-- **Custodian adapters are fixtures.** No network client exists, and AC-14
-  asserts none can be reached from the verification path. A real pack needs a
-  real adapter, written against that same contract.
+- **One real adapter exists**, for the Bank of Israel, wired only by the
+  composition root behind `--live`. AC-14 still holds: the verification path
+  reaches no network primitive by any static route, because nothing on it
+  imports the adapter. It has **never been run against the live endpoint** —
+  this environment blocks the Bank's hosts — so its tests prove the parsing
+  and the error taxonomy, not the URL. Every other custodian is still a
+  fixture or has no client at all.
 - **A pack can name a custodian this deployment has no client for**, which no
   fixture jurisdiction can produce, because fixtures ship their own adapters.
   Until admission surfaced it, that case reported as *Unverified* — asserting
@@ -188,10 +321,34 @@ property of a signature or an import graph rather than a rule to remember:
   than about the record, which is the distinction §6.1 and AC-14 exist to
   keep. The engine therefore routes real claims to the Bank of Israel and
   verifies none of them, and says so in those words.
-- **Two gaps found while building** are recorded at 2.4 and 2.5: packs declare
-  no jurisdiction *names*, and directional vocabulary still sits in the pipeline
-  rather than in a lexicon. Both under-fire silently, which is why they are
-  written down rather than left to be rediscovered.
+- **Three gaps found while building are closed**: 2.4 (jurisdiction names),
+  2.5 (direction/prediction vocabulary), and 2.2b (only the first known
+  confusion rendering) — see each section for what landed and, for 2.2b, why
+  the more ambitious fix was rejected rather than attempted.
+- **Packaging.** `pip install -e .` now installs `grounding-verify`,
+  `grounding-show`, and `grounding-signoff` as console scripts (see
+  [installing the three CLIs](reference/cli.md#installing-the-three-clis)),
+  verified by an actual editable install in a scratch environment, not just a
+  parseable `pyproject.toml`. `--packs` is anchored to the repository root
+  like `--store`, and a missing or empty pack directory now exits `2`: a
+  cwd-relative default resolved to nothing outside the checkout, and an
+  empty pack set is not an error the engine can report — every claim returns
+  Insufficient Data, which reads as "no pack covers this" when the truth is
+  "the packs were never found". The wheel carries `engine` and `cli` only;
+  `plugins.harvest`, the one network-capable package, is not installed. `scripts/*.py` deliberately stay
+  `python3 scripts/foo.py` — they already locate the repository root
+  themselves, for a development-tooling use case the trial-facing commands
+  do not share. A non-editable `pip install .` run from outside a clone is
+  not supported yet: packs and sources are read from the filesystem at
+  runtime, not packaged as installed data.
+- **Diagnostics.** `--diagnostics` on `cli/verify.py` prints the routing
+  rationale and, when a custodian could not be reached, the technical detail
+  behind it (`PullOutcome.diagnostic`) — after the artifact, never inside it.
+  Most of what this exposes was already visible another way (the `ROUTING`
+  section, or folded into the verdict for a contested or unmatched measure);
+  the genuine gap was a measure bound with no routing rule for it, whose
+  rationale was kept out of the reader-facing verdict on purpose and had
+  nowhere else to go before this flag existed.
 - **No source is admitted.** `plugins/harvest` runs, and the only declaration
   shipped is a fixture pointed at a reserved domain and disabled. The harvester
   is therefore exercised end to end and has collected nothing, which is the

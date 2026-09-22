@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import date
 
+from engine.codes import LanguageCode
 from engine.elements import ContinuityStatus, Element, ElementKind, ElementStatus
 from engine.ids import ClaimId, ElementId
 from engine.packs.schema import SeriesBreak, BreakKind
@@ -66,7 +67,7 @@ def test_element_across_an_unlinked_break_is_not_verified(pack, adapters, store)
     )
     assert pull.continuity.status is ContinuityStatus.UNLINKED_BREAK
 
-    outcome = element_verdict.assign(_element(), measure, pull, CLAIM)
+    outcome = element_verdict.assign(_element(), measure, pull, CLAIM, pack.lexicon(LanguageCode("en")))
     assert outcome.element.status is ElementStatus.CONTESTED_BY_DEFINITION
     assert outcome.element.status is not ElementStatus.VERIFIED
 

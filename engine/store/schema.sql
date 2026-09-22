@@ -196,6 +196,23 @@ CREATE TABLE IF NOT EXISTS series_breaks (
     linked_series_identifier TEXT
 );
 
+-- Which retrievals a specific claim's artifact cited, in order.
+--
+-- Not part of the v0.5 "rough schema" sketch, which the spec calls "a design
+-- sketch, not a migration" (§8). Added because `retrievals` rows are shared
+-- and reused across every claim that lands inside a series' TTL (§8, and the
+-- reuse logic in engine/verification/retrieve.py) — a single `element_id`
+-- column on `retrievals` would be overwritten by the next claim to reuse the
+-- row, corrupting the citation history of every claim before it. Citing is a
+-- many-to-many relationship between claims and retrievals, so it gets its
+-- own table rather than a column on either side.
+CREATE TABLE IF NOT EXISTS citations (
+    claim_id     TEXT NOT NULL REFERENCES claims(id),
+    retrieval_id TEXT NOT NULL REFERENCES retrievals(id),
+    position     INTEGER NOT NULL,
+    PRIMARY KEY (claim_id, position)
+);
+
 -- The flip table (§9.3). Each row cites the retrieval it was computed from,
 -- so the sweep is bound by §3 exactly as the primary verification is: a
 -- sweep cell computed from anything other than a recorded retrieval is a
