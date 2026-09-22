@@ -79,3 +79,44 @@ def test_an_empty_ledger_is_stated_rather_than_omitted(registry, context, adapte
     assert "DISCARD LEDGER" in rendered
     if not artifact.ledger:
         assert "Nothing was discarded" in rendered
+
+
+# -- the HTML page, one more emit path -----------------------------------------
+
+
+def _section(html_text: str, css_class: str) -> str:
+    start = html_text.index(f'<section class="{css_class}">')
+    return html_text[start:html_text.index("</section>", start)]
+
+
+def test_the_html_render_carries_the_ledger_in_the_same_section(
+    registry, context, adapters, store, pack
+):
+    """AC-1 lists "UI render" first. The page puts the reconstruction and the
+    ledger in one section, so neither can be lifted out without the other."""
+    artifact = _run(pack, registry, context, adapters, store).artifact
+    page = artifact.render_html()
+    frame = _section(page, "reconstruction-and-ledger")
+    assert 'class="reconstruction"' in frame
+    assert 'class="ledger"' in frame
+    for entry in artifact.ledger:
+        assert entry.fragment in frame
+        assert entry.reason.split(".")[0] in frame
+
+
+def test_the_html_ledger_is_never_behind_a_control(registry, context, adapters, store, pack):
+    """§7.1: not "behind a control, a second request, or a pagination boundary"."""
+    page = _run(pack, registry, context, adapters, store).artifact.render_html()
+    for control in ("<details", "<summary", " hidden", "display:none", "display: none",
+                    "aria-hidden", "<button", "<template"):
+        assert control not in page, f"{control!r} would put part of the artifact behind a control"
+
+
+def test_an_empty_html_ledger_is_stated_rather_than_omitted(registry, context, adapters, store):
+    from engine.pipeline import verify
+
+    artifact = verify("prices rose in 2021", context, registry, adapters, store).artifact
+    frame = _section(artifact.render_html(), "reconstruction-and-ledger")
+    assert "Discard ledger" in frame
+    if not artifact.ledger:
+        assert "Nothing was discarded." in frame

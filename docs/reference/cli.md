@@ -176,6 +176,17 @@ disappearing.
 | `DERIVED ELEMENTS` | Implications extracted from the claim, tagged and marked proposed |
 | `ATTRIBUTION` | Only when `--claimant` or `--venue` was given |
 
+The same sections, in the same order, have an HTML form:
+`Artifact.render_html()`, which the local web UI builds on (see
+[docs/plan.md §3.1](../plan.md#31-what-is-not-done)). It runs the text render
+first as its gate, so an unsourced figure fails the page exactly where it fails
+the text. The reconstruction and the discard ledger share one section, and no
+part of the artifact is behind a collapsible control. Every verdict label sits
+in the same container, with no per-label class a stylesheet could use to make
+Insufficient Data look like an error. The markup adds no numeral of its own,
+so there are no counts and no numbered citations. Citations are addressed by
+retrieval id.
+
 ### Verdict labels
 
 | Label | Meaning |

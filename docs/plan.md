@@ -265,6 +265,19 @@ property of a signature or an import graph rather than a rule to remember:
 
 ### 3.1 What is not done
 
+- **A local web UI is in progress.** It implements the reader and reviewer
+  screens designed on the UIX canvas. The first piece is
+  `Artifact.render_html()`: an HTML form of the artifact that runs the text
+  render first as its gate. It is held to AC-1, AC-2, AC-5 and AC-7 by
+  assertions of its own in the conformance files for those criteria. Next
+  come a stdlib `http.server` app at the composition root, and the sign-off
+  queue.
+
+  Writing it surfaced two design rules the canvas had broken. A count such as
+  "four of ten alternatives flip" is a numeral nobody retrieved, so it fails
+  §3 as surely as an invented statistic. And Insufficient Data must share the
+  verdict container of every other label rather than get a box of its own.
+
 - **Retrievals persist, and now so does everything else `verify()` produces.**
   `--store` defaults to a durable database under the repository root, so a
   retrieval outlives its process and the TTL is honoured across runs —

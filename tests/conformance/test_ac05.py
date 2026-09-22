@@ -199,3 +199,43 @@ def test_a_missing_lexicon_says_so_rather_than_echoing_the_routing_text() -> Non
     assert "lexicon" in rationale
     assert "bound to" not in rationale
     assert "not a failure" in rationale
+
+
+# -- the HTML page ------------------------------------------------------------
+
+
+def _verdict_markup(artifact) -> str:
+    page = artifact.render_html()
+    start = page.index('<section class="verdict">')
+    section = page[start:page.index("</section>", start)]
+    # Strip the two things that are allowed to differ -- the label and the
+    # rationale text -- and whatever cap line a verdict carries, leaving only
+    # structure to compare.
+    section = re.sub(r'(<p class="verdict-label">)[^<]*', r"\1", section)
+    section = re.sub(r'(<p class="verdict-rationale">)[^<]*', r"\1", section)
+    return re.sub(r'\n<p class="verdict-cap">[^<]*</p>', "", section)
+
+
+def test_insufficient_data_uses_the_same_html_container(
+    registry, context, adapters, store
+) -> None:
+    """Same container, same hierarchy: the markup around the label is
+    byte-identical, so no per-label class exists for a stylesheet to key on."""
+    insufficient = _render(INSUFFICIENT, context, registry, adapters, store)
+    ordinary = _render(ORDINARY, context, registry, adapters, store)
+    assert insufficient.verdict.label is Verdict.INSUFFICIENT_DATA
+    assert _verdict_markup(insufficient) == _verdict_markup(ordinary)
+
+
+def test_insufficient_data_html_carries_no_error_styling(
+    registry, context, adapters, store
+) -> None:
+    page = _render(INSUFFICIENT, context, registry, adapters, store).render_html()
+    for marker in ("error", "warning", "failed", "alert", "danger", "⚠", "✗", "retry"):
+        assert marker not in page.lower(), f"{marker!r} styles an answer as a failure"
+
+
+def test_the_html_verdict_follows_the_ledger(registry, context, adapters, store) -> None:
+    for claim in (INSUFFICIENT, ORDINARY):
+        page = _render(claim, context, registry, adapters, store).render_html()
+        assert page.index('class="ledger') < page.index('<section class="verdict">')

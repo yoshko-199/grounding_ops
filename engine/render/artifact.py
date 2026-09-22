@@ -19,6 +19,7 @@ wanted."
 
 from __future__ import annotations
 
+import html
 from dataclasses import dataclass, field
 
 from engine.elements import DerivedElement
@@ -162,6 +163,146 @@ class Artifact:
             ],
             "unconfirmed": bool(self.unconfirmed_marker),
         }
+
+    def render_html(self) -> str:
+        """The full artifact as an HTML fragment. There is no partial render here either.
+
+        A web page is one more code path that emits the reconstruction, so
+        AC-1 enumerates it like any other: it carries the ledger in the same
+        payload, never behind a control. It is built beside :meth:`render`
+        rather than on :meth:`to_dict` for two reasons. The reconstruction is a
+        private field with no public accessor, and only this type may read it.
+        And ``to_dict`` is never scanned for numerals, so a page built on it
+        would be the one output path AC-7 did not reach.
+
+        :meth:`render` runs first as the gate. It raises ``UnsourcedFigure``
+        before any markup exists, so this method can emit only an artifact the
+        text render has already accepted. What it adds is markup and fixed
+        headings, and neither may carry a numeral: no counts ("four of ten
+        flip"), no numbered citations. A count is computed, not retrieved,
+        and §3 does not distinguish between the two. Citations are addressed
+        by retrieval id, which appears in attributes and never in text.
+        """
+        self.render()
+
+        e = html.escape
+        out: list[str] = ['<article class="artifact">']
+
+        if self.unconfirmed_marker:
+            out.append(f'<p class="unconfirmed" role="status">{e(self.unconfirmed_marker)}</p>')
+
+        out.append('<section class="claim"><h2>Original claim</h2>')
+        out.append(f"<blockquote>{e(self.claim_text)}</blockquote></section>")
+
+        # §7.1 — one section holds both. A reader cannot scroll to the
+        # reconstruction without passing through the frame that carries the
+        # ledger, and no control hides either.
+        out.append('<section class="reconstruction-and-ledger">')
+        out.append("<h2>Reconstructed</h2>")
+        if self.does_reconstruct:
+            anchor = self.citations[-1].id if self.citations else None
+            if anchor is None:
+                out.append(f'<p class="reconstruction">{e(self._reconstruction)}</p>')
+            else:
+                out.append(
+                    f'<p class="reconstruction" data-retrieval-id="{e(str(anchor))}">'
+                    f'{e(self._reconstruction)} '
+                    f'<a href="#retrieval-{e(str(anchor))}">source</a></p>'
+                )
+        else:
+            out.append('<p class="reconstruction">does not reconstruct</p>')
+            out.append(
+                "<p>The surviving elements do not compose into a coherent statement.</p>"
+            )
+        out.append('<h3 class="ledger-heading">Discard ledger</h3>')
+        if self.ledger:
+            out.append('<ul class="ledger">')
+            for entry in self.ledger:
+                out.append(
+                    f'<li><span class="fragment">{e(entry.fragment)}</span> '
+                    f'<span class="status">{e(entry.status)}</span>'
+                    f'<p class="reason">{e(entry.reason)}</p></li>'
+                )
+            out.append("</ul>")
+        else:
+            out.append('<p class="ledger">Nothing was discarded.</p>')
+        out.append("</section>")
+
+        # §7.5 — one container for every label. The label is the only thing
+        # that varies; there is no per-label class, so no stylesheet can give
+        # Insufficient Data the error styling AC-5 forbids.
+        out.append('<section class="verdict"><h2>Verdict</h2>')
+        out.append(f'<p class="verdict-label">{e(_label(self.verdict.label))}</p>')
+        out.append(f'<p class="verdict-rationale">{e(self.verdict.rationale)}</p>')
+        if self.verdict.capped:
+            out.append(f'<p class="verdict-cap">Capped: {e(self.verdict.cap_reason)}</p>')
+        out.append("</section>")
+
+        out.append('<section class="sweep"><h2>Robustness sweep</h2>')
+        if not self.sweep.ran:
+            out.append("<p>Could not run.</p>")
+            out.append(f"<p>{e(self.sweep.reason_not_run)}</p>")
+            out.append("<p>The verdict is capped accordingly; silence is not a pass.</p>")
+        else:
+            out.append('<table class="flip-table"><thead><tr><th scope="col">Result</th>'
+                       '<th scope="col">Alternative</th><th scope="col">What was compared</th>'
+                       "</tr></thead><tbody>")
+            for row in self.sweep.rows:
+                result = "holds" if row.conclusion_holds else "flips"
+                out.append(
+                    f'<tr class="{result}" data-retrieval-id="{e(str(row.computed_from_retrieval_id))}">'
+                    f"<td>{result}</td>"
+                    f"<td>{e(row.test.value)}: {e(row.alternative)}</td>"
+                    f"<td>{e(row.detail)}</td></tr>"
+                )
+            out.append("</tbody></table>")
+        out.append("</section>")
+
+        out.append('<section class="citations"><h2>Citations</h2>')
+        if not self.citations:
+            out.append("<p>No retrieval was performed.</p>")
+        else:
+            out.append('<ul class="citation-list">')
+            for retrieval in self.citations:
+                rid = e(str(retrieval.id))
+                out.append(
+                    f'<li id="retrieval-{rid}">'
+                    f'<span class="series">{e(retrieval.custodian_id)} / {e(retrieval.series_id)}</span> '
+                    f'<span class="figure">{e(str(retrieval.value))} {e(retrieval.unit)}</span> '
+                    f'<span class="period">for {e(retrieval.reference_period)}</span>'
+                    f'<p class="provenance">revision {e(retrieval.revision_status.value)}; '
+                    f"retrieved {e(retrieval.retrieved_at.isoformat())}; "
+                    f"continuity {e(retrieval.continuity_status)}</p>"
+                )
+                if retrieval.caveat:
+                    out.append(f'<p class="caveat">caveat: {e(retrieval.caveat)}</p>')
+                out.append("</li>")
+            out.append("</ul>")
+        out.append("</section>")
+
+        out.append('<section class="routing"><h2>Routing</h2>')
+        if not self.routing:
+            out.append("<p>No route was established.</p>")
+        else:
+            for note in self.routing:
+                out.append(f'<p class="route">{e(note.measure)} → {e(note.custodian)}</p>')
+                out.append(f"<p>{e(note.rationale)}</p>")
+                for alternative in note.alternatives_considered:
+                    out.append(f'<p class="considered">considered: {e(alternative)}</p>')
+        out.append("</section>")
+
+        if self.derived:
+            out.append('<section class="derived"><h2>Derived elements (proposed, not confirmed)</h2>')
+            for element in self.derived:
+                out.append(
+                    f'<div class="derived-element"><span class="tag">{e(element.tag.value)}</span>'
+                    f"<p>{e(render_as_implication(element))}</p>"
+                    f'<p class="operation">operation: {e(element.operation.value)}</p></div>'
+                )
+            out.append("</section>")
+
+        out.append("</article>")
+        return "\n".join(out)
 
     def __str__(self) -> str:
         return self.render()

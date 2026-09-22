@@ -284,3 +284,46 @@ def test_the_diagnostic_is_kept_even_though_it_is_not_rendered() -> None:
 
     assert "403" not in outcome.detail
     assert "403" in outcome.diagnostic
+
+
+# -- the HTML page ------------------------------------------------------------
+
+
+def _text_content(markup: str) -> str:
+    from html.parser import HTMLParser
+
+    class _Text(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__(convert_charrefs=True)
+            self.parts: list[str] = []
+
+        def handle_data(self, data: str) -> None:
+            self.parts.append(data)
+
+    parser = _Text()
+    parser.feed(markup)
+    return " ".join(parser.parts)
+
+
+def test_the_html_render_is_gated_by_the_text_render(registry, context, adapters, store) -> None:
+    """An unsourced figure never reaches markup: the page fails exactly where
+    the text render fails, before any HTML exists."""
+    from dataclasses import replace
+
+    artifact = verify(CLAIM, context, registry, adapters, store).artifact
+    tampered = replace(artifact, _reconstruction="Prices rose 999.9 index_points.")
+    with pytest.raises(UnsourcedFigure, match="999.9"):
+        tampered.render_html()
+
+
+def test_the_html_page_adds_no_numeral_of_its_own(registry, context, adapters, store) -> None:
+    """Markup and headings may carry no numeral the text render lacks. A
+    count ("four of ten flip") or a citation number is computed, not
+    retrieved, and would be an unsourced figure the text scan never saw."""
+    from engine.render.figures import _NUMERAL
+
+    for claim in (CLAIM, "badger population rose in 2021", "the earth is flat"):
+        artifact = verify(claim, context, registry, adapters, store).artifact
+        allowed = set(_NUMERAL.findall(artifact.render()))
+        shown = set(_NUMERAL.findall(_text_content(artifact.render_html())))
+        assert shown <= allowed, f"{sorted(shown - allowed)} appear only in the HTML"
