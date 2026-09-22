@@ -15,11 +15,11 @@ from __future__ import annotations
 
 import json
 import pathlib
-from dataclasses import replace
 from datetime import date
 
 from engine.codes import JurisdictionCode, LanguageCode
 from engine.context import ClaimContext
+from engine.custodians.base import CustodianUnreachable, Observation
 from engine.custodians.fixture import build_fixture_custodians
 from engine.packs.registry import PackRegistry
 from engine.pipeline import verify
@@ -132,8 +132,34 @@ def test_json_payload_carries_no_diagnostics_key_by_default(tmp_path, capsys) ->
 
 # -- the AC-7 carve-out, pinned as policy rather than left as an accident ----
 
+#: The real BoI adapter reports status codes, and this environment's proxy
+#: answers 403. A numeral is the whole point: it is what AC-7's render-time
+#: scan would reject, so it is what makes a leak observable.
+UNREACHABLE_DETAIL = "edge.boi.gov.il answered 403"
 
-def test_a_numeral_bearing_diagnostic_prints_but_never_enters_the_artifact() -> None:
+#: What a leak would look like. Not the bare "403": the artifact and the CLI
+#: output both carry uuids (the claim id at least), and about one uuid in a
+#: hundred and forty contains those three digits, which would make every
+#: absence assertion below flaky.
+LEAK = "answered 403"
+
+
+class _Unreachable403:
+    """A custodian whose outage message carries a status code."""
+
+    custodian_id = "zzstat"
+
+    def series(self, series_id: str) -> tuple[Observation, ...]:
+        raise CustodianUnreachable(self.custodian_id, UNREACHABLE_DETAIL)
+
+
+def _adapters_with_a_403():
+    adapters = build_fixture_custodians()
+    adapters["zzstat"] = _Unreachable403()
+    return adapters
+
+
+def test_a_numeral_bearing_diagnostic_never_enters_the_artifact() -> None:
     """`--diagnostics` is the one output surface that does not go through
     `engine/render/figures.py`'s numeral-sourcing scan, and it has to be: a
     custodian's unreachable message is usually *only* interesting because of
@@ -141,29 +167,58 @@ def test_a_numeral_bearing_diagnostic_prints_but_never_enters_the_artifact() -> 
     unsourced numerals would either strip it or crash.
 
     That carve-out is safe exactly because the text never reaches the
-    artifact — so this asserts both halves at once, with a diagnostic that
-    does carry a numeral. Without this test, the exemption reads as an
-    oversight in an otherwise strictly enforced invariant rather than as the
-    deliberate split `PullOutcome.diagnostic` was introduced to make.
+    artifact. The numeral here comes out of the real pipeline -- the adapter
+    raises it, `retrieve.pull` catches it -- so a leak anywhere between that
+    handler and the artifact fails this test. An earlier version attached the
+    diagnostic with `dataclasses.replace` after `verify()` had already built
+    the artifact, which made the assertion true whatever the pipeline did.
     """
     registry = PackRegistry.from_directory(PACKS)
     store = RetrievalStore(":memory:")
     try:
-        adapters = build_fixture_custodians()
-        adapters["zzstat"].unreachable = True
-        run = verify(CLAIM, _context(), registry, adapters, store)
+        run = verify(CLAIM, _context(), registry, _adapters_with_a_403(), store)
     finally:
         store.close()
 
-    # The fixture's message carries no digits, so assert the property on a
-    # diagnostic that does -- the real BoI adapter reports status codes.
-    run = replace(run, diagnostic="custodian 'boi' unreachable: edge.boi.gov.il answered 403")
+    # The operator still sees it...
+    assert LEAK in run.diagnostic
 
+    # ...and the reader never does. `render()` would itself raise
+    # UnsourcedFigure on a leak; `to_dict()` is not scanned, so it is asserted
+    # directly rather than trusted to the render boundary.
     rendered = run.artifact.render()
-    assert "403" not in rendered, "a diagnostic numeral reached the artifact"
-
+    assert LEAK not in rendered, "a diagnostic numeral reached the artifact"
     payload = run.artifact.to_dict()
-    assert "403" not in json.dumps(payload), "a diagnostic numeral reached the structured artifact"
+    assert LEAK not in json.dumps(payload), "a diagnostic numeral reached the structured artifact"
 
-    # And it is still what the operator sees.
-    assert "403" in run.diagnostic
+
+def test_the_cli_prints_the_numeral_only_under_the_diagnostics_header(monkeypatch, capsys) -> None:
+    """The printing half of the carve-out, through the composition root."""
+    import cli.verify
+
+    monkeypatch.setattr(cli.verify, "build_fixture_custodians", _adapters_with_a_403)
+    assert cli.verify.main(
+        [CLAIM, "--jurisdiction", "ZZ", "--packs", str(PACKS), "--store", ":memory:",
+         "--diagnostics"]
+    ) == 0
+    out = capsys.readouterr().out
+    artifact, header, diagnostics = out.partition(
+        "DIAGNOSTICS (operator information, not part of the verified record)"
+    )
+    assert header, "the diagnostics block was not printed"
+    assert LEAK not in artifact, "the status code was printed as part of the artifact"
+    assert UNREACHABLE_DETAIL in diagnostics
+
+
+def test_the_json_payload_carries_the_numeral_only_in_its_diagnostics_key(monkeypatch, capsys) -> None:
+    import cli.verify
+
+    monkeypatch.setattr(cli.verify, "build_fixture_custodians", _adapters_with_a_403)
+    assert cli.verify.main(
+        [CLAIM, "--jurisdiction", "ZZ", "--packs", str(PACKS), "--store", ":memory:",
+         "--json", "--diagnostics"]
+    ) == 0
+    payload = json.loads(capsys.readouterr().out)
+    diagnostics = payload.pop("diagnostics")
+    assert UNREACHABLE_DETAIL in diagnostics["pull_diagnostic"]
+    assert LEAK not in json.dumps(payload), "the status code reached the artifact payload"
