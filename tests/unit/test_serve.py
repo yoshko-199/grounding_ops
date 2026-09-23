@@ -419,3 +419,37 @@ def test_sign_off_round_trip_over_a_socket(app) -> None:
     finally:
         server.shutdown()
         server.server_close()
+
+
+# -- what a real browser sends ------------------------------------------------------
+#
+# Found by driving the UI in Chrome, not by this file. Every test above built
+# its request headers by hand, which tests the headers one imagines a browser
+# sends. A real one, on a page whose referrer policy was `no-referrer`, sent
+# `Origin: null` on the UI's own form posts, and every one was refused.
+
+
+def test_pages_use_a_referrer_policy_that_keeps_the_origin_on_own_posts(app) -> None:
+    """Under `no-referrer`, the Fetch standard serialises a POST's Origin as
+    "null" even for a same-origin form, and the cross-origin check refuses
+    "null". `same-origin` sends the real origin to this UI and nothing to any
+    other site."""
+    for response in (app.handle("GET", "/", {}, b""), app.handle("GET", "/queue", {}, b"")):
+        assert dict(response.headers)["Referrer-Policy"] == "same-origin"
+
+
+def test_sec_fetch_site_same_origin_is_accepted_even_with_an_opaque_origin(app) -> None:
+    """The browser's own statement decides when it is present. Page script
+    cannot set it, so it holds even if some setting forces an opaque origin."""
+    headers = dict(FORM, origin="null", **{"sec-fetch-site": "same-origin"})
+    assert _post(app, headers=headers, claim=WORKED, jurisdiction="ZZ").status == 200
+
+
+def test_sec_fetch_site_other_than_same_origin_is_refused(app) -> None:
+    for fetch_site in ("cross-site", "same-site", "none"):
+        # An Origin that looks right does not rescue a request the browser
+        # itself says came from elsewhere.
+        headers = dict(FORM, origin="http://127.0.0.1:8000", **{"sec-fetch-site": fetch_site})
+        assert _post(app, headers=headers, claim=WORKED).status == 403, fetch_site
+        claim_id = "00000000-0000-0000-0000-000000000000"
+        assert _sign(app, claim_id, headers=headers, action="confirm", reviewer="R").status == 403

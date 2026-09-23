@@ -40,6 +40,13 @@ Write the docstring for the next reader. Say what would go wrong without the
 test and, if a real defect prompted it, what that defect was. Most test
 docstrings in this repository explain the failure mode, not the assertion.
 
+A rule about what a browser sends needs a real browser to check it, not
+only a unit test. A test that builds request headers by hand tests the
+headers you imagine a browser sends. The web UI's cross-origin check passed
+every such test while refusing every form a real Chrome posted, because the
+page's referrer policy made the browser send `Origin: null`. Keep the unit
+test, and also drive the page once in a browser.
+
 Assert on what a reader would see, not on incidentals. A bare number such as
 `"403"` in a rendered page can match inside a uuid, and a CSS class name can
 match inside the stylesheet. Assert on a phrase, or on an element such as

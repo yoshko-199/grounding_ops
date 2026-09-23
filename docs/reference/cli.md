@@ -376,13 +376,16 @@ The server refuses the following:
 
 | Status | When |
 |---|---|
-| `403` | A `POST` whose `Origin` names another site, or the opaque `null`. Otherwise any page open in the same browser could write to the local store, and sign off verdicts in it |
+| `403` | A `POST` the browser marks with a `Sec-Fetch-Site` other than `same-origin`. When a client sends no `Sec-Fetch-Site`, a `POST` whose `Origin` names another site, or the opaque `null`, is refused instead. Otherwise any page open in the same browser could write to the local store, and sign off verdicts in it |
 | `405` | The wrong method on a known path |
 | `413` | A form body over 64 KiB |
 | `415` | A `POST` that is not a URL-encoded form |
 
 Every page is sent with a Content-Security-Policy that allows no scripts, no
-external requests, and form submission only back to the UI itself. The page
+external requests, and form submission only back to the UI itself. The
+referrer policy is `same-origin`, not `no-referrer`. Under `no-referrer` a
+browser sends `Origin: null` even on the UI's own form posts, and the check
+above would refuse every one of them. The page
 uses system fonts and makes no network request of its own.
 
 ### Exit codes

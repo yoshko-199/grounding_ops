@@ -281,6 +281,13 @@ property of a signature or an import graph rather than a rule to remember:
   row beneath the verdict is byte-identical after a sign-off. That is AC-10,
   restated at the UI.
 
+  Driving the UI in a real browser then found what the unit tests could
+  not. The pages' `no-referrer` policy made Chrome send `Origin: null` on
+  the UI's own forms, and the cross-origin check refused every one. The
+  policy is now `same-origin`, and the check prefers the browser's
+  `Sec-Fetch-Site`. The full flow, verify through sign-off, now passes in
+  headless Chromium at desktop and phone widths.
+
   Writing it surfaced two design rules the canvas had broken. A count such as
   "four of ten alternatives flip" is a numeral nobody retrieved, so it fails
   §3 as surely as an invented statistic. And Insufficient Data must share the

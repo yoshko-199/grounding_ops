@@ -61,7 +61,12 @@ _SECURITY_HEADERS = (
      "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; "
      "base-uri 'none'; frame-ancestors 'none'"),
     ("X-Content-Type-Options", "nosniff"),
-    ("Referrer-Policy", "no-referrer"),
+    # Not `no-referrer`. Under that policy the Fetch standard serialises a
+    # POST's Origin header as "null" even for a same-origin form, and the
+    # cross-origin check below refuses "null": every form this UI served was
+    # refused by a real browser. `same-origin` keeps the page's own origin on
+    # its own posts, and still sends nothing to any other site.
+    ("Referrer-Policy", "same-origin"),
 )
 
 
@@ -457,7 +462,8 @@ a{color:var(--link)}
 header.site{display:flex;align-items:center;gap:24px;padding:16px 32px;background:var(--card);
 border-bottom:1px solid var(--rule)}
 header.site .mark{font:600 22px/1 "Newsreader",Georgia,serif;color:var(--ink);text-decoration:none}
-header.site nav a{color:var(--muted);text-decoration:none;padding:12px 8px}
+header.site nav{display:flex;gap:4px}
+header.site nav a{color:var(--muted);text-decoration:none;padding:12px 8px;white-space:nowrap}
 main{max-width:960px;margin:0 auto;padding:32px}
 h1{font:600 30px/1.2 "Newsreader",Georgia,serif;margin:0 0 20px}
 h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
@@ -491,6 +497,11 @@ background:#fff;min-height:44px}
 button{font:inherit;font-weight:600;min-height:48px;padding:0 24px;border:0;border-radius:10px;
 background:var(--ink);color:var(--card);cursor:pointer;align-self:flex-start}
 .form-problem{background:#EFD9D5;color:var(--flips);padding:12px 16px;border-radius:8px}
+@media (max-width:480px){
+header.site{gap:12px;padding:12px 16px}
+header.site nav a{padding:12px 6px}
+main{padding:24px 16px}
+}
 .queue{margin:0;padding:0;list-style:none}
 .queue li{padding:14px 0;border-bottom:1px solid var(--rule)}
 .queue-claim{font:19px/1.4 "Newsreader",Georgia,serif}
@@ -536,19 +547,29 @@ def _too_large() -> Response:
 def _refuse_cross_origin(headers: dict[str, str]) -> Response | None:
     """A POST from another site's page is refused, not processed.
 
-    Browsers send `Origin` on cross-site form posts. When it is present and
-    names a different host than the one this request was addressed to, the
-    form did not come from this UI.
+    `Sec-Fetch-Site` decides when the browser sent it. It is set by the
+    browser and cannot be set by page script, and it says directly whether the
+    request came from this origin. Only `same-origin` passes: `same-site`
+    (another port on this machine), `cross-site`, and `none` (not initiated by
+    a page at all) are all refused.
+
+    Without it, `Origin` decides, as it did before browsers sent the fetch
+    metadata. A missing `Origin` is allowed, because non-browser clients send
+    none and nothing then says the post is foreign. A different host is
+    refused. So is `null`, the opaque origin of a sandboxed frame or a `file:`
+    page, and also what a browser sends for a POST from a page whose referrer
+    policy is `no-referrer`. That last case is why this UI no longer uses that
+    policy.
     """
+    refused = _page(403, "Refused", "<p>This form can only be submitted from this site.</p>")
+    fetch_site = headers.get("sec-fetch-site")
+    if fetch_site is not None:
+        return None if fetch_site == "same-origin" else refused
     origin = headers.get("origin")
     if origin is None:
-        # Non-browser clients send no Origin, and neither did some older
-        # browsers for same-origin posts. Nothing here says the post is foreign.
         return None
-    # "null" is the opaque origin of a sandboxed frame or a file: page, which
-    # cannot be this UI.
     if origin == "null" or urlsplit(origin).netloc != headers.get("host", ""):
-        return _page(403, "Refused", "<p>This form can only be submitted from this site.</p>")
+        return refused
     return None
 
 
