@@ -24,6 +24,7 @@ do:
 PYTHONPATH=. python3 cli/verify.py "CLAIM" --jurisdiction ZZ --packs packs/fixture
 PYTHONPATH=. python3 cli/show.py CLAIM_ID        # read a stored verification back, no re-verify
 PYTHONPATH=. python3 cli/signoff.py confirm --reviewer NAME --proposed accurate
+PYTHONPATH=. python3 cli/serve.py               # local web UI on 127.0.0.1:8000
 python3 scripts/harvest_corpus.py --dry-run      # resolves the root itself
 ```
 
@@ -77,8 +78,8 @@ the engine only through recorded retrievals.
 the network; `plugins/shapes/` is the claim-shape fuzzer, a harness that drives
 the engine. Nothing in `engine/` may reach either.
 
-**`cli/`** is the composition root. It is where a durable store is opened and
-where live adapters are wired (`engine/custodians/live.py` imports urllib
+**`cli/`** is the composition root. It is where a durable store is opened,
+where the web UI's `http.server` lives (`cli/serve.py`), and where live adapters are wired (`engine/custodians/live.py` imports urllib
 lazily for exactly this reason), so that verification can stay statically
 unable to reach a network primitive.
 

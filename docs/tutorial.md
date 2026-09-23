@@ -9,7 +9,7 @@ You need Python 3.11 or later and a checkout of this repository. Nothing else â€
 there are no dependencies to install. Every command below runs with
 `PYTHONPATH=.` and needs nothing more; if you would rather install the
 commands once and drop that prefix, see
-[installing the three CLIs](reference/cli.md#installing-the-three-clis).
+[installing the console scripts](reference/cli.md#installing-the-console-scripts).
 
 **About twenty minutes.** Type the commands rather than skimming them; each one
 shows you something the next one builds on.

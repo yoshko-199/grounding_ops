@@ -269,9 +269,12 @@ property of a signature or an import graph rather than a rule to remember:
   screens designed on the UIX canvas. The first piece is
   `Artifact.render_html()`: an HTML form of the artifact that runs the text
   render first as its gate. It is held to AC-1, AC-2, AC-5 and AC-7 by
-  assertions of its own in the conformance files for those criteria. Next
-  come a stdlib `http.server` app at the composition root, and the sign-off
-  queue.
+  assertions of its own in the conformance files for those criteria.
+  `cli/serve.py` serves it: a stdlib `http.server` app at the composition
+  root with a verify form, the artifact page, and a read-back page, sharing
+  `cli/compose.py` with the command line so the two front ends cannot
+  drift. See [how to use the web UI](how-to/use-the-web-ui.md). The sign-off
+  queue is next.
 
   Writing it surfaced two design rules the canvas had broken. A count such as
   "four of ten alternatives flip" is a numeral nobody retrieved, so it fails
@@ -340,7 +343,7 @@ property of a signature or an import graph rather than a rule to remember:
   the more ambitious fix was rejected rather than attempted.
 - **Packaging.** `pip install -e .` now installs `grounding-verify`,
   `grounding-show`, and `grounding-signoff` as console scripts (see
-  [installing the three CLIs](reference/cli.md#installing-the-three-clis)),
+  [installing the console scripts](reference/cli.md#installing-the-console-scripts)),
   verified by an actual editable install in a scratch environment, not just a
   parseable `pyproject.toml`. `--packs` is anchored to the repository root
   like `--store`, and a missing or empty pack directory now exits `2`: a

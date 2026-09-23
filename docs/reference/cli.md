@@ -1,12 +1,13 @@
 # CLI reference
 
-Four commands. All are stdlib-only and run from the repository root.
+Five commands. All are stdlib-only and run from the repository root.
 
 | Command | Purpose |
 |---|---|
 | [`cli/verify.py`](#cliverifypy) | Verify a claim against a loaded pack |
 | [`cli/show.py`](#clishowpy) | Read back a stored verification by claim id, without re-verifying it |
 | [`cli/signoff.py`](#clisignoffpy) | Confirm, amend, or reject a proposed verdict |
+| [`cli/serve.py`](#cliservepy) | Serve a local web UI: verify a claim and read it back in a browser |
 | [`scripts/harvest_corpus.py`](#scriptsharvest_corpuspy) | Harvest candidate claims from declared sources |
 
 Two checking commands are also available:
@@ -16,14 +17,14 @@ Two checking commands are also available:
 | `python3 scripts/check_spec.py [-v]` | Document consistency checks; `-v` lists what passed |
 | `python3 -m pytest tests/` | Conformance and unit suites |
 
-## Installing the three CLIs
+## Installing the console scripts
 
 ```
 pip install -e .
 ```
 
-Installs `grounding-verify`, `grounding-show`, and `grounding-signoff` as
-console scripts, so a trial no longer needs `PYTHONPATH=.` — every usage
+Installs `grounding-verify`, `grounding-show`, `grounding-signoff`, and
+`grounding-serve` as console scripts, so a trial no longer needs `PYTHONPATH=.` — every usage
 block below shows both forms. `pip install -e .` (editable) is the supported
 mode: it points the console scripts at this checkout rather than copying it,
 so `--packs` and `--store` both default to paths under the repository and
@@ -336,6 +337,58 @@ or `Nothing is awaiting review.`
 `confirm`/`amend`/`reject`: `state`, `label`, `reviewer`, `exportable`, plus
 `amended from` and `rationale` when the label changed, plus `claim id` when
 `--claim-id` was used.
+
+---
+
+## cli/serve.py
+
+A local web UI over the same pipeline, store and packs as the commands above.
+It is a composition root like them, so the network primitive it needs,
+`http.server`, lives here and nowhere under `engine/`. See
+[how to use the web UI](../how-to/use-the-web-ui.md).
+
+```
+PYTHONPATH=. python3 cli/serve.py [--port N] [--packs DIR] [--store PATH] [--live]
+grounding-serve [--port N] ...
+```
+
+### Options
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--host` | `127.0.0.1` | Address to bind. The default keeps the UI on this machine; nothing here authenticates a user |
+| `--port` | `8000` | Port to listen on. `0` picks a free one, and the startup line prints it |
+| `--packs DIR` | `<repo>/packs/fixture` | As for `cli/verify.py`. A missing or empty directory exits `2` at startup |
+| `--store PATH` | `<repo>/.grounding/store.db` | As for `cli/verify.py`, except that `:memory:` is refused: each request opens its own connection, so an in-memory store would forget every claim between requests |
+| `--live` | off | As for `cli/verify.py` |
+
+### Routes
+
+| Route | Response |
+|---|---|
+| `GET /` | The verify form: claim, jurisdiction (from the loaded packs, or no hint), language, stated-on date, and optional claimant and venue, which are recorded and never routed |
+| `POST /verify` | `200` with the full artifact, the same sections as the text render, in the same order, from `Artifact.render_html()`. Insufficient Data is a `200` like any other verdict. An operator error (bad date, a value that is not a code, an empty claim, an unopenable store) is a `400` that shows the form again with the problem stated and never uses the verdict container |
+| `GET /claim/<id>` | `200` with the stored record, the sections `cli/show.py` prints. `404` for an unknown or malformed id |
+
+The server refuses the following:
+
+| Status | When |
+|---|---|
+| `403` | A `POST` whose `Origin` names another site, or the opaque `null`. Otherwise any page open in the same browser could write to the local store |
+| `405` | The wrong method on a known path |
+| `413` | A form body over 64 KiB |
+| `415` | A `POST` that is not a URL-encoded form |
+
+Every page is sent with a Content-Security-Policy that allows no scripts, no
+external requests, and form submission only back to the UI itself. The page
+uses system fonts and makes no network request of its own.
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Stopped with Ctrl-C |
+| `2` | Operator error at startup: missing or empty packs, `:memory:` or an unopenable store, or a port that cannot be bound |
 
 ---
 
