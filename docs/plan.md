@@ -273,8 +273,13 @@ property of a signature or an import graph rather than a rule to remember:
   `cli/serve.py` serves it: a stdlib `http.server` app at the composition
   root with a verify form, the artifact page, and a read-back page, sharing
   `cli/compose.py` with the command line so the two front ends cannot
-  drift. See [how to use the web UI](how-to/use-the-web-ui.md). The sign-off
-  queue is next.
+  drift. See [how to use the web UI](how-to/use-the-web-ui.md). The
+  sign-off queue is in it too: `/queue` lists what awaits review, and a
+  form after each proposed record confirms, amends or rejects through the
+  same `cli/compose.sign_off_stored` the command line now uses. The form
+  reads five named fields and nothing else, and a test asserts that every
+  row beneath the verdict is byte-identical after a sign-off. That is AC-10,
+  restated at the UI.
 
   Writing it surfaced two design rules the canvas had broken. A count such as
   "four of ten alternatives flip" is a numeral nobody retrieved, so it fails

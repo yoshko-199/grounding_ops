@@ -29,10 +29,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
 from cli.compose import (
+    DECISIONS,
+    NoOpenProposal,
     OperatorError,
     load_registry,
     open_store,
     parse_stated_at,
+    sign_off_stored,
     split_provenance,
     verify_and_persist,
 )
@@ -41,6 +44,9 @@ from cli.verify import DEFAULT_PACKS, DEFAULT_STORE
 from engine.custodians.fixture import build_fixture_custodians
 from engine.custodians.live import build_live_custodians
 from engine.ingest.split import RawProvenance
+from engine.signoff import GateViolation
+from engine.store.signoff_writer import list_proposed, load_proposed
+from engine.verification.claim_verdict import Verdict
 
 #: Largest form body accepted. A claim is a sentence or a paragraph; anything
 #: near this size is not a claim.
@@ -100,6 +106,17 @@ class App:
             if method != "GET":
                 return _not_allowed("GET")
             return self._read_back(path.removeprefix("/claim/"))
+        if path == "/queue":
+            if method != "GET":
+                return _not_allowed("GET")
+            return self._queue()
+        if path == "/signoff":
+            if method != "POST":
+                return _not_allowed("POST")
+            refused = _refuse_cross_origin(headers)
+            if refused:
+                return refused
+            return self._sign_off(headers, body)
         return _page(404, "Not found", "<p>There is no page at this address.</p>")
 
     # -- routes ---------------------------------------------------------------
@@ -139,15 +156,9 @@ class App:
         return _page(status, "Verify a claim", form)
 
     def _verify(self, headers: dict[str, str], body: bytes) -> Response:
-        content_type = headers.get("content-type", "").split(";")[0].strip()
-        if content_type and content_type != "application/x-www-form-urlencoded":
-            return _page(415, "Unsupported form", "<p>Submit the form on the verify page.</p>")
-        if len(body) > MAX_BODY:
-            return _too_large()
-        try:
-            fields = {k: v[0] for k, v in parse_qs(body.decode("utf-8"), strict_parsing=False).items()}
-        except UnicodeDecodeError:
-            return _page(400, "Unreadable form", "<p>The form was not valid UTF-8.</p>")
+        fields = _form_fields(headers, body)
+        if isinstance(fields, Response):
+            return fields
 
         claim = fields.get("claim", "").strip()
         try:
@@ -190,7 +201,8 @@ class App:
             )
         return _page(200, "Verification", "\n".join(parts))
 
-    def _read_back(self, claim_id: str) -> Response:
+    def _read_back(self, claim_id: str, *, problem: str = "",
+                   values: dict[str, str] | None = None, status: int = 200) -> Response:
         if not _CLAIM_ID.match(claim_id):
             return _page(404, "Not found", "<p>That is not a claim id.</p>")
         try:
@@ -199,12 +211,84 @@ class App:
             return _page(503, "Store unavailable", f"<p>{html.escape(str(exc))}</p>")
         try:
             record = _load(store, claim_id)
+            awaiting = record is not None and load_proposed(store, claim_id) is not None
         finally:
             store.close()
         if record is None:
             return _page(404, "Not found",
                          f"<p>No claim is recorded with id <code>{html.escape(claim_id)}</code>.</p>")
-        return _page(200, "Stored record", record_html(record))
+        content = record_html(record)
+        if awaiting:
+            content += "\n" + _sign_off_form(claim_id, record["verdict"]["label"], problem, values or {})
+        elif problem:
+            content = f'<p class="form-problem" role="status">{html.escape(problem)}</p>\n' + content
+        return _page(status, "Stored record", content)
+
+    def _queue(self) -> Response:
+        try:
+            store = open_store(self.store_path)
+        except OperatorError as exc:
+            return _page(503, "Store unavailable", f"<p>{html.escape(str(exc))}</p>")
+        try:
+            rows = list_proposed(store)
+        finally:
+            store.close()
+        if not rows:
+            return _page(200, "Sign-off queue", "<p>Nothing is awaiting review.</p>")
+        e = html.escape
+        items = []
+        for row in rows:
+            # The full claim text. The command line's list truncates to fit a
+            # terminal row; a page has no such limit, and a reviewer choosing
+            # what to open should see the claim as it was made.
+            items.append(
+                f'<li><a class="queue-claim" href="/claim/{e(row["claim_id"])}">{e(row["text"])}</a>'
+                f'<p class="provenance">proposed <span class="status">'
+                f'{e(row["label"].replace("_", " "))}</span> · {e(row["proposed_at"])} · '
+                f'<code>{e(row["claim_id"])}</code></p></li>'
+            )
+        content = ('<p class="hint">Proposed verdicts, oldest first. Each is a label the '
+                   "pipeline suggested; everything beneath it is already final.</p>"
+                   f'<ul class="queue">{"".join(items)}</ul>')
+        return _page(200, "Sign-off queue", content)
+
+    def _sign_off(self, headers: dict[str, str], body: bytes) -> Response:
+        fields = _form_fields(headers, body)
+        if isinstance(fields, Response):
+            return fields
+        # Exactly these five fields are read. Anything else a request carries
+        # is ignored: there is no parameter here, or in `sign_off_stored`, that
+        # could reach an element, a retrieval, the ledger or the sweep (AC-10).
+        claim_id = fields.get("claim_id", "")
+        action = fields.get("action", "")
+        reviewer = fields.get("reviewer", "").strip()
+        label_value = fields.get("label", "")
+        rationale = fields.get("rationale", "")
+        kept = {"action": action, "reviewer": reviewer, "label": label_value,
+                "rationale": rationale}
+
+        if not _CLAIM_ID.match(claim_id):
+            return _page(404, "Not found", "<p>That is not a claim id.</p>")
+        try:
+            label = Verdict(label_value) if action == "amend" and label_value else None
+        except ValueError:
+            return self._read_back(claim_id, problem=f"not a verdict label: {label_value!r}",
+                                   values=kept, status=400)
+        try:
+            store = open_store(self.store_path)
+        except OperatorError as exc:
+            return _page(503, "Store unavailable", f"<p>{html.escape(str(exc))}</p>")
+        try:
+            sign_off_stored(store, claim_id, action, reviewer, label, rationale)
+        except NoOpenProposal as exc:
+            store.close()
+            return self._read_back(claim_id, problem=str(exc), status=409)
+        except (OperatorError, GateViolation) as exc:
+            store.close()
+            return self._read_back(claim_id, problem=str(exc), values=kept, status=400)
+        store.close()
+        # Post/redirect/get: reloading the record page never resubmits a decision.
+        return Response(303, "", (("Location", f"/claim/{claim_id}"), *_SECURITY_HEADERS))
 
 
 def record_html(record: dict) -> str:
@@ -302,6 +386,65 @@ def record_html(record: dict) -> str:
     return "\n".join(out)
 
 
+def _form_fields(headers: dict[str, str], body: bytes) -> dict[str, str] | Response:
+    content_type = headers.get("content-type", "").split(";")[0].strip()
+    if content_type and content_type != "application/x-www-form-urlencoded":
+        return _page(415, "Unsupported form", "<p>Submit the form on the page.</p>")
+    if len(body) > MAX_BODY:
+        return _too_large()
+    try:
+        return {k: v[0] for k, v in parse_qs(body.decode("utf-8")).items()}
+    except UnicodeDecodeError:
+        return _page(400, "Unreadable form", "<p>The form was not valid UTF-8.</p>")
+
+
+def _sign_off_form(claim_id: str, proposed: str, problem: str, values: dict[str, str]) -> str:
+    """§9.1's gate as a form: a decision, a name, and for an amendment a label
+    and a reason. It has no field for anything beneath the claim-level label."""
+    e = html.escape
+    action = values.get("action") or "confirm"
+    hints = {
+        "confirm": "Accept the proposed label unchanged.",
+        "amend": "Change the label, with a stated reason.",
+        "reject": "Publish no label for this claim.",
+    }
+    decisions = "".join(
+        f'<label class="decision"><input type="radio" name="action" value="{d}"'
+        f'{" checked" if d == action else ""}> <span>{d.capitalize()}</span>'
+        f'<span class="hint">{hints[d]}</span></label>'
+        for d in DECISIONS
+    )
+    chosen = values.get("label", "")
+    options = "".join(
+        f'<option value="{e(v.value)}"{" selected" if v.value == chosen else ""}>'
+        f'{e(v.value.replace("_", " "))}</option>'
+        for v in Verdict if v.value != proposed
+    )
+    problem_html = (f'<p class="form-problem" role="status">Not signed off: {e(problem)}</p>'
+                    if problem else "")
+    return f"""<section class="sign-off"><h2>Sign off</h2>
+<p class="hint">Proposed: {e(proposed.replace("_", " "))}. Element statuses, the
+reconstruction, the ledger, the flip table, citations and routing are final and
+out of reach here: sign-off changes the claim-level label and nothing beneath it.</p>
+{problem_html}
+<form method="post" action="/signoff" class="verify-form">
+<input type="hidden" name="claim_id" value="{e(claim_id)}">
+<fieldset class="decisions"><legend>Decision</legend>{decisions}</fieldset>
+<div class="row">
+<div><label for="label">New label <span class="hint">amend only</span></label>
+<select id="label" name="label"><option value="">choose a label</option>{options}</select></div>
+<div><label for="reviewer">Reviewer</label>
+<input id="reviewer" name="reviewer" required value="{e(values.get("reviewer", ""))}"></div>
+</div>
+<label for="rationale">Why the label changes <span class="hint">amend only; state it in
+words, since a figure with no retrieval behind it is refused</span></label>
+<textarea id="rationale" name="rationale" rows="3">{e(values.get("rationale", ""))}</textarea>
+<button type="submit">Record decision</button>
+</form>
+<p class="hint">The proposal is kept alongside your decision, never overwritten.</p>
+</section>"""
+
+
 # -- page shell ---------------------------------------------------------------
 
 _STYLE = """
@@ -348,6 +491,14 @@ background:#fff;min-height:44px}
 button{font:inherit;font-weight:600;min-height:48px;padding:0 24px;border:0;border-radius:10px;
 background:var(--ink);color:var(--card);cursor:pointer;align-self:flex-start}
 .form-problem{background:#EFD9D5;color:var(--flips);padding:12px 16px;border-radius:8px}
+.queue{margin:0;padding:0;list-style:none}
+.queue li{padding:14px 0;border-bottom:1px solid var(--rule)}
+.queue-claim{font:19px/1.4 "Newsreader",Georgia,serif}
+.sign-off{border-top:2px solid var(--ink);padding-top:20px}
+fieldset.decisions{border:0;padding:0;margin:0;display:flex;gap:12px;flex-wrap:wrap}
+fieldset.decisions legend{font-weight:600;font-size:14px;padding:0 0 8px}
+.decision{flex:1 1 180px;display:flex;flex-direction:column;gap:2px;padding:12px 14px;
+border:1px solid var(--rule);border-radius:10px;background:var(--card);min-height:44px;font-weight:600}
 """
 
 
@@ -362,7 +513,7 @@ def _page(status: int, title: str, content: str) -> Response:
 </head>
 <body>
 <header class="site"><a class="mark" href="/">grounding</a>
-<nav aria-label="Primary"><a href="/">Verify</a></nav></header>
+<nav aria-label="Primary"><a href="/">Verify</a> <a href="/queue">Sign-off queue</a></nav></header>
 <main>
 <h1>{html.escape(title)}</h1>
 {content}

@@ -368,13 +368,15 @@ grounding-serve [--port N] ...
 |---|---|
 | `GET /` | The verify form: claim, jurisdiction (from the loaded packs, or no hint), language, stated-on date, and optional claimant and venue, which are recorded and never routed |
 | `POST /verify` | `200` with the full artifact, the same sections as the text render, in the same order, from `Artifact.render_html()`. Insufficient Data is a `200` like any other verdict. An operator error (bad date, a value that is not a code, an empty claim, an unopenable store) is a `400` that shows the form again with the problem stated and never uses the verdict container |
-| `GET /claim/<id>` | `200` with the stored record, the sections `cli/show.py` prints. `404` for an unknown or malformed id |
+| `GET /claim/<id>` | `200` with the stored record, the sections `cli/show.py` prints, followed by a sign-off form while the verdict is still proposed. `404` for an unknown or malformed id |
+| `GET /queue` | `200` listing every claim whose current verdict is proposed, oldest first, with its full text. The command line's `list` truncates to fit a terminal row, and this page does not |
+| `POST /signoff` | Reads exactly `claim_id`, `action` (`confirm`, `amend` or `reject`), `reviewer`, `label` and `rationale`, and ignores every other field. `303` back to the record on success. `400` when the gate refuses (no reviewer, an amendment with no reason, a figure in the reason, an unchanged label), shown on the record page with the input kept. `409` when the claim has no open proposal (already decided, or never verified) |
 
 The server refuses the following:
 
 | Status | When |
 |---|---|
-| `403` | A `POST` whose `Origin` names another site, or the opaque `null`. Otherwise any page open in the same browser could write to the local store |
+| `403` | A `POST` whose `Origin` names another site, or the opaque `null`. Otherwise any page open in the same browser could write to the local store, and sign off verdicts in it |
 | `405` | The wrong method on a known path |
 | `413` | A form body over 64 KiB |
 | `415` | A `POST` that is not a URL-encoded form |

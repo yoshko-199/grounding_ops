@@ -30,10 +30,11 @@ import argparse
 import sqlite3
 import sys
 
+from cli.compose import OperatorError, open_store, sign_off_stored
 from cli.verify import DEFAULT_STORE
 from engine.signoff import GateViolation, amend, confirm, reject
 from engine.store.events import RetrievalStore
-from engine.store.signoff_writer import list_proposed, load_proposed, write_signoff
+from engine.store.signoff_writer import list_proposed
 from engine.verification.claim_verdict import ProposedVerdict, Verdict
 
 
@@ -78,52 +79,44 @@ def main(argv: list[str] | None = None) -> int:
         print("error: --reviewer is required", file=sys.stderr)
         return 2
 
-    store: RetrievalStore | None = None
+    if args.action == "amend" and not args.label:
+        print("error: --label is required for amend", file=sys.stderr)
+        return 2
+    label = Verdict(args.label) if args.label else None
+
     if args.claim_id:
         try:
-            store = RetrievalStore(args.store)
-        except (OSError, sqlite3.Error) as exc:
-            print(f"error: cannot open retrieval store {args.store!r}: {exc}", file=sys.stderr)
+            store = open_store(args.store)
+        except OperatorError as exc:
+            print(f"error: {exc}", file=sys.stderr)
             return 2
-        proposal = load_proposed(store, args.claim_id)
-        if proposal is None:
-            store.close()
-            print(
-                f"error: no open proposed verdict for claim id {args.claim_id!r}. "
-                "Either it was never verified into this store, or it has already been "
-                "signed off",
-                file=sys.stderr,
+        try:
+            signed = sign_off_stored(
+                store, args.claim_id, args.action, args.reviewer, label, args.rationale
             )
+        except OperatorError as exc:
+            print(f"error: {exc}", file=sys.stderr)
             return 2
+        except GateViolation as exc:
+            print(f"gate refused: {exc}", file=sys.stderr)
+            return 2
+        finally:
+            store.close()
     else:
         # The ad-hoc path: a placeholder rationale, because none was
         # supplied. `--claim-id` is what carries the pipeline's actual
-        # rationale into the gate.
+        # rationale into the gate. No store is opened, and nothing is written.
         proposal = ProposedVerdict(Verdict(args.proposed), "proposed by the pipeline")
-
-    try:
-        if args.action == "confirm":
-            signed = confirm(proposal, args.reviewer)
-        elif args.action == "reject":
-            signed = reject(proposal, args.reviewer)
-        else:
-            if not args.label:
-                if store:
-                    store.close()
-                print("error: --label is required for amend", file=sys.stderr)
-                return 2
-            signed = amend(proposal, Verdict(args.label), args.rationale, args.reviewer)
-    except GateViolation as exc:
-        if store:
-            store.close()
-        print(f"gate refused: {exc}", file=sys.stderr)
-        return 2
-
-    if store is not None:
         try:
-            write_signoff(store, args.claim_id, signed)
-        finally:
-            store.close()
+            if args.action == "confirm":
+                signed = confirm(proposal, args.reviewer)
+            elif args.action == "reject":
+                signed = reject(proposal, args.reviewer)
+            else:
+                signed = amend(proposal, label, args.rationale, args.reviewer)
+        except GateViolation as exc:
+            print(f"gate refused: {exc}", file=sys.stderr)
+            return 2
 
     print(f"state:     {signed.state.value}")
     print(f"label:     {signed.label.value}")

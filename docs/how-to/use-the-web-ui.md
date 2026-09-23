@@ -64,6 +64,35 @@ retrieval and no re-routing, like
 [`cli/show.py`](read-back-a-stored-verification.md). Bookmark it, or reach any
 stored claim at `/claim/<id>`.
 
+## Sign off in the browser
+
+**Sign-off queue** in the header lists every claim whose verdict is still
+proposed, oldest first, with its full text, the proposed label and when it was
+proposed. Open one to review its stored record.
+
+While a claim is awaiting review, a **Sign off** form follows the record. It
+never appears inside it. The form has three decisions:
+
+- **Confirm** accepts the proposed label unchanged.
+- **Amend** changes the label. Choose the new one and say why, in words. A
+  figure in the reason is refused, because a reviewer is bound by the same
+  rule as the pipeline: no number without a retrieval behind it.
+- **Reject** publishes no label for the claim.
+
+Your name is required for every decision. After you record it, the page
+reloads showing who signed off and when, and the claim leaves the queue. The
+original proposal is kept alongside your decision.
+
+The form reaches the claim-level label and nothing beneath it. Element
+statuses, the reconstruction, the ledger, the flip table, the citations and
+the routing are final. There is no field for them, and any extra field in a
+request is ignored. A claim that has already been decided cannot be decided
+again: the form is gone from its page, and a second submission is refused.
+
+If the gate refuses a decision, for example an amendment with no reason or
+one that keeps the proposed label, the reason is shown above the form, your
+input is kept, and nothing is written.
+
 ## What it will not do
 
 - **It is not a server for other people.** It binds to `127.0.0.1` and has no

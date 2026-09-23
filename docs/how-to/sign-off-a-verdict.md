@@ -4,7 +4,9 @@ Every artifact is marked `UNCONFIRMED` until a person signs off the
 claim-level verdict. Only the verdict — the gate cannot reach an element
 status, a retrieval, the discard ledger, the flip table, or a pack.
 
-For the full flag list, see the [CLI reference](../reference/cli.md).
+For the full flag list, see the [CLI reference](../reference/cli.md). To do
+the same in a browser, see [sign off in the browser](use-the-web-ui.md#sign-off-in-the-browser):
+the web UI goes through the same gate and the same store.
 
 ## The real workflow: sign off a claim you verified earlier
 

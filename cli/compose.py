@@ -24,9 +24,16 @@ from engine.ingest.identity import ClaimantIdentity
 from engine.ingest.split import RawProvenance, split
 from engine.packs.registry import PackRegistry
 from engine.pipeline import VerificationRun, verify
+from engine.signoff import SignedVerdict, amend, confirm, reject
 from engine.store.events import RetrievalStore
 from engine.store.identity_writer import write_identity
+from engine.store.signoff_writer import NoOpenVerdict, load_proposed, write_signoff
 from engine.store.writer import write_pack, write_verification
+from engine.verification.claim_verdict import Verdict
+
+#: The three decisions §9.1 allows a reviewer. There is no fourth, and none of
+#: these takes anything beneath the claim-level label.
+DECISIONS = ("confirm", "amend", "reject")
 
 
 class OperatorError(Exception):
@@ -115,3 +122,52 @@ def verify_and_persist(
     write_verification(store, run)
     write_identity(store, run.claim_id, identity)
     return run
+
+
+class NoOpenProposal(OperatorError):
+    """The claim has no verdict awaiting review: already decided, or never verified."""
+
+
+def sign_off_stored(
+    store: RetrievalStore,
+    claim_id: str,
+    action: str,
+    reviewer: str,
+    label: Verdict | None = None,
+    rationale: str = "",
+) -> SignedVerdict:
+    """Decide a stored claim's proposed verdict, and write the decision.
+
+    The signature is the whole of what a reviewer can say: a decision, a
+    name, and for an amendment a label and a reason. Nothing here, and
+    nothing a front end could pass through here, names an element, a
+    retrieval, the ledger or the sweep (§9.1, AC-10). The gate's own refusals
+    (`GateViolation`: no reviewer, a figure in the rationale, an "amendment"
+    that keeps the label) pass through unchanged, for the caller to report.
+    """
+    if action not in DECISIONS:
+        raise OperatorError(f"unknown decision {action!r}; expected one of {', '.join(DECISIONS)}")
+    proposal = load_proposed(store, claim_id)
+    if proposal is None:
+        raise NoOpenProposal(
+            f"no open proposed verdict for claim id {claim_id!r}. "
+            "Either it was never verified into this store, or it has already been "
+            "signed off"
+        )
+    if action == "confirm":
+        signed = confirm(proposal, reviewer)
+    elif action == "reject":
+        signed = reject(proposal, reviewer)
+    else:
+        if label is None:
+            raise OperatorError("a new label is required to amend")
+        signed = amend(proposal, label, rationale, reviewer)
+    try:
+        write_signoff(store, claim_id, signed)
+    except NoOpenVerdict:
+        # Decided by someone else between the load above and this write.
+        raise NoOpenProposal(
+            f"claim id {claim_id!r} was signed off by someone else while this "
+            "decision was being made"
+        ) from None
+    return signed

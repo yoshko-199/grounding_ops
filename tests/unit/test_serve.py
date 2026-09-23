@@ -250,3 +250,172 @@ def test_the_server_round_trip_over_a_socket(app) -> None:
     finally:
         server.shutdown()
         server.server_close()
+
+
+# -- the sign-off queue (§9.1) ----------------------------------------------------
+
+
+def _verified(app, claim=WORKED) -> str:
+    return _claim_id(_post(app, claim=claim, jurisdiction="ZZ", stated_at="2022-01-01").body)
+
+
+def _sign(app, claim_id, headers=FORM, **fields):
+    body = urllib.parse.urlencode({"claim_id": claim_id, **fields}).encode("utf-8")
+    return app.handle("POST", "/signoff", dict(headers), body)
+
+
+def _rows(tmp_path, claim_id) -> dict[str, list[tuple]]:
+    """Every row beneath the claim-level verdict, for before/after comparison."""
+    from engine.store.events import RetrievalStore
+
+    store = RetrievalStore(str(tmp_path / "store.db"))
+    try:
+        conn = store.connection
+        return {
+            "elements": conn.execute(
+                "SELECT * FROM elements WHERE claim_id = ? ORDER BY id", (claim_id,)).fetchall(),
+            "discards": conn.execute(
+                "SELECT * FROM discards WHERE reconstructed_claim_id = ? ORDER BY element_id",
+                (claim_id,)).fetchall(),
+            "citations": conn.execute(
+                "SELECT * FROM citations WHERE claim_id = ? ORDER BY position", (claim_id,)).fetchall(),
+            "retrievals": conn.execute("SELECT * FROM retrievals ORDER BY id").fetchall(),
+            "sweeps": conn.execute(
+                "SELECT * FROM sweeps WHERE claim_id = ? ORDER BY test, alternative",
+                (claim_id,)).fetchall(),
+            "reconstructions": conn.execute(
+                "SELECT * FROM reconstructions WHERE claim_id = ?", (claim_id,)).fetchall(),
+        }
+    finally:
+        store.close()
+
+
+def test_the_queue_lists_a_fresh_verification_with_its_full_text(app) -> None:
+    long_claim = WORKED + " and this sentence runs on well past any terminal column width"
+    claim_id = _verified(app, long_claim)
+    page = app.handle("GET", "/queue", {}, b"").body
+    assert claim_id in page
+    assert long_claim in page, "the web queue must not truncate the claim"
+
+
+def test_an_empty_queue_says_so(app) -> None:
+    assert "Nothing is awaiting review." in app.handle("GET", "/queue", {}, b"").body
+
+
+def test_a_proposed_record_offers_the_sign_off_form_and_a_decided_one_does_not(app) -> None:
+    claim_id = _verified(app)
+    page = app.handle("GET", f"/claim/{claim_id}", {}, b"").body
+    assert '<section class="sign-off">' in page
+    # The form comes after the whole record, never inside the artifact.
+    assert page.index('<section class="sign-off">') > page.index("</article>")
+
+    assert _sign(app, claim_id, action="confirm", reviewer="R. Viewer").status == 303
+    page = app.handle("GET", f"/claim/{claim_id}", {}, b"").body
+    assert '<section class="sign-off">' not in page
+
+
+def test_confirm_round_trip(app) -> None:
+    claim_id = _verified(app)
+    response = _sign(app, claim_id, action="confirm", reviewer="R. Viewer")
+    assert response.status == 303
+    assert dict(response.headers)["Location"] == f"/claim/{claim_id}"
+    page = app.handle("GET", f"/claim/{claim_id}", {}, b"").body
+    assert "signed off by R. Viewer" in page
+    assert "confirmed" in _section(page, "verdict")
+    assert claim_id not in app.handle("GET", "/queue", {}, b"").body
+
+
+def test_reject_is_recorded(app) -> None:
+    claim_id = _verified(app)
+    assert _sign(app, claim_id, action="reject", reviewer="R. Viewer").status == 303
+    assert "rejected" in _section(app.handle("GET", f"/claim/{claim_id}", {}, b"").body, "verdict")
+
+
+def test_amend_is_recorded_with_the_proposal_kept(app) -> None:
+    claim_id = _verified(app)
+    response = _sign(app, claim_id, action="amend", reviewer="R. Viewer",
+                     label="indeterminate", rationale="the baseline choice is contested")
+    assert response.status == 303
+    verdict = _section(app.handle("GET", f"/claim/{claim_id}", {}, b"").body, "verdict")
+    assert "INDETERMINATE" in verdict
+    assert "amended from misleading: the baseline choice is contested" in verdict
+
+
+def test_the_gate_refusals_are_form_problems_and_write_nothing(app) -> None:
+    claim_id = _verified(app)
+    refusals = [
+        dict(action="amend", reviewer="R", label="indeterminate", rationale=""),
+        dict(action="amend", reviewer="R", label="indeterminate", rationale="it fell 3 points"),
+        dict(action="amend", reviewer="R", label="", rationale="no label chosen"),
+        dict(action="amend", reviewer="R", label="misleading", rationale="unchanged label"),
+        dict(action="confirm", reviewer=""),
+        dict(action="publish", reviewer="R"),
+        dict(action="amend", reviewer="R", label="not-a-label", rationale="x"),
+    ]
+    for fields in refusals:
+        response = _sign(app, claim_id, **fields)
+        assert response.status == 400, fields
+        assert 'class="form-problem"' in response.body, fields
+    # Still awaiting review: nothing was decided by any refused attempt.
+    assert claim_id in app.handle("GET", "/queue", {}, b"").body
+
+
+def test_a_second_decision_is_a_409_and_writes_nothing(app) -> None:
+    claim_id = _verified(app)
+    assert _sign(app, claim_id, action="confirm", reviewer="First").status == 303
+    response = _sign(app, claim_id, action="reject", reviewer="Second")
+    assert response.status == 409
+    page = app.handle("GET", f"/claim/{claim_id}", {}, b"").body
+    assert "signed off by First" in page
+    assert "Second" not in page
+
+
+def test_sign_off_changes_the_verdict_and_nothing_beneath_it(app, tmp_path) -> None:
+    """AC-10 at the UI. The request also carries fields naming what lies beneath
+    the verdict; they are ignored, and every row beneath is byte-identical."""
+    claim_id = _verified(app)
+    before = _rows(tmp_path, claim_id)
+    response = _sign(
+        app, claim_id, action="confirm", reviewer="R. Viewer",
+        element_status="verified", retrieval_id="00000000-0000-0000-0000-000000000000",
+        ledger="", discard="due to", reconstruction="Prices fell.", sweep="holds",
+    )
+    assert response.status == 303
+    after = _rows(tmp_path, claim_id)
+    assert {k: [tuple(r) for r in v] for k, v in after.items()} == {
+        k: [tuple(r) for r in v] for k, v in before.items()
+    }
+
+
+def test_a_cross_origin_sign_off_is_refused(app) -> None:
+    claim_id = _verified(app)
+    headers = dict(FORM, origin="https://elsewhere.example")
+    assert _sign(app, claim_id, headers=headers, action="confirm", reviewer="R").status == 403
+    assert claim_id in app.handle("GET", "/queue", {}, b"").body
+
+
+def test_sign_off_with_a_malformed_id_is_a_404(app) -> None:
+    assert _sign(app, "not an id!", action="confirm", reviewer="R").status == 404
+
+
+def test_sign_off_round_trip_over_a_socket(app) -> None:
+    """The 303 is followed by a real client to the updated record."""
+    server = make_server(app, "127.0.0.1", 0)
+    server.quiet = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    host, port = server.server_address[:2]
+    base = f"http://{host}:{port}"
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        claim_id = _verified(app)
+        with opener.open(f"{base}/queue", timeout=10) as response:
+            assert claim_id in response.read().decode("utf-8")
+        data = urllib.parse.urlencode(
+            {"claim_id": claim_id, "action": "confirm", "reviewer": "R. Viewer"}
+        ).encode()
+        with opener.open(f"{base}/signoff", data=data, timeout=10) as response:
+            assert response.url.endswith(f"/claim/{claim_id}")
+            assert "signed off by R. Viewer" in response.read().decode("utf-8")
+    finally:
+        server.shutdown()
+        server.server_close()
