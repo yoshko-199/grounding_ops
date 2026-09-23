@@ -120,3 +120,40 @@ def test_an_empty_html_ledger_is_stated_rather_than_omitted(registry, context, a
     assert "Discard ledger" in frame
     if not artifact.ledger:
         assert "Nothing was discarded." in frame
+
+
+def test_a_shared_caveat_is_stated_once_and_never_dropped(
+    registry, context, adapters, store, pack
+):
+    """Consecutive citations sharing a framing caveat show it once, before
+    them. That keeps the ledger and verdict readable instead of burying them
+    under the same paragraph a dozen times. Every citation keeps its entry,
+    the caveat is still present, and nothing sits behind a control."""
+    artifact = _run(pack, registry, context, adapters, store).artifact
+    # Scoped to the citations section: the same caveat text legitimately
+    # appears elsewhere too, in the sweep's bounded-omission row.
+    page = _section(artifact.render_html(), "citations")
+    caveats = {r.caveat for r in artifact.citations if r.caveat}
+    assert caveats, "the fixture series declares a framing caveat"
+    for caveat in caveats:
+        assert caveat in page
+    for retrieval in artifact.citations:
+        assert f'id="retrieval-{retrieval.id}"' in page
+    if len(artifact.citations) > 1 and len(caveats) == 1:
+        assert page.count(next(iter(caveats))) == 1
+
+
+def test_a_changed_caveat_starts_its_own_group(registry, context, adapters, store, pack):
+    """Grouping is by run, not by value: a caveat that changes mid-list is
+    stated again before the citations it covers."""
+    from dataclasses import replace
+
+    artifact = _run(pack, registry, context, adapters, store).artifact
+    first, *rest = artifact.citations
+    altered = replace(first, caveat="Framing: a different caveat for the first figure only.")
+    page = _section(replace(artifact, citations=(altered, *rest)).render_html(), "citations")
+    different = page.index("a different caveat for the first figure only")
+    assert different < page.index(f'id="retrieval-{altered.id}"')
+    shared = rest[0].caveat
+    assert shared and page.index(shared) > page.index(f'id="retrieval-{altered.id}"')
+    assert page.index(shared) < page.index(f'id="retrieval-{rest[0].id}"')

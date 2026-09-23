@@ -497,10 +497,21 @@ background:#fff;min-height:44px}
 button{font:inherit;font-weight:600;min-height:48px;padding:0 24px;border:0;border-radius:10px;
 background:var(--ink);color:var(--card);cursor:pointer;align-self:flex-start}
 .form-problem{background:#EFD9D5;color:var(--flips);padding:12px 16px;border-radius:8px}
+.citations>.caveat{background:#ECE8DE;color:#3A3732;padding:10px 14px;border-radius:8px;margin:8px 0}
 @media (max-width:480px){
 header.site{gap:12px;padding:12px 16px}
 header.site nav a{padding:12px 6px}
 main{padding:24px 16px}
+h1{font-size:26px}
+blockquote{font-size:21px}
+.reconstruction{font-size:19px}
+.reconstruction-and-ledger{padding:16px}
+.verdict-label{font-size:32px}
+.flip-table thead{display:none}
+.flip-table tr{display:block;padding:8px 0;border-bottom:1px solid var(--rule)}
+.flip-table td{display:block;border:0;padding:2px 0}
+.flip-table td:nth-child(2){font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13px}
+.flip-table td:nth-child(3){color:var(--muted)}
 }
 .queue{margin:0;padding:0;list-style:none}
 .queue li{padding:14px 0;border-bottom:1px solid var(--rule)}

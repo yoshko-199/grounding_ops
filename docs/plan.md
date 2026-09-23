@@ -288,6 +288,12 @@ property of a signature or an import graph rather than a rule to remember:
   `Sec-Fetch-Site`. The full flow, verify through sign-off, now passes in
   headless Chromium at desktop and phone widths.
 
+  At phone width the page was dominated by one framing caveat repeated
+  under every citation. The HTML now states a shared caveat once before
+  the citations it covers, and the flip table stacks on narrow screens.
+  The UIX canvas was corrected to match what the code enforces: one
+  verdict container for every label, and no counted numerals.
+
   Writing it surfaced two design rules the canvas had broken. A count such as
   "four of ten alternatives flip" is a numeral nobody retrieved, so it fails
   §3 as surely as an invented statistic. And Insufficient Data must share the

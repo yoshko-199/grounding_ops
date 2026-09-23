@@ -262,22 +262,37 @@ class Artifact:
         if not self.citations:
             out.append("<p>No retrieval was performed.</p>")
         else:
-            out.append('<ul class="citation-list">')
+            # A measure's framing caveat usually applies to every figure in its
+            # series, and repeating it under each one buried the citations: a
+            # year of monthly figures printed the same paragraph twelve times.
+            # So consecutive citations sharing a caveat are grouped and the
+            # caveat is stated once, before them. Nothing is dropped: a caveat
+            # that changes starts a new group, and every citation keeps its
+            # own entry. The text render still repeats it per citation.
+            groups: list[tuple[str | None, list[Retrieval]]] = []
             for retrieval in self.citations:
-                rid = e(str(retrieval.id))
-                out.append(
-                    f'<li id="retrieval-{rid}">'
-                    f'<span class="series">{e(retrieval.custodian_id)} / {e(retrieval.series_id)}</span> '
-                    f'<span class="figure">{e(str(retrieval.value))} {e(retrieval.unit)}</span> '
-                    f'<span class="period">for {e(retrieval.reference_period)}</span>'
-                    f'<p class="provenance">revision {e(retrieval.revision_status.value)}; '
-                    f"retrieved {e(retrieval.retrieved_at.isoformat())}; "
-                    f"continuity {e(retrieval.continuity_status)}</p>"
-                )
-                if retrieval.caveat:
-                    out.append(f'<p class="caveat">caveat: {e(retrieval.caveat)}</p>')
-                out.append("</li>")
-            out.append("</ul>")
+                if groups and groups[-1][0] == retrieval.caveat:
+                    groups[-1][1].append(retrieval)
+                else:
+                    groups.append((retrieval.caveat, [retrieval]))
+            for caveat, members in groups:
+                if caveat:
+                    out.append(
+                        f'<p class="caveat">caveat on the citations that follow: {e(caveat)}</p>'
+                    )
+                out.append('<ul class="citation-list">')
+                for retrieval in members:
+                    rid = e(str(retrieval.id))
+                    out.append(
+                        f'<li id="retrieval-{rid}">'
+                        f'<span class="series">{e(retrieval.custodian_id)} / {e(retrieval.series_id)}</span> '
+                        f'<span class="figure">{e(str(retrieval.value))} {e(retrieval.unit)}</span> '
+                        f'<span class="period">for {e(retrieval.reference_period)}</span>'
+                        f'<p class="provenance">revision {e(retrieval.revision_status.value)}; '
+                        f"retrieved {e(retrieval.retrieved_at.isoformat())}; "
+                        f"continuity {e(retrieval.continuity_status)}</p></li>"
+                    )
+                out.append("</ul>")
         out.append("</section>")
 
         out.append('<section class="routing"><h2>Routing</h2>')

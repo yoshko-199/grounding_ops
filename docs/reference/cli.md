@@ -186,7 +186,9 @@ part of the artifact is behind a collapsible control. Every verdict label sits
 in the same container, with no per-label class a stylesheet could use to make
 Insufficient Data look like an error. The markup adds no numeral of its own,
 so there are no counts and no numbered citations. Citations are addressed by
-retrieval id.
+retrieval id. Consecutive citations that share a framing caveat show it once,
+immediately before them; a caveat that changes starts a new group. The text
+render still prints the caveat under each citation.
 
 ### Verdict labels
 
