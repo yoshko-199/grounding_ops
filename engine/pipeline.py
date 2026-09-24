@@ -320,6 +320,9 @@ def _unrouted(
             verdict=verdict,
             sweep=SweepResult(ran=False, reason_not_run="no series was retrieved"),
             unconfirmed_marker="UNCONFIRMED — proposed, not signed off",
+            # Both callers return before decomposition: there was no pack, or
+            # no lexicon, to decompose with.
+            decomposed=False,
         ),
         (),
         (),

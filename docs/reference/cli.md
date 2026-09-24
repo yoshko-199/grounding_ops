@@ -169,7 +169,7 @@ disappearing.
 | `[UNCONFIRMED — ...]` | Present until a person signs the verdict off |
 | `ORIGINAL CLAIM` | The claim as submitted, verbatim |
 | `RECONSTRUCTED` | The claim rebuilt from verified elements only, or `does not reconstruct` |
-| `DISCARD LEDGER` | Every element removed, with its status and the reason |
+| `DISCARD LEDGER` | Every element removed, with its status and the reason. "Nothing was discarded" when a decomposed claim lost nothing. "Not decomposed" when no pack's vocabulary applied, so nothing was examined; `--json` then carries `"decomposed": false` |
 | `VERDICT` | The label and its rationale |
 | `ROBUSTNESS SWEEP` | The flip table: each admissible alternative, and whether the conclusion holds under it |
 | `CITATIONS` | One entry per retrieval: custodian, series, figure, reference period, revision status, continuity status, caveat |

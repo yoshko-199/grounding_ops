@@ -254,7 +254,9 @@ fuzzy_trigger_matching = true
   [lexicons.derivation_triggers]
   "causal-discharge" = ["due to", "because of", "thanks to", "caused by", "owing to", "as a result of"]
   "inferential-discharge" = ["therefore", "hence", "which proves", "which shows", "consequently"]
-  "superlative-discharge" = ["highest", "lowest", "first time", "record", "ever", "worst", "best"]
+  # Not a bare "ever": it fires on "for ever", "ever since" and "have you ever",
+  # none of which ranks anything. Phrases that carry the ranking sense instead.
+  "superlative-discharge" = ["highest", "lowest", "first time", "record", "ever recorded", "of all time", "worst", "best"]
   "comparative-discharge" = ["more than", "less than", "twice as", "half as", "worse than", "better than"]
   "evaluative-discharge" = ["incompetence", "failure", "success", "mismanagement", "disaster", "triumph"]
   "scope-discharge" = ["all", "every", "always", "never", "nobody", "everyone", "none"]

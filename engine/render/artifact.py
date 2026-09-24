@@ -30,6 +30,14 @@ from engine.verification.derive import render_as_implication
 from engine.verification.sweep import FlipRow, SweepResult
 
 
+#: What an empty ledger says when the claim never reached decomposition, as
+#: opposed to one that was decomposed and lost nothing.
+_NOT_DECOMPOSED = (
+    "Not decomposed: no pack's vocabulary applies to this claim, so nothing was "
+    "examined, kept or discarded. The verdict says why."
+)
+
+
 @dataclass(frozen=True, slots=True)
 class DiscardEntry:
     """One row of the discard ledger: what was removed, and why."""
@@ -64,6 +72,12 @@ class Artifact:
     routing: tuple[RoutingNote, ...] = ()
     derived: tuple[DerivedElement, ...] = ()
     unconfirmed_marker: str = ""
+    #: False when the claim never reached decomposition: no pack resolved, or
+    #: the pack has no lexicon for its language. The ledger is then empty
+    #: because nothing was examined, not because nothing was removed, and
+    #: "Nothing was discarded" beside "does not reconstruct" read as a whole
+    #: claim dropped by a ledger claiming otherwise.
+    decomposed: bool = True
     _lines: tuple[str, ...] = field(default=(), compare=False)
 
     # -- the only ways out --------------------------------------------------
@@ -97,6 +111,8 @@ class Artifact:
                 payload.quoted(entry.fragment)
                 payload.line(f" [{entry.status}]")
                 payload.line(f"      {entry.reason}")
+        elif not self.decomposed:
+            payload.line(f"  {_NOT_DECOMPOSED}")
         else:
             payload.line("  Nothing was discarded.")
         payload.line()
@@ -121,6 +137,7 @@ class Artifact:
             "claim": self.claim_text,
             "reconstruction": self._reconstruction if self.does_reconstruct else None,
             "does_reconstruct": self.does_reconstruct,
+            "decomposed": self.decomposed,
             "element_set_hash": self.element_set_hash,
             "discard_ledger": [
                 {"fragment": e.fragment, "status": e.status, "reason": e.reason}
@@ -224,6 +241,8 @@ class Artifact:
                     f'<p class="reason">{e(entry.reason)}</p></li>'
                 )
             out.append("</ul>")
+        elif not self.decomposed:
+            out.append(f'<p class="ledger">{e(_NOT_DECOMPOSED)}</p>')
         else:
             out.append('<p class="ledger">Nothing was discarded.</p>')
         out.append("</section>")

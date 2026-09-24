@@ -325,6 +325,8 @@ def record_html(record: dict) -> str:
                        f'<span class="status">{e(d["status"])}</span>'
                        f'<p class="reason">{e(d["reason"])}</p></li>')
         out.append("</ul>")
+    elif not record["elements"]:
+        out.append('<p class="ledger">Not decomposed: no elements were recorded for this claim, so nothing was kept or discarded.</p>')
     else:
         out.append('<p class="ledger">Nothing was discarded.</p>')
     out.append("</section>")

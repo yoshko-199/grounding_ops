@@ -1,5 +1,8 @@
 # Validation run — five claims, against the prior art
 
+> A later run tested [ten supplied claims](validation-ten-claims.md) through
+> the command line and the web UI.
+
 A record of the engine run against five claims chosen to span the verdict
 space, each compared with the method of the `israeli-fact-checker` skill
 (v0.2 §11 prior art). The point is not that the two agree — they diverge

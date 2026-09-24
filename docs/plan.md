@@ -95,6 +95,18 @@ It also sharpens what a corpus is for. A corpus assembled from such a source mea
 - **Approximate dates are refused, not rounded.** A source that displays an estimated date where it could not establish the real one — a common and openly stated practice — cannot supply a `stated_at`, because §9.2 bands and §9.5 continuity are both indexed on when the claim was made. An approximate date there does not degrade the answer; it produces a confident answer to a different question. `CandidateClaim.stated_at()` raises rather than guessing, and a source that says nothing about its dating has every record capped at approximate.
 - **Text transforms are recorded.** §9.7.1 anchors derived elements to spans of the original, so text silently rewritten in transit — tags stripped, entities decoded — yields spans that resolve to the wrong words much later. Every edit between the received body and the stored text is named on the record, and the raw body is kept.
 
+**Ten supplied claims, run end to end.** See the
+[validation page](validation-ten-claims.md). They found three defects, now
+fixed with tests:
+
+- a digit inside a name ("Covid-19") decomposed as a figure;
+- superlative triggers matched inside other words ("ever" in "every");
+- an undecomposed claim's empty ledger read "Nothing was discarded".
+
+They also found two gaps, recorded rather than patched: active-voice
+causal verbs ("A causes B") are missed, because the trigger model assumes
+the effect comes first, and a two-part claim joined by "and" derives as one.
+
 ### 2.2a Divergence from the prior art, deliberately retained
 
 The `israeli-fact-checker` skill's method (`SKILL.md` Step 1, `references/domain-checklist.md`) and this spec agree on almost everything — its eight-step workflow maps stage for stage onto the pipeline, and its verdict scale corresponds one-to-one with §6.2. Two differences are real and are kept:

@@ -173,6 +173,8 @@ def _render(record: dict) -> str:
         for d in record["discards"]:
             lines.append(f'  - "{d["fragment"]}" [{d["status"]}]')
             lines.append(f"      {d['reason']}")
+    elif not record["elements"]:
+        lines.append("  Not decomposed: no elements were recorded for this claim, so nothing was kept or discarded.")
     else:
         lines.append("  Nothing was discarded.")
     lines.append("")
