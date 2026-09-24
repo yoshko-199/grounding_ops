@@ -1,0 +1,60 @@
+# Real figures for the ten claims: fill-in template.
+#
+# Copy to figures.toml and fill ONLY from the authority's own publication.
+# Every entry needs all four provenance fields; an entry missing any of them
+# counts as not filled. Leave value = "[confirm]" for anything you could not
+# read on the authority's own page. Never fill from memory, a search summary,
+# or a third-party site. See docs/spec/packs/demo-real.md.
+#
+# Not a .toml file on purpose: `--packs packs/demo-real` must not try to
+# load it as a pack.
+
+[[figure]]
+claim = 1
+measure = "normal boiling point of water"
+authority = "NIST Chemistry WebBook"
+url = "https://webbook.nist.gov/cgi/cbook.cgi?ID=C7732185&Type=TBOIL"
+table = "[confirm]"
+value = "[confirm]"
+unit = "[confirm]"
+published_precision = "[confirm]"
+fetched_on = "[confirm]"
+quoted_text = "[confirm]"
+
+[[figure]]
+claim = 4
+measure = "year of the charter's first sealing"
+authority = "The National Archives (UK)"
+url = "https://www.nationalarchives.gov.uk/explore-the-collection/explore-by-time-period/medieval/magna-carta/"
+table = "[confirm]"
+value = "[confirm]"
+unit = "year"
+published_precision = "1"
+fetched_on = "[confirm]"
+quoted_text = "[confirm]"
+
+[[figure]]
+claim = 8
+measure = "design density of structural steel"
+authority = "CEN, EN 1991-1-1 Table A.4"
+url = "[confirm] (licensed copy only)"
+table = "Table A.4"
+value = "[confirm]"
+unit = "[confirm]"
+published_precision = "[confirm]"
+fetched_on = "[confirm]"
+quoted_text = "[confirm]"
+
+# Claim 10: one entry per year, 1991 to the latest published year.
+[[figure]]
+claim = 10
+measure = "murder and nonnegligent manslaughter rate per hundred thousand"
+authority = "FBI Uniform Crime Reporting Program"
+url = "https://ucr.fbi.gov/crime-in-the-u.s/2010/crime-in-the-u.s.-2010/tables-by-title"
+table = "Table 1"
+reference_period = "1991"
+value = "[confirm]"
+unit = "[confirm]"
+published_precision = "[confirm]"
+fetched_on = "[confirm]"
+quoted_text = "[confirm]"

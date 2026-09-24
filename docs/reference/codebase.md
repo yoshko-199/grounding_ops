@@ -10,7 +10,7 @@ used here, see the [glossary](glossary.md).
 | Path | Holds |
 |---|---|
 | `engine/` | The pipeline, Stages 0–11. No network client, and no source it did not get from a loaded pack |
-| `packs/` | Custodian packs as versioned TOML: `packs/fixture/` (the synthetic `ZZ` jurisdiction) and `packs/live/` (Israel) |
+| `packs/` | Custodian packs as versioned TOML: `packs/fixture/` (the synthetic `ZZ` jurisdiction), `packs/demo/` (the synthetic `XD` demo), and `packs/live/` (Israel). `packs/demo-real/` holds only a fill-in template, not a pack |
 | `cli/` | The composition root: the four trial-facing commands, the web UI, and the composition they share |
 | `plugins/` | Code that runs beside the engine and is never part of it: the claim harvester and the claim-shape fuzzer |
 | `sources/` | Harvest source declarations, all disabled as shipped |
@@ -46,7 +46,8 @@ fixes, and decides nothing itself.
 | `engine/render/artifact.py` | The artifact and its only ways out: `render()`, `render_html()`, `to_dict()` |
 | `engine/render/figures.py` | `Payload`, where every output numeral is checked against a retrieval |
 | `engine/custodians/base.py` | The adapter contract, and `CustodianUnreachable` |
-| `engine/custodians/fixture.py` | Deterministic adapters for the `ZZ` fixture jurisdiction |
+| `engine/custodians/fixture.py` | Deterministic adapters for the `ZZ` fixture jurisdiction, merged with the demo adapters |
+| `engine/custodians/demo.py` | Adapters for the synthetic `XD` demo pack (`packs/demo/`). The values are invented to land the ten supplied claims on every level. One custodian has no adapter on purpose |
 | `engine/custodians/boi.py` | The Bank of Israel adapter. Written and tested, and has never run live from the development environment |
 | `engine/custodians/live.py` | Wiring real adapters, lazily, for the composition root |
 | `engine/packs/schema.py`, `loader.py`, `registry.py` | Pack structures, parsing and validation, and the loaded set |

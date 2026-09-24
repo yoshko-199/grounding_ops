@@ -116,6 +116,26 @@ using the remaining triggers ("record" inside "recorded") was added.
    into their assertions is a decomposition change the spec has not yet
    made.
 
+## With demo sources
+
+Every claim above is Insufficient Data because nothing covers it. The
+[demo pack](how-to/try-the-demo-pack.md) gives them somewhere to be verified.
+It is a synthetic jurisdiction whose invented values land each claim, and a
+few labelled variants, on a chosen level. Between them they reach every
+claim-level verdict the engine can produce: Accurate, Misleading,
+Substantially inaccurate, False, Indeterminate and Insufficient Data. They
+also reach every element status except *contested by definition*, which
+today folds into Insufficient Data.
+
+Building it exposed more than missing data: eight gaps in the specification
+and three places where the code diverges from it. Among them are the
+unreported contest on claim 8, the `rounded` tag never shown, and a sweep
+baseline anchored at the middle of the series. All are written up as
+[requirements for the next specification version](spec/proposals/v0.6-requirements.md).
+The real-figures counterpart is a [scaffold](spec/packs/demo-real.md). The
+network allowlist blocks every authority's site, so every figure waits to be
+fetched from the authority's own page.
+
 ## What this run establishes
 
 Real claims find what fixture claims miss, and they did it three times from

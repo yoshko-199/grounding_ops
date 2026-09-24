@@ -107,6 +107,16 @@ They also found two gaps, recorded rather than patched: active-voice
 causal verbs ("A causes B") are missed, because the trigger model assumes
 the effect comes first, and a two-part claim joined by "and" derives as one.
 
+**A demo pack for the ten claims.** [`packs/demo`](how-to/try-the-demo-pack.md)
+is a synthetic jurisdiction with invented values that land the claims on
+every reachable verdict. Building it produced
+[requirements for the next specification version](spec/proposals/v0.6-requirements.md):
+eight gaps, including units, event dates, compound claims and unaccounted
+text, and three divergences from v0.5 to fix. Those three are the
+contested-by-definition fold, the unrendered `rounded` tag, and the
+`last_break` anchor. A [real-figures scaffold](spec/packs/demo-real.md)
+waits for the authorities' pages to be fetched.
+
 ### 2.2a Divergence from the prior art, deliberately retained
 
 The `israeli-fact-checker` skill's method (`SKILL.md` Step 1, `references/domain-checklist.md`) and this spec agree on almost everything — its eight-step workflow maps stage for stage onto the pipeline, and its verdict scale corresponds one-to-one with §6.2. Two differences are real and are kept:

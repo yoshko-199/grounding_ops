@@ -35,6 +35,7 @@ steps for one task.
 | [Verify a claim](how-to/verify-a-claim.md) | Check a specific claim, control the jurisdiction and date, or get machine-readable output |
 | [Read back a stored verification](how-to/read-back-a-stored-verification.md) | Look up a claim you verified earlier by its claim id, without re-verifying it |
 | [Use the web UI](how-to/use-the-web-ui.md) | Verify claims and read them back in a browser instead of a terminal |
+| [Try the demo pack](how-to/try-the-demo-pack.md) | Watch the ten supplied claims land on every verification level, from Accurate to Insufficient Data, against a synthetic pack |
 | [Add a jurisdiction pack](how-to/add-a-jurisdiction-pack.md) | Make the engine able to route claims in a country it does not yet cover |
 | [Declare a harvest source](how-to/declare-a-harvest-source.md) | Point the claim harvester at a publication and its accounts |
 | [Sign off a verdict](how-to/sign-off-a-verdict.md) | Confirm, amend, or reject a proposed claim-level verdict |
@@ -57,6 +58,8 @@ Information-oriented. Look things up here; do not read it through.
 | [Specification v0.5](spec/claim-verification-engine.v0.5.md) | The normative design: stages, taxonomies, persistence model, resolved decisions |
 | [Acceptance criteria](spec/acceptance-criteria.md) | The anti-laundering constraints as binary pass/fail tests |
 | [Custodian pack interface](spec/custodian-pack-interface.md) | The normative contract a pack must satisfy |
+| [Requirements for the next specification version](spec/proposals/v0.6-requirements.md) | Proposal: eight gaps and three divergences from v0.5 that the demo pack exposed, each with evidence and a suggested approach |
+| [Real-figures scaffold](spec/packs/demo-real.md) | The authority and publication for each supplied claim, with every figure left to be fetched |
 
 ## Explanation
 

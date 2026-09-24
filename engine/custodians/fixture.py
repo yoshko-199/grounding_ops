@@ -136,8 +136,16 @@ class FixtureCustodian:
 
 
 def build_fixture_custodians() -> dict[str, FixtureCustodian]:
-    """The adapters backing the ZZ pack, keyed by custodian id."""
-    return {
+    """The adapters backing the ZZ pack, and the XD demo pack, keyed by custodian id.
+
+    The demo adapters (engine/custodians/demo.py) answer only for the XD
+    pack's custodian ids, so merging them changes nothing for ZZ. Merging is
+    what lets `--packs packs/demo` work on the command line and in the web UI
+    with no new flag.
+    """
+    from engine.custodians.demo import build_demo_custodians
+
+    adapters = {
         "zzstat": FixtureCustodian(
             "zzstat",
             {
@@ -151,3 +159,5 @@ def build_fixture_custodians() -> dict[str, FixtureCustodian]:
         "zzelect": FixtureCustodian("zzelect", {"ZZ-SEATS": _ZZ_SEATS}),
         "zzlabour": FixtureCustodian("zzlabour", {"ZZ-UNEMP-REG": _ZZ_UNEMP_REG}),
     }
+    adapters.update(build_demo_custodians())
+    return adapters
