@@ -163,6 +163,7 @@ LEXICON = Lexicon(
     quantity_form=", standing at {figure} in {period}",
     unit_phrases={},
     unit_prefixes={},
+    scale_words={},
 )
 
 
@@ -310,6 +311,7 @@ FUZZY_LEXICON = Lexicon(
     quantity_form=", standing at {figure} in {period}",
     unit_phrases={},
     unit_prefixes={},
+    scale_words={},
     fuzzy_trigger_matching=True,
 )
 

@@ -10,7 +10,7 @@ Three real measures are admitted, all from the Bank's own publications: the Bank
 
 ```
 python3 scripts/check_spec.py                    # document consistency
-python3 -m pytest tests/                         # 748 tests, 18 criteria
+python3 -m pytest tests/                         # 770 tests, 18 criteria
 python3 scripts/fuzz_shapes.py --all             # every claim shape
 PYTHONPATH=. python3 cli/verify.py "prices rose over the last three years \
   due to governmental incompetence" --jurisdiction ZZ

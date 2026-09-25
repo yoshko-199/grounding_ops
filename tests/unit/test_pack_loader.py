@@ -498,3 +498,47 @@ def test_a_malformed_unit_prefix_is_rejected(
     tmp_path: pathlib.Path, replacement: str, expected: str
 ) -> None:
     assert expected in _failures(tmp_path, POUNDS, replacement)
+
+
+# -- interface v1.8: scale_words and published_scale -------------------------------
+
+BILLION = 'billion = ["billion", "bn"]'
+
+
+def test_pack_loads_the_scale_words() -> None:
+    from engine.packs.schema import Scale
+
+    pack = load(FIXTURE)
+    lexicon = pack.lexicon("en")  # type: ignore[arg-type]
+    assert lexicon.scale_words[Scale.BILLION] == ("billion", "bn")
+    assert all(m.published_scale is Scale.ONE for m in pack.measures)
+
+
+def test_missing_scale_words_is_rejected(tmp_path: pathlib.Path) -> None:
+    text = FIXTURE.read_text(encoding="utf-8")
+    start = text.index("  [lexicons.scale_words]")
+    path = tmp_path / "no_scales.toml"
+    path.write_text(text[:start], encoding="utf-8")
+    assert "scale_words is required" in "\n".join(validate(path).failures)
+
+
+@pytest.mark.parametrize(
+    "replacement,expected",
+    [
+        ('lakh = ["lakh"]', "scale_words.lakh is not a scale"),
+        ('one = ["single"]', "scale_words.one is not a scale"),
+        ('billion = ["billion", "10bn"]', "contains a numeral"),
+        ('billion = ["billion", "seats"]', "both a scale word and a unit phrase"),
+    ],
+)
+def test_a_malformed_scale_word_is_rejected(
+    tmp_path: pathlib.Path, replacement: str, expected: str
+) -> None:
+    assert expected in _failures(tmp_path, BILLION, replacement)
+
+
+def test_an_unknown_published_scale_is_rejected(tmp_path: pathlib.Path) -> None:
+    old = 'series_identifier = "ZZ-UNEMP-REG"'
+    assert "unknown published_scale 'lots'" in _failures(
+        tmp_path, old, old + '\npublished_scale = "lots"'
+    )

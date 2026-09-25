@@ -308,3 +308,13 @@ fuzzy_trigger_matching = true
   # Interface v1.7. Declared empty: none of the ten supplied claims states a
   # figure with a unit written before it, and no demo measure is published
   # in a currency.
+
+  [lexicons.scale_words]
+  # Interface v1.8. Scale -> the English words for it, read straight after a
+  # numeral and before any unit: "£5bn", "5 billion pounds". What each scale
+  # means is fixed in the engine (short scale); a pack only names it. A bare
+  # "m" is left out on purpose: after a number it is as often metres.
+  thousand = ["thousand", "k"]
+  million = ["million", "mn"]
+  billion = ["billion", "bn"]
+  trillion = ["trillion", "tn"]

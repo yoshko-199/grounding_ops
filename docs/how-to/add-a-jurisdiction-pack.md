@@ -148,6 +148,10 @@ fuzzy_trigger_matching = true
   [lexicons.unit_prefixes]
   pounds_sterling = ["£", "GBP"]
 
+  [lexicons.scale_words]
+  thousand = ["thousand", "k"]
+  billion = ["billion", "bn"]
+
   [lexicons.derivation_triggers]
   "causal-discharge" = ["due to", "because of"]
   "inferential-discharge" = ["therefore", "hence"]
@@ -168,7 +172,11 @@ unit id your measures declare. Include the units claims use that your
 measures are *not* published in: a figure in one of those is then recognised
 and left uncompared, instead of being read as a bare number and contradicted.
 An empty table is valid but reads no unit at all. `unit_prefixes` is the same
-for units written before the number, such as currency symbols.
+for units written before the number, such as currency symbols, and
+`scale_words` names the words for thousand, million, billion and trillion.
+If a custodian publishes a series "in thousands" or "£ million", declare that
+measure's `published_scale`, or a claim stated with a scale word will be
+compared against the figure as if it were in base units.
 
 `quantity_form` is how a reconstruction states its figure in this language:
 one `{figure}` and one `{period}`, worded so the figure reads as a level at

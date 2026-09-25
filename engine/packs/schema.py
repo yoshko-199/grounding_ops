@@ -20,6 +20,29 @@ from engine.codes import JurisdictionCode, LanguageCode
 from engine.elements import DerivationOperation
 
 
+class Scale(Enum):
+    """Interface v1.8, §3.3 and §3.6.  A closed set of powers of ten.
+
+    What "thousand", "million" and the rest *mean* is fixed here, once, as an
+    exponent; a pack supplies only the words its language uses for each
+    (``Lexicon.scale_words``) and, for a measure published in a scaled unit,
+    which one (``Measure.published_scale``). So a pack still carries no
+    numeral, and no pack can make "billion" mean something else. The short
+    scale: a language whose "billion" is a million million maps that word to
+    ``TRILLION``.
+    """
+
+    ONE = "one"
+    THOUSAND = "thousand"
+    MILLION = "million"
+    BILLION = "billion"
+    TRILLION = "trillion"
+
+    @property
+    def exponent(self) -> int:
+        return {"one": 0, "thousand": 3, "million": 6, "billion": 9, "trillion": 12}[self.value]
+
+
 class SurfaceCategory(Enum):
     """Interface v1.4, §3.6.  A closed set of language-general surface forms.
 
@@ -107,6 +130,12 @@ class Measure:
     admissible_windows: tuple[str, ...]
     admissible_source_ref: str
     series_breaks: tuple[SeriesBreak, ...] = ()
+    # Interface v1.8. The scale the custodian publishes this series in: a
+    # table "in thousands" or "£ million". Optional, defaulting to ONE, since
+    # every series admitted so far is published in its base unit. Used only to
+    # compare a claim stated with a scale word ("£5bn") against the published
+    # figure; the figure itself is always rendered as published.
+    published_scale: Scale = Scale.ONE
 
     @property
     def sweep_can_run(self) -> bool:
@@ -187,6 +216,11 @@ class Lexicon:
     # guessed: a phrase in this table is only ever read ending right before a
     # number, and one in unit_phrases only ever starting right after one.
     unit_prefixes: dict[str, tuple[str, ...]]
+    # Interface v1.8. Required, and may be declared empty. Scale -> the words
+    # for it in this language, read directly after a numeral and before any
+    # unit: "£5bn", "5 billion pounds", "28.7 thousand people". Before it
+    # existed "£5bn" was read as five pounds.
+    scale_words: dict[Scale, tuple[str, ...]]
     # Interface v1.2. Pack data, versioned and reviewable, on the same footing
     # as the trigger lists themselves (AC-3). Off unless a pack says otherwise.
     fuzzy_trigger_matching: bool = False

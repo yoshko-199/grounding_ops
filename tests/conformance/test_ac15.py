@@ -178,6 +178,7 @@ def test_composing_a_forbidden_connective_raises(element_set) -> None:
         quantity_form=LEXICON.quantity_form,
         unit_phrases=LEXICON.unit_phrases,
         unit_prefixes=LEXICON.unit_prefixes,
+        scale_words=LEXICON.scale_words,
     )
     # Two measures, so there is a join for the connective to occupy. A single
     # clause has no seam and would pass for the wrong reason.
@@ -340,4 +341,5 @@ LEXICON = Lexicon(
     quantity_form=", standing at {figure} in {period}",
     unit_phrases={},
     unit_prefixes={},
+    scale_words={},
 )

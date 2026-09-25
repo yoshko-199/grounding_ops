@@ -26,6 +26,7 @@ from engine.packs.schema import (
     Measure,
     Pack,
     RoutingRule,
+    Scale,
     SeriesBreak,
     SurfaceCategory,
 )
@@ -257,7 +258,22 @@ def _measure(raw: dict[str, Any], failures: list[str]) -> Measure:
         admissible_windows=tuple(raw.get("admissible_windows", ())),
         admissible_source_ref=raw.get("admissible_source_ref", ""),
         series_breaks=tuple(breaks),
+        published_scale=_published_scale(mid, raw.get("published_scale"), failures),
     )
+
+
+def _published_scale(mid: str, raw: object, failures: list[str]) -> Scale:
+    """Interface v1.8: optional, one of the closed set, ``one`` when absent."""
+    if raw is None:
+        return Scale.ONE
+    try:
+        return Scale(raw)
+    except ValueError:
+        failures.append(
+            f"measure {mid!r}: unknown published_scale {raw!r}; one of "
+            f"{', '.join(s.value for s in Scale)}"
+        )
+        return Scale.ONE
 
 
 def _route(raw: dict[str, Any], failures: list[str]) -> RoutingRule:
@@ -355,6 +371,8 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
         language, raw.get("unit_prefixes"), field="unit_prefixes", version="v1.7"
     )
     failures.extend(prefix_failures)
+    scale_words, scale_failures = _scale_words(language, raw.get("scale_words"), unit_phrases)
+    failures.extend(scale_failures)
 
     return Lexicon(
         language=language,
@@ -366,6 +384,7 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
         quantity_form=quantity_form,
         unit_phrases=unit_phrases,
         unit_prefixes=unit_prefixes,
+        scale_words=scale_words,
         fuzzy_trigger_matching=bool(raw.get("fuzzy_trigger_matching", False)),
         # Interface v1.3, optional. Absent means "no declared name in this
         # language", which is a conservative under-fire of §9.8.2 rule 1, not
@@ -409,17 +428,54 @@ def _unit_phrases(
         for phrase in listed:
             if re.search(r"\d", phrase):
                 failures.append(
-                    f"lexicon {language}: unit phrase {phrase!r} contains a numeral (§3)"
+                    f"lexicon {language}: {field} entry {phrase!r} contains a numeral (§3)"
                 )
             key = phrase.strip().lower()
             if key in owner and owner[key] != unit:
                 failures.append(
-                    f"lexicon {language}: unit phrase {phrase!r} names both "
+                    f"lexicon {language}: {field} entry {phrase!r} names both "
                     f"{owner[key]!r} and {unit!r}"
                 )
             owner[key] = unit
         phrases[unit] = tuple(p.strip() for p in listed)
     return phrases, failures
+
+
+def _scale_words(
+    language: str, raw: object, unit_phrases: dict[str, tuple[str, ...]]
+) -> tuple[dict[Scale, tuple[str, ...]], list[str]]:
+    """Interface v1.8: the words for each scale, checked before any use.
+
+    The table rules of `unit_phrases`, plus two of its own. Keys come from
+    the closed set `Scale` (not `one`, which no word names), so a pack can say
+    what its language calls a billion but never what a billion is. And no
+    word may also be a unit phrase: both are read straight after a numeral,
+    so "5m" could not say whether it meant five million or five metres.
+    """
+    words, failures = _unit_phrases(
+        language, raw, field="scale_words", version="v1.8"
+    )
+    scales: dict[Scale, tuple[str, ...]] = {}
+    unit_words = {p.lower(): u for u, phrases in unit_phrases.items() for p in phrases}
+    for key, phrases in words.items():
+        try:
+            scale = Scale(key)
+        except ValueError:
+            scale = None
+        if scale is None or scale is Scale.ONE:
+            failures.append(
+                f"lexicon {language}: scale_words.{key} is not a scale; one of "
+                f"{', '.join(s.value for s in Scale if s is not Scale.ONE)}"
+            )
+            continue
+        for phrase in phrases:
+            if phrase.lower() in unit_words:
+                failures.append(
+                    f"lexicon {language}: {phrase!r} is both a scale word and a unit "
+                    f"phrase for {unit_words[phrase.lower()]!r}"
+                )
+        scales[scale] = phrases
+    return scales, failures
 
 
 def _quantity_form_failures(

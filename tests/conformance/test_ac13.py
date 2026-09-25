@@ -345,3 +345,84 @@ def test_a_prefix_naming_the_measures_unit_is_compared(
     assert element.fragment == "£4.2"
     assert element.status is ElementStatus.VERIFIED
     assert element.tolerance_band is ToleranceBand.A
+
+
+# -- scale words (interface v1.8) -------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "claim,published,band",
+    [
+        # Five billion is "to the nearest billion": rounding, not equality.
+        (Decimal("5").scaleb(9), "4812000000", ToleranceBand.A),
+        (Decimal("4.8").scaleb(9), "4812000000", ToleranceBand.A),
+        (Decimal("6").scaleb(9), "4812000000", ToleranceBand.C),
+    ],
+)
+def test_a_scaled_claim_is_judged_at_the_scale_it_was_stated(
+    claim: Decimal, published: str, band: ToleranceBand
+) -> None:
+    outcome = band_for(claim, Decimal(published), published_precision=Decimal("1"),
+                       discrete=False, kind=ElementKind.QUANTITY)
+    assert outcome.band is band
+
+
+def test_a_scale_word_scales_the_claims_figure(registry, context, adapters, store) -> None:
+    """28.7 thousand against a published 28700. Before scale words were read,
+    this compared 28.7 against 28700 and came back contradicted."""
+    from engine.pipeline import verify
+
+    run = verify("registered job-seekers were 28.7 thousand", context, registry,
+                 adapters, store)
+    element = next(e for e in run.elements if e.kind is ElementKind.QUANTITY)
+    assert element.fragment == "28.7 thousand"
+    assert element.status is ElementStatus.VERIFIED
+
+
+def _scaled_fixture(tmp_path, measure_series: str, scale: str):
+    import pathlib
+
+    from engine.packs.registry import PackRegistry
+
+    fixture = pathlib.Path(__file__).resolve().parents[2] / "packs" / "fixture" / "zz.toml"
+    text = fixture.read_text(encoding="utf-8")
+    anchor = f'series_identifier = "{measure_series}"'
+    assert anchor in text
+    (tmp_path / "zz.toml").write_text(
+        text.replace(anchor, f'{anchor}\npublished_scale = "{scale}"'), encoding="utf-8"
+    )
+    return PackRegistry.from_directory(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "claim,status",
+    [
+        ("registered job-seekers were 28.7 million", ElementStatus.VERIFIED),
+        ("registered job-seekers were 28700", ElementStatus.CONTRADICTED),
+    ],
+)
+def test_a_series_published_in_thousands_is_compared_at_its_scale(
+    claim: str, status: ElementStatus, tmp_path, context, adapters, store
+) -> None:
+    """The published 28700, in a series declared "in thousands", is 28.7
+    million: the published side is scaled too, never just the claim."""
+    from engine.pipeline import verify
+
+    registry = _scaled_fixture(tmp_path, "ZZ-UNEMP-REG", "thousand")
+    run = verify(claim, context, registry, adapters, store)
+    element = next(e for e in run.elements if e.kind is ElementKind.QUANTITY)
+    assert element.status is status
+
+
+def test_no_scaled_figure_reaches_output(tmp_path, context, adapters, store) -> None:
+    """AC-7's side of it: the scaling is internal. The claim is quoted as
+    written and the figure cited as published; the product appears nowhere."""
+    from engine.pipeline import verify
+
+    registry = _scaled_fixture(tmp_path, "ZZ-UNEMP-REG", "thousand")
+    run = verify("registered job-seekers were 28.7 million", context, registry,
+                 adapters, store)
+    artifact = run.artifact
+    for output in (artifact.render(), artifact.render_html(), str(artifact.to_dict())):
+        for scaled in ("28700000", "2.87E+7", "28.7E+6"):
+            assert scaled not in output
