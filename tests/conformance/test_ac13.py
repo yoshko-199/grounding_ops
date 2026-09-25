@@ -298,3 +298,50 @@ def test_a_figure_in_the_measures_unit_is_still_compared(
     assert element.fragment == stated
     assert element.status is ElementStatus.VERIFIED
     assert element.tolerance_band is ToleranceBand.A
+
+
+# -- a unit written before the number (interface v1.7) ---------------------------
+
+
+@pytest.mark.parametrize("stated", ["£4.2", "US$ 4.2", "£4.2 percent"])
+def test_a_figure_with_a_prefix_in_another_unit_is_never_banded(
+    stated: str, registry, context, adapters, store
+) -> None:
+    """"£4.2 percent" names two units; comparing it would mean choosing which
+    one the claimant meant, so it is not compared either."""
+    from engine.pipeline import verify
+    from engine.verification.element_verdict import UNIT_MISMATCH
+
+    run = verify(f"the ZZ survey unemployment rate was {stated}", context, registry,
+                 adapters, store)
+    element = next(e for e in run.elements if e.kind is ElementKind.QUANTITY)
+    assert element.fragment.strip() == stated
+    assert element.status is ElementStatus.UNVERIFIED
+    assert element.tolerance_band is None
+    assert run.discard_reasons[element.id.value] == UNIT_MISMATCH
+
+
+def test_a_prefix_naming_the_measures_unit_is_compared(
+    tmp_path, context, adapters, store
+) -> None:
+    """The positive half, on a copy of the fixture whose survey rate is
+    declared in pounds: the prefix matches the measure, so the bands apply."""
+    import pathlib
+
+    from engine.packs.registry import PackRegistry
+    from engine.pipeline import verify
+
+    fixture = pathlib.Path(__file__).resolve().parents[2] / "packs" / "fixture" / "zz.toml"
+    text = fixture.read_text(encoding="utf-8")
+    survey = 'series_identifier = "ZZ-UNEMP-SURVEY"\nunit = "percent"'
+    assert survey in text
+    (tmp_path / "zz.toml").write_text(
+        text.replace(survey, 'series_identifier = "ZZ-UNEMP-SURVEY"\nunit = "pounds_sterling"'),
+        encoding="utf-8",
+    )
+    run = verify("the ZZ survey unemployment rate was £4.2", context,
+                 PackRegistry.from_directory(tmp_path), adapters, store)
+    element = next(e for e in run.elements if e.kind is ElementKind.QUANTITY)
+    assert element.fragment == "£4.2"
+    assert element.status is ElementStatus.VERIFIED
+    assert element.tolerance_band is ToleranceBand.A

@@ -145,6 +145,9 @@ fuzzy_trigger_matching = true
   percent = ["percent", "per cent", "%"]
   percentage_points = ["percentage points", "percentage point"]
 
+  [lexicons.unit_prefixes]
+  pounds_sterling = ["£", "GBP"]
+
   [lexicons.derivation_triggers]
   "causal-discharge" = ["due to", "because of"]
   "inferential-discharge" = ["therefore", "hence"]
@@ -164,7 +167,8 @@ into an implication neither supports.
 unit id your measures declare. Include the units claims use that your
 measures are *not* published in: a figure in one of those is then recognised
 and left uncompared, instead of being read as a bare number and contradicted.
-An empty table is valid but reads no unit at all.
+An empty table is valid but reads no unit at all. `unit_prefixes` is the same
+for units written before the number, such as currency symbols.
 
 `quantity_form` is how a reconstruction states its figure in this language:
 one `{figure}` and one `{period}`, worded so the figure reads as a level at

@@ -162,6 +162,7 @@ LEXICON = Lexicon(
     surface_vocabulary={category: () for category in SurfaceCategory},
     quantity_form=", standing at {figure} in {period}",
     unit_phrases={},
+    unit_prefixes={},
 )
 
 
@@ -308,6 +309,7 @@ FUZZY_LEXICON = Lexicon(
     surface_vocabulary={category: () for category in SurfaceCategory},
     quantity_form=", standing at {figure} in {period}",
     unit_phrases={},
+    unit_prefixes={},
     fuzzy_trigger_matching=True,
 )
 
