@@ -129,6 +129,10 @@ Interface v1.7 adds `unit_prefixes` for units written before the number, so
 "£5" and "USD 5" carry their currency too, and v1.8 adds `scale_words`, so
 "£5bn" is five billion pounds rather than five, with an optional
 `published_scale` for series published in thousands or millions.
+A [draft amendment to §9.2](spec/proposals/9.2-rounded-counts.md) proposes
+judging a count stated with a scale word at the precision it states, since
+"29 thousand" against a published count is otherwise held to an exact match.
+It is not built.
 
 **Reconstruction figures say what they are.** A reconstruction's figure is
 the level at the end of the retrieved span, and it used to follow the
