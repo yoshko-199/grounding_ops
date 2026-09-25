@@ -134,3 +134,17 @@ def test_element_statuses_match_the_spec_taxonomy() -> None:
         "out_of_scope",
     }
     assert ElementStatus.UNREACHABLE is not ElementStatus.UNVERIFIED
+
+
+def test_a_quantity_is_anchored_over_its_stated_unit(lexicon) -> None:
+    """Interface v1.6. The unit is part of what the claimant asserted, so the
+    element spans it: a bare numeral would let the figure be compared against
+    a series in any unit at all."""
+    from engine.verification.decompose import decompose
+
+    claim = "the rate fell 0.3 percentage points while seats rose to 61 seats"
+    elements = decompose(claim, ClaimId(), lexicon)
+    quantities = [e for e in elements if e.kind is ElementKind.QUANTITY]
+    assert [e.fragment for e in quantities] == ["0.3 percentage points", "61 seats"]
+    for element in quantities:
+        assert element.span.resolve(claim) == element.fragment

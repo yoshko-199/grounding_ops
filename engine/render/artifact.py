@@ -376,7 +376,8 @@ class Artifact:
         # An artifact built without findings still states every ledger row,
         # so the bottom line can never omit what was removed.
         findings = self.findings or tuple(
-            Finding(entry.fragment, "", entry.status) for entry in self.ledger
+            Finding(entry.fragment, "", entry.status, reason=entry.reason)
+            for entry in self.ledger
         )
         return bottom_line.Basis(
             claim_text=self.claim_text,

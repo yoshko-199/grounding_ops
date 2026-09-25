@@ -261,3 +261,40 @@ def test_an_exact_match_carries_no_rounded_tag(registry, context, adapters, stor
     run = verify("the ZZ survey unemployment rate was 4.2 percent", context, registry, adapters, store)
     assert "rounded" not in run.artifact.render()
     assert run.artifact.to_dict()["rounded"] == []
+
+
+# -- units (interface v1.6) ---------------------------------------------------
+#
+# A band compares two figures in the same unit. A claim figure stated in
+# another unit has no band: comparing it would contradict a true statement
+# (212 degrees Fahrenheit against a Celsius series), and converting it would
+# put a figure nobody published into the comparison (§3).
+
+PP_CLAIM = "the ZZ survey unemployment rate fell 0.3 percentage points in 2021"
+
+
+def test_a_figure_in_another_unit_is_never_banded(registry, context, adapters, store) -> None:
+    from engine.pipeline import verify
+    from engine.verification.element_verdict import UNIT_MISMATCH
+
+    run = verify(PP_CLAIM, context, registry, adapters, store)
+    element = next(e for e in run.elements if e.kind is ElementKind.QUANTITY)
+    # The whole unit phrase, not "percent" read out of "percentage".
+    assert element.fragment == "0.3 percentage points"
+    assert element.status is ElementStatus.UNVERIFIED
+    assert element.tolerance_band is None
+    assert run.discard_reasons[element.id.value] == UNIT_MISMATCH
+
+
+@pytest.mark.parametrize("stated", ["4.2 percent", "4.2%", "4.2 per cent"])
+def test_a_figure_in_the_measures_unit_is_still_compared(
+    stated: str, registry, context, adapters, store
+) -> None:
+    from engine.pipeline import verify
+
+    run = verify(f"the ZZ survey unemployment rate was {stated}", context, registry,
+                 adapters, store)
+    element = next(e for e in run.elements if e.kind is ElementKind.QUANTITY)
+    assert element.fragment == stated
+    assert element.status is ElementStatus.VERIFIED
+    assert element.tolerance_band is ToleranceBand.A

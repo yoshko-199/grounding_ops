@@ -366,6 +366,14 @@ fuzzy_trigger_matching = true
     "will", "shall", "going to", "expected to", "forecast to",
     "forecasted to", "next year", "next month", "next quarter", "projected",
   ]
+
+  [lexicons.unit_phrases]
+  # Interface v1.6. Declared empty on purpose. The three measures are
+  # representative rates published as shekels per unit of foreign currency,
+  # and no corpus of how claims phrase them has been reviewed, so no phrase is
+  # admitted yet. Empty keeps the pre-v1.6 behaviour: a bare number is
+  # compared, and no unit is read.
+
 [[routing_rules]]
 measure_id = "fx_representative_eur"
 custodian_id = "boi"

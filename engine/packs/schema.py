@@ -171,6 +171,16 @@ class Lexicon:
     # when it was the level at the end of the span. The period is what says
     # which: a figure rendered without it cannot say what it measures.
     quantity_form: str
+    # Interface v1.6. Required, and may be declared empty. Unit id -> the
+    # phrases that name that unit in this language. A unit id is the string a
+    # measure declares as its `unit`. Before it existed the engine read no unit
+    # beyond an English "%"/"percent"/"points", so "212 degrees Fahrenheit" was
+    # decomposed as a bare 212 and compared against a series published in
+    # Celsius, and a true claim came back contradicted. A declared phrase after
+    # a numeral joins the quantity element, and an element whose unit differs
+    # from its measure's is not compared at all (§3: a converted figure is one
+    # no retrieval supports).
+    unit_phrases: dict[str, tuple[str, ...]]
     # Interface v1.2. Pack data, versioned and reviewable, on the same footing
     # as the trigger lists themselves (AC-3). Off unless a pack says otherwise.
     fuzzy_trigger_matching: bool = False

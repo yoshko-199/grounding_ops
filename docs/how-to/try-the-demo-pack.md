@@ -34,13 +34,13 @@ a claim from the table below.
 
 ## What each claim shows
 
-The variants (`1v`, `8v`, `8x` and `10v`) are edited versions of the
+The variants (`1v`, `8v`, `8x`, `8u`, `10v` and `10x`) are edited versions of the
 supplied claims, added to reach levels the originals can't. They are not the
 claimant's words.
 
 | # | Claim | Verdict | Why |
 |---|---|---|---|
-| 1 | Water boils at 100 degrees Celsius (212 degrees Fahrenheit) at sea level. | Substantially inaccurate | "100" verifies against the Celsius series. "212" is compared against the same Celsius series and contradicted, because the engine doesn't read units ([R1](../spec/proposals/v0.6-requirements.md#r1-units)) |
+| 1 | Water boils at 100 degrees Celsius (212 degrees Fahrenheit) at sea level. | Indeterminate | "100 degrees Celsius" verifies against the Celsius series. "212 degrees Fahrenheit" is stated in a unit the series is not published in, so it is *unverified* and not compared; it is never converted ([R1](../spec/proposals/v0.6-requirements.md#r1-units), built). A level claim caps at Indeterminate |
 | 1v | Water boils at 100 degrees Celsius at sea level. | Indeterminate | Verified, but a level claim asserts no direction for the robustness sweep to test, so the verdict is capped ([R6](../spec/proposals/v0.6-requirements.md#r6-level-claims-and-accurate)) |
 | 2 | Pizza is the most delicious food in the world. | Insufficient Data | Opinion: out of scope whatever sources exist |
 | 3 | Humans are classified as mammals. | Insufficient Data | A classification with no quantity: out of scope ([R5](../spec/proposals/v0.6-requirements.md#r5-classification-facts)) |
@@ -54,6 +54,8 @@ claimant's words.
 | 9 | The U.S. has a highly progressive tax-and-transfer system… | Insufficient Data | Evaluative, with no quantity: out of scope |
 | 10 | In the U.S … the nation's murder rate has been cut by more than half since 1991 | Misleading | The fall verifies against the series start, but the latest year rose, so the claim flips against the prior-year baseline. The sweep is catching a baseline choice |
 | 10v | the homicide rate fell since 1991 | Accurate | Every element verifies, and the conclusion holds under every declared baseline |
+| 10x | the murder rate fell since 1991 to 9 per hundred thousand | Substantially inaccurate | The fall verifies; the stated level is contradicted by the published figure. This variant was added when claim 1 stopped reaching this level for the wrong reason |
+| 8u | the density of carbon steel is 7.8 grams per cubic centimetre | Indeterminate | The figure is stated in grams per cubic centimetre and the series in kilograms per cubic metre, so it is *unverified*, not compared and not converted |
 
 `tests/unit/test_demo_pack.py` pins every row, so changing a demo value moves
 the claim it serves and fails a test.

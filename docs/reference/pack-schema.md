@@ -146,6 +146,7 @@ every claim in it.
 | `forbidden_connectives` | list of string | yes | Connectives that may never appear in a reconstruction |
 | `element_slot_order` | list of string | yes | The order element surfaces compose in |
 | `quantity_form` | string | yes | How a reconstruction states its figure. See below |
+| `unit_phrases` | table | yes | Unit id → phrases naming it. May be empty. See below |
 | `fuzzy_trigger_matching` | bool | no | Default `false`. See below |
 | `names` | list of string | no | Default empty. See below |
 | `surface_vocabulary` | table | yes | See below |
@@ -174,6 +175,31 @@ That renders `Over the last three years ZZ Price Index rose, standing at
 the direction word read as the size of the rise, when it is the level at the
 end of the retrieved span. A form that opens with punctuation attaches to the
 slot before it without a space.
+
+### `unit_phrases`
+
+Interface v1.6. Which unit a claim states its figure in, keyed by unit id —
+the same string a measure declares as its `unit`.
+
+```toml
+[lexicons.unit_phrases]
+degrees_celsius = ["degrees celsius", "degree celsius", "celsius", "°c"]
+degrees_fahrenheit = ["degrees fahrenheit", "fahrenheit", "°f"]
+```
+
+A declared phrase directly after a numeral joins the quantity element, so the
+element for "212 degrees Fahrenheit" is the whole phrase. If its unit differs
+from the bound measure's `unit`, the element is *unverified* with the reason
+that the figure is stated in a different unit. It is never compared, because
+the bands would contradict a true statement, and never converted, because a
+converted figure is one no custodian published.
+
+Declare the units claims use even when no measure is published in them:
+Fahrenheit above belongs to no demo measure, and declaring it is what stops
+"212 degrees Fahrenheit" being read as a bare number. Matching takes the
+longest phrase first and requires a word boundary after it. A phrase may not
+contain a numeral or appear under two units. An empty table is valid and reads
+no unit, which is the behaviour before v1.6.
 
 ### `fuzzy_trigger_matching`
 

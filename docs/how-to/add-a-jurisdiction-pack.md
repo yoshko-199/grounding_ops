@@ -141,6 +141,10 @@ element_slot_order = ["time_period", "entity", "measure", "direction", "quantity
 quantity_form = ", standing at {figure} in {period}"
 fuzzy_trigger_matching = true
 
+  [lexicons.unit_phrases]
+  percent = ["percent", "per cent", "%"]
+  percentage_points = ["percentage points", "percentage point"]
+
   [lexicons.derivation_triggers]
   "causal-discharge" = ["due to", "because of"]
   "inferential-discharge" = ["therefore", "hence"]
@@ -155,6 +159,12 @@ into a sentence. It admits enumeration and sequencing and nothing causal,
 evaluative, concessive, or explanatory — the loader rejects a pack that tries.
 This is what stops the reconstructor from smoothing two adjacent verified facts
 into an implication neither supports.
+
+`unit_phrases` names the units claims state their figures in, keyed by the
+unit id your measures declare. Include the units claims use that your
+measures are *not* published in: a figure in one of those is then recognised
+and left uncompared, instead of being read as a bare number and contradicted.
+An empty table is valid but reads no unit at all.
 
 `quantity_form` is how a reconstruction states its figure in this language:
 one `{figure}` and one `{period}`, worded so the figure reads as a level at

@@ -432,3 +432,37 @@ def test_a_malformed_quantity_form_is_rejected(
     tmp_path: pathlib.Path, replacement: str, expected: str
 ) -> None:
     assert expected in _failures(tmp_path, QUANTITY_FORM, replacement)
+
+
+# -- interface v1.6: unit_phrases ----------------------------------------------
+
+PERCENT = 'percent = ["percent", "per cent", "%"]'
+
+
+def test_pack_loads_the_unit_phrases() -> None:
+    lexicon = load(FIXTURE).lexicon("en")  # type: ignore[arg-type]
+    assert lexicon.unit_phrases["percent"] == ("percent", "per cent", "%")
+    assert "percentage points" in lexicon.unit_phrases["percentage_points"]
+
+
+def test_missing_unit_phrases_is_rejected(tmp_path: pathlib.Path) -> None:
+    text = FIXTURE.read_text(encoding="utf-8")
+    start = text.index("  [lexicons.unit_phrases]")
+    path = tmp_path / "no_units.toml"
+    path.write_text(text[:start], encoding="utf-8")
+    assert "unit_phrases is required" in "\n".join(validate(path).failures)
+
+
+@pytest.mark.parametrize(
+    "replacement,expected",
+    [
+        ('percent = ["percent", "per 100"]', "contains a numeral"),
+        ('percent = ["percent", "seats"]', "names both"),
+        ('percent = "percent"', "must be a list of non-empty strings"),
+        ('percent = ["percent", ""]', "must be a list of non-empty strings"),
+    ],
+)
+def test_a_malformed_unit_phrase_is_rejected(
+    tmp_path: pathlib.Path, replacement: str, expected: str
+) -> None:
+    assert expected in _failures(tmp_path, PERCENT, replacement)

@@ -168,12 +168,16 @@ def stored_bottom_line(record: dict) -> bottom_line.Basis | None:
     recon = record["reconstruction"]
     sweeps = record["sweeps"]
     measures = dict.fromkeys(e["measure_id"] for e in record["elements"] if e["measure_id"])
+    reasons = {(d["fragment"], d["status"]): d["reason"] for d in record["discards"]}
     return bottom_line.Basis(
         claim_text=record["text"],
         label=verdict["label"],
         state=verdict["state"],
         findings=tuple(
-            bottom_line.Finding(e["fragment"], e["kind"], e["status"], e["tolerance_band"])
+            bottom_line.Finding(
+                e["fragment"], e["kind"], e["status"], e["tolerance_band"],
+                reason=reasons.get((e["fragment"], e["status"]), ""),
+            )
             for e in record["elements"]
         ),
         reconstruction=recon["text"] if recon and recon["does_reconstruct"] else None,

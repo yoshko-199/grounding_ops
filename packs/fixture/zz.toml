@@ -283,3 +283,15 @@ fuzzy_trigger_matching = true
     "will", "shall", "going to", "expected to", "forecast to",
     "forecasted to", "next year", "next month", "next quarter", "projected",
   ]
+
+  [lexicons.unit_phrases]
+  # Interface v1.6. Unit id (a measure's `unit`) -> the phrases naming it in
+  # English. A phrase after a numeral joins the quantity element, and a figure
+  # stated in a unit other than its measure's is not compared. The ones no
+  # fixture measure uses are here so that their figures are recognised as
+  # stated in another unit rather than read as bare numbers.
+  percent = ["percent", "per cent", "%"]
+  percentage_points = ["percentage points", "percentage point"]
+  index_points = ["index points"]
+  seats = ["seats"]
+  persons = ["persons", "people"]

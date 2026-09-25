@@ -161,6 +161,7 @@ LEXICON = Lexicon(
     element_slot_order=("time_period", "entity", "measure", "direction", "quantity"),
     surface_vocabulary={category: () for category in SurfaceCategory},
     quantity_form=", standing at {figure} in {period}",
+    unit_phrases={},
 )
 
 
@@ -306,6 +307,7 @@ FUZZY_LEXICON = Lexicon(
     element_slot_order=("time_period", "entity", "measure", "direction", "quantity"),
     surface_vocabulary={category: () for category in SurfaceCategory},
     quantity_form=", standing at {figure} in {period}",
+    unit_phrases={},
     fuzzy_trigger_matching=True,
 )
 

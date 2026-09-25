@@ -79,6 +79,36 @@ def finditer_any(text: str, phrases: tuple[str, ...]) -> list[re.Match[str]]:
         for match in re.finditer(rf"\b{re.escape(phrase)}\b", text, re.I)
     ]
 
+def unit_at(
+    text: str, position: int, unit_phrases: dict[str, tuple[str, ...]]
+) -> tuple[str, int] | None:
+    """The pack-declared unit named at ``position``, and where its phrase ends.
+
+    Optional whitespace first, then the longest declared phrase that matches
+    there, case-insensitively, and ends at a word boundary. Longest-first so
+    that "degrees Fahrenheit" is not read as a bare "degrees" some other unit
+    declares; the boundary so that "percent" is never read out of
+    "percentage". The old hardcoded alternation had no boundary and tried
+    "percent" first, so it read "percentage points" as percent.
+    """
+    start = position
+    while start < len(text) and text[start] in " \t\u00a0":
+        start += 1
+    lowered = text.lower()
+    candidates = sorted(
+        ((phrase, unit) for unit, phrases in unit_phrases.items() for phrase in phrases),
+        key=lambda pair: -len(pair[0]),
+    )
+    for phrase, unit in candidates:
+        end = start + len(phrase)
+        if lowered[start:end] != phrase.lower():
+            continue
+        if phrase[-1:].isalnum() and end < len(text) and (text[end].isalnum() or text[end] == "_"):
+            continue
+        return unit, end
+    return None
+
+
 # Tokens carrying no measure identity, dropped before measure binding so that
 # an incidental "the" does not count as evidence for a measure named "The
 # Something Index".

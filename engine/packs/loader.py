@@ -349,6 +349,8 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
 
     quantity_form = raw.get("quantity_form", "")
     failures.extend(_quantity_form_failures(language, quantity_form, forbidden))
+    unit_phrases, unit_failures = _unit_phrases(language, raw.get("unit_phrases"))
+    failures.extend(unit_failures)
 
     return Lexicon(
         language=language,
@@ -358,12 +360,56 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
         element_slot_order=tuple(raw.get("element_slot_order", ())),
         surface_vocabulary=vocabulary,
         quantity_form=quantity_form,
+        unit_phrases=unit_phrases,
         fuzzy_trigger_matching=bool(raw.get("fuzzy_trigger_matching", False)),
         # Interface v1.3, optional. Absent means "no declared name in this
         # language", which is a conservative under-fire of §9.8.2 rule 1, not
         # a validation failure — see the field's docstring in schema.py.
         names=tuple(raw.get("names", ())),
     )
+
+
+def _unit_phrases(
+    language: str, raw: object
+) -> tuple[dict[str, tuple[str, ...]], list[str]]:
+    """Interface v1.6: the phrases that name each unit, checked before any use.
+
+    Required, like `surface_vocabulary`, so a language never inherits another
+    language's unit words by silence; an explicitly empty table is allowed and
+    keeps the pre-v1.6 behaviour of comparing a bare number. No numeral in a
+    phrase, because a pack carries no figures (§3). No phrase under two units,
+    because the engine would then have to choose which unit the claimant meant.
+    """
+    if not isinstance(raw, dict):
+        return {}, [
+            f"lexicon {language}: unit_phrases is required (interface v1.6). Declare "
+            "an empty table explicitly if this language names no units yet"
+        ]
+    failures: list[str] = []
+    phrases: dict[str, tuple[str, ...]] = {}
+    owner: dict[str, str] = {}
+    for unit, listed in raw.items():
+        if not isinstance(listed, list) or not all(
+            isinstance(p, str) and p.strip() for p in listed
+        ):
+            failures.append(
+                f"lexicon {language}: unit_phrases.{unit} must be a list of non-empty strings"
+            )
+            continue
+        for phrase in listed:
+            if re.search(r"\d", phrase):
+                failures.append(
+                    f"lexicon {language}: unit phrase {phrase!r} contains a numeral (§3)"
+                )
+            key = phrase.strip().lower()
+            if key in owner and owner[key] != unit:
+                failures.append(
+                    f"lexicon {language}: unit phrase {phrase!r} names both "
+                    f"{owner[key]!r} and {unit!r}"
+                )
+            owner[key] = unit
+        phrases[unit] = tuple(p.strip() for p in listed)
+    return phrases, failures
 
 
 def _quantity_form_failures(

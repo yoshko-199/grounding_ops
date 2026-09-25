@@ -50,6 +50,7 @@ def _lexicon(vocabulary: dict[SurfaceCategory, tuple[str, ...]] | None = None) -
         element_slot_order=("time_period", "entity", "measure", "direction", "quantity"),
         surface_vocabulary=surface,
         quantity_form=", standing at {figure} in {period}",
+        unit_phrases={},
     )
 
 

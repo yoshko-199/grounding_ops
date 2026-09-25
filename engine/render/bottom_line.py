@@ -44,6 +44,7 @@ from dataclasses import dataclass
 
 from engine.ids import RetrievalId
 from engine.render.figures import _NUMERAL, Payload, UnsourcedFigure
+from engine.verification.element_verdict import UNIT_MISMATCH
 
 HEADING = "Bottom line"
 LEAD = "In plain words. The full record, with every reason and figure, follows."
@@ -57,6 +58,9 @@ class Finding:
     kind: str
     status: str
     band: str | None = None
+    #: The element's recorded reason. Read only to recognise a unit mismatch,
+    #: which is *unverified* for a reason no other unverified element shares.
+    reason: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -394,6 +398,12 @@ def _finding_line(
             ))
         return ("Cannot be settled", segments)
 
+    if status == "unverified" and finding.reason == UNIT_MISMATCH:
+        return ("Not checked", [fragment, _t(
+            " \u2014 stated in a different unit from the one the source publishes, so it "
+            "was not compared. It is not converted, since a converted figure is one no "
+            "source published."
+        )])
     if status == "unverified":
         return ("Not checked", [fragment, _t(
             " \u2014 the source was reached and publishes no figure covering it."

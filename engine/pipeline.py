@@ -304,6 +304,7 @@ def verify(
                 kind=e.kind.value,
                 status=e.status.value if e.status else "unresolved",
                 band=e.tolerance_band.value if e.tolerance_band else None,
+                reason=reasons.get(e.id.value, ""),
             )
             for e in assigned
         ),
