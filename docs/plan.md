@@ -112,10 +112,20 @@ is a synthetic jurisdiction with invented values that land the claims on
 every reachable verdict. Building it produced
 [requirements for the next specification version](spec/proposals/v0.6-requirements.md):
 eight gaps, including units, event dates, compound claims and unaccounted
-text, and three divergences from v0.5 to fix. Those three are the
+text, and three divergences from v0.5. Those three were the
 contested-by-definition fold, the unrendered `rounded` tag, and the
-`last_break` anchor. A [real-figures scaffold](spec/packs/demo-real.md)
-waits for the authorities' pages to be fetched.
+`last_break` anchor, and all three are fixed. A
+[real-figures scaffold](spec/packs/demo-real.md) waits for the authorities'
+pages to be fetched.
+
+**A plain-words bottom line.** Every result, live or read back, opens with the
+verdict in plain words: what is true, what is false, what cannot be settled
+or checked, the closest version the sources support, the disconfirmation
+check, and the sources. It follows the order of an empirical check and keeps
+the artifact's rules: it lists every removed element, takes no length budget,
+and every figure carries its retrieval
+([overview §4](overview.md#the-bottom-line), requirement R9 in the
+[proposals](spec/proposals/v0.6-requirements.md#r9-a-plain-language-bottom-line)).
 
 ### 2.2a Divergence from the prior art, deliberately retained
 

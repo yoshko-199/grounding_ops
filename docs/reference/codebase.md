@@ -44,6 +44,7 @@ fixes, and decides nothing itself.
 | Module | Owns |
 |---|---|
 | `engine/render/artifact.py` | The artifact and its only ways out: `render()`, `render_html()`, `to_dict()` |
+| `engine/render/bottom_line.py` | The plain-words bottom line every result opens with, written from the artifact or from stored rows. It lists every removed element and sends each figure out with its retrieval |
 | `engine/render/figures.py` | `Payload`, where every output numeral is checked against a retrieval |
 | `engine/custodians/base.py` | The adapter contract, and `CustodianUnreachable` |
 | `engine/custodians/fixture.py` | Deterministic adapters for the `ZZ` fixture jurisdiction, merged with the demo adapters |

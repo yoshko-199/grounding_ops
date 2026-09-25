@@ -124,14 +124,21 @@ It is a synthetic jurisdiction whose invented values land each claim, and a
 few labelled variants, on a chosen level. Between them they reach every
 claim-level verdict the engine can produce: Accurate, Misleading,
 Substantially inaccurate, False, Indeterminate and Insufficient Data. They
-also reach every element status except *contested by definition*, which
-today folds into Insufficient Data.
+also reach every element status, including *contested by definition* on
+claim 8, whose two steel measures are both cited.
 
 Building it exposed more than missing data: eight gaps in the specification
-and three places where the code diverges from it. Among them are the
+and three places where the code diverged from it. The divergences were the
 unreported contest on claim 8, the `rounded` tag never shown, and a sweep
-baseline anchored at the middle of the series. All are written up as
-[requirements for the next specification version](spec/proposals/v0.6-requirements.md).
+baseline anchored at the middle of the series. All three are now fixed. Every
+item is written up in the
+[requirements for the next specification version](spec/proposals/v0.6-requirements.md),
+with the fixes recorded beside their evidence.
+
+Each result now also opens with a plain-words bottom line: what the record
+supports and contradicts, the closest version the sources back, and which
+sources. Claim 2 reads "neither confirmed nor refuted" rather than anything
+suggesting it is false, which is what Insufficient Data means.
 The real-figures counterpart is a [scaffold](spec/packs/demo-real.md). The
 network allowlist blocks every authority's site, so every figure waits to be
 fetched from the authority's own page.

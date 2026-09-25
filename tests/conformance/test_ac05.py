@@ -239,3 +239,28 @@ def test_the_html_verdict_follows_the_ledger(registry, context, adapters, store)
     for claim in (INSUFFICIENT, ORDINARY):
         page = _render(claim, context, registry, adapters, store).render_html()
         assert page.index('class="ledger') < page.index('<section class="verdict">')
+
+
+def _bottom_line_markup(artifact) -> str:
+    """The bottom line's structure with every line's content removed."""
+    page = artifact.render_html()
+    section = page[page.index('<section class="bottom-line">'):]
+    section = section[:section.index("</section>")]
+    return re.sub(r"(<p><strong>[^<]*</strong>).*?</p>", r"\1</p>", section)
+
+
+def test_the_bottom_line_states_insufficient_data_in_the_same_form(
+    registry, context, adapters, store
+) -> None:
+    """Same section, same opening line, no per-label class: the plain-words
+    verdict gives Insufficient Data no styling of its own either."""
+    insufficient = _render(INSUFFICIENT, context, registry, adapters, store)
+    ordinary = _render(ORDINARY, context, registry, adapters, store)
+    for artifact in (insufficient, ordinary):
+        markup = _bottom_line_markup(artifact)
+        assert markup.startswith('<section class="bottom-line"><h2>Bottom line</h2>')
+        assert "<p><strong>Verdict:</strong></p>" in markup
+        assert 'class="insufficient' not in markup and 'class="misleading' not in markup
+    text = insufficient.render()
+    assert "Verdict: INSUFFICIENT DATA." in text
+    assert "not a finding that it is false" in text

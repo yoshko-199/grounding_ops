@@ -23,6 +23,14 @@ the robustness sweep, the citations, the routing, and any derived elements. It
 leaves only through `render()`, `render_html()` or `to_dict()`, and each
 carries the ledger.
 
+**Bottom line.** The section every result opens with: the verdict in plain
+words, then one line per element (*True*, *False*, *Cannot be settled*, *Not
+checked*, *Not checkable*), the closest version the sources support, whether
+the conclusion survived other comparisons, the sources, and whether a person
+has reviewed it. It is the same record in plainer words, never a shorter one:
+it lists everything the ledger removes, has no length limit, and is never
+emitted on its own. See [overview §4](../overview.md#the-bottom-line).
+
 **Binding (measure binding).** Stage 3: tying an element to one specific
 measure definition *before* any source is chosen, since two institutions can
 both be right about different measures (§4, "Stage 3 is not optional").
@@ -91,7 +99,10 @@ out-of-scope kinds `opinion`, `prediction` and `causal`.
 **Element status.** One per element, assigned automatically and final (§6.1):
 `verified`, `contradicted`, `unverified` (the custodian was reached and
 nothing covers the element), `unreachable` (the custodian could not be
-reached), `contested_by_definition`, and `out_of_scope`.
+reached), `contested_by_definition` (the claim matches measures that
+measure different things, or spans an unlinked series break; every
+contested custodian's figure is cited and none is chosen), and
+`out_of_scope`.
 
 **Element-set hash.** A hash of the verified element set a reconstruction was
 derived from. Two reconstructions with the same hash must have identical text
@@ -160,7 +171,8 @@ retrievals are re-pulled, never served (§8, AC-8).
 the claim's conclusion is recomputed under every admissible alternative
 baseline and window the pack declares, and each row records whether it
 *holds* or *flips*. A claim whose elements verify but whose conclusion flips
-is *Misleading*.
+is *Misleading*. The `last_break` baseline runs only when a declared break
+falls inside the retrieved span.
 
 **Routing.** Stage 4: jurisdiction → pack → measure → custodian, logged with
 its rationale and the alternatives considered (§7.4, AC-4).
@@ -182,7 +194,8 @@ candidate *claims*. It is not a custodian and can never be evidence. See
 **Tolerance band.** How far a claimed figure may sit from the published one
 and still verify, computed from the custodian's own published precision and
 never chosen per claim (§9.2). Band A verifies, Band B verifies tagged
-`rounded`, and Band C contradicts. Superlatives, directions and discrete
+`rounded` (shown as "Verified to within rounding, not exactly"), and Band C
+contradicts. Superlatives, directions and discrete
 counts bypass the bands: they are right or wrong.
 
 **TTL.** How long a retrieval stays fresh, derived from the custodian's

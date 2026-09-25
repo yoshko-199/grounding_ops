@@ -39,7 +39,8 @@ from cli.compose import (
     split_provenance,
     verify_and_persist,
 )
-from cli.show import _load
+from cli.show import _load, stored_bottom_line
+from engine.render import bottom_line
 from cli.verify import DEFAULT_PACKS, DEFAULT_STORE
 from engine.custodians.fixture import build_fixture_custodians
 from engine.custodians.live import build_live_custodians
@@ -308,8 +309,11 @@ def record_html(record: dict) -> str:
     out = ['<article class="artifact stored">',
            f'<p class="unconfirmed">Stored record: claim <code>{e(record["claim_id"])}</code></p>',
            '<section class="claim"><h2>Original claim</h2>',
-           f'<blockquote>{e(record["text"])}</blockquote></section>',
-           '<section class="reconstruction-and-ledger"><h2>Reconstructed</h2>']
+           f'<blockquote>{e(record["text"])}</blockquote></section>']
+    basis = stored_bottom_line(record)
+    if basis is not None:
+        out.append(bottom_line.as_html(basis))
+    out.append('<section class="reconstruction-and-ledger"><h2>Reconstructed</h2>')
     recon = record["reconstruction"]
     if recon and recon["does_reconstruct"]:
         out.append(f'<p class="reconstruction">{e(recon["text"])}</p>')
@@ -474,6 +478,10 @@ section{margin:0 0 32px}
 .unconfirmed{background:var(--note-bg);color:var(--note-ink);padding:12px 16px;border-radius:8px;font-weight:600}
 blockquote{margin:0;font:26px/1.35 "Newsreader",Georgia,serif}
 .reconstruction-and-ledger{border:1px solid var(--rule);border-radius:12px;background:var(--card);padding:20px 24px}
+.bottom-line{border-left:4px solid var(--ink);padding:4px 0 4px 20px}
+.bottom-line p{margin:0 0 8px;font-size:17px;line-height:1.5}
+.bottom-line .bottom-line-lead{color:var(--muted);font-size:14px}
+.bottom-line q{font-style:italic}
 .reconstruction{font:22px/1.45 "Newsreader",Georgia,serif;margin:0 0 8px}
 .ledger{margin:0;padding:0;list-style:none}
 .ledger li{padding:10px 0;border-top:1px dashed var(--rule)}

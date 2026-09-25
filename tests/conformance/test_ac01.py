@@ -157,3 +157,63 @@ def test_a_changed_caveat_starts_its_own_group(registry, context, adapters, stor
     shared = rest[0].caveat
     assert shared and page.index(shared) > page.index(f'id="retrieval-{altered.id}"')
     assert page.index(shared) < page.index(f'id="retrieval-{rest[0].id}"')
+
+
+# -- the bottom line ----------------------------------------------------------
+#
+# The bottom line states the closest verified version of the claim, which is
+# the reconstruction. So it is one more path that emits reconstruction text,
+# and it must carry what the ledger carries: every removed element, beside it.
+
+
+def _bottom_line_text(rendered: str) -> str:
+    return rendered[rendered.index("BOTTOM LINE"):rendered.index("RECONSTRUCTED")]
+
+
+def test_the_bottom_line_states_every_removed_element(
+    registry, context, adapters, store, pack
+) -> None:
+    artifact = _run(pack, registry, context, adapters, store).artifact
+    assert artifact.ledger and artifact.does_reconstruct
+    section = _bottom_line_text(artifact.render())
+    assert "Closest version the sources support" in section
+    for entry in artifact.ledger:
+        assert f"“{entry.fragment.strip()}”" in section, entry.fragment
+
+    html = artifact.render_html()
+    block = html[html.index('<section class="bottom-line">'):]
+    block = block[:block.index("</section>")]
+    for entry in artifact.ledger:
+        assert f"<q>{entry.fragment.strip()}</q>" in block, entry.fragment
+
+    structured = artifact.to_dict()["bottom_line"]
+    for entry in artifact.ledger:
+        assert entry.fragment.strip() in structured
+
+
+def test_the_bottom_line_has_no_public_accessor() -> None:
+    public = {name for name, _ in inspect.getmembers(Artifact) if not name.startswith("_")}
+    assert "bottom_line" not in public
+
+
+def test_the_stored_bottom_line_states_every_discard(
+    registry, context, adapters, store, pack
+) -> None:
+    """The read-back is a second emitter of the same sentence."""
+    from cli.compose import verify_and_persist
+    from cli.serve import record_html
+    from cli.show import _load, _render
+
+    from engine.ingest.identity import ClaimantIdentity
+
+    run = verify_and_persist(
+        "prices rose over the last three years due to governmental incompetence",
+        context, ClaimantIdentity(), registry, store, adapters,
+    )
+    record = _load(store, str(run.claim_id))
+    assert record["discards"]
+    section = _bottom_line_text(_render(record))
+    html = record_html(record)
+    for discard in record["discards"]:
+        assert f"“{discard['fragment'].strip()}”" in section
+        assert f"<q>{discard['fragment'].strip()}</q>" in html

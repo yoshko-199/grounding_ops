@@ -233,3 +233,31 @@ def test_a_relative_period_still_verifies(registry, context, adapters, store) ->
     assert periods
     assert all(e.status is ElementStatus.VERIFIED for e in periods)
     assert run.artifact.verdict.label is not Verdict.SUBSTANTIALLY_INACCURATE
+
+
+# -- the rounded tag reaches the reader ----------------------------------------
+
+
+def test_the_rounded_tag_surfaces_in_every_output(registry, context, adapters, store) -> None:
+    """§9.2: "The `rounded` tag on Band B surfaces in output." The band was
+    computed and stored, and no output showed it, so a reader could not tell
+    an exact match from one right only to within a rounding step."""
+    from engine.pipeline import verify
+
+    claim = "the ZZ survey unemployment rate was 4.3 percent"
+    run = verify(claim, context, registry, adapters, store)
+    element = next(e for e in run.elements if e.kind is ElementKind.QUANTITY)
+    assert element.status is ElementStatus.VERIFIED
+    assert element.tolerance_band is ToleranceBand.B
+
+    assert "4.3 percent (tagged rounded)" in run.artifact.render()
+    assert "tagged <code>rounded</code>" in run.artifact.render_html()
+    assert run.artifact.to_dict()["rounded"] == ["4.3 percent"]
+
+
+def test_an_exact_match_carries_no_rounded_tag(registry, context, adapters, store) -> None:
+    from engine.pipeline import verify
+
+    run = verify("the ZZ survey unemployment rate was 4.2 percent", context, registry, adapters, store)
+    assert "rounded" not in run.artifact.render()
+    assert run.artifact.to_dict()["rounded"] == []

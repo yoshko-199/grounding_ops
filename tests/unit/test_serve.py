@@ -453,3 +453,30 @@ def test_sec_fetch_site_other_than_same_origin_is_refused(app) -> None:
         assert _post(app, headers=headers, claim=WORKED).status == 403, fetch_site
         claim_id = "00000000-0000-0000-0000-000000000000"
         assert _sign(app, claim_id, headers=headers, action="confirm", reviewer="R").status == 403
+
+
+# -- the bottom line ----------------------------------------------------------------
+
+
+def test_the_result_and_the_record_open_with_the_bottom_line(app) -> None:
+    """Both pages state the verdict in plain words before the full record."""
+    response = _post(app, claim=WORKED, jurisdiction="ZZ", stated_at="2022-01-01")
+    claim_id = _claim_id(response.body)
+    record = app.handle("GET", f"/claim/{claim_id}", {}, b"").body
+    for page in (response.body, record):
+        section = _section(page, "bottom-line")
+        assert "<strong>Verdict:</strong> MISLEADING." in section
+        assert "<strong>Sources:</strong>" in section
+        assert page.index('<section class="bottom-line">') < page.index(
+            '<section class="reconstruction-and-ledger">'
+        )
+
+
+def test_the_record_bottom_line_follows_sign_off(app) -> None:
+    claim_id = _verified(app)
+    before = _section(app.handle("GET", f"/claim/{claim_id}", {}, b"").body, "bottom-line")
+    assert "not yet reviewed by a person" in before
+    assert _sign(app, claim_id, action="reject", reviewer="R. Viewer").status == 303
+    after = _section(app.handle("GET", f"/claim/{claim_id}", {}, b"").body, "bottom-line")
+    assert "<strong>Verdict:</strong> none published." in after
+    assert "A person has reviewed this verdict" in after

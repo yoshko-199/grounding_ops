@@ -192,3 +192,34 @@ def test_the_admitted_pack_routes_without_verifying() -> None:
                 f"{measure.id} has a break with no custodian notice behind it"
             )
         del rule
+
+
+def test_a_contested_claim_whose_custodians_cannot_be_reached_stays_unreachable(
+    store,
+) -> None:
+    """D1's fix consults every tied custodian; when none can be reached, the
+    elements say so. Reporting them Unverified would be a finding about the
+    record that nobody checked — the collapse this criterion forbids."""
+    import pathlib
+
+    from engine.custodians.fixture import build_fixture_custodians
+    from engine.pipeline import verify
+    from engine.verdicts import Verdict
+
+    live = pathlib.Path(__file__).resolve().parents[2] / "packs" / "live"
+    if not live.is_dir():
+        pytest.skip("no live pack directory")
+    context = ClaimContext(
+        jurisdiction=JurisdictionCode("IL"),
+        language=LanguageCode("en"),
+        stated_at=date(2026, 8, 26),
+    )
+    run = verify(
+        "the representative exchange rate fell in 2026", context,
+        PackRegistry.from_directory(live), build_fixture_custodians(), store,
+    )
+    assert run.decision.failure is RoutingFailure.CONTESTED_BY_DEFINITION
+    statuses = {e.status for e in run.elements if not e.is_out_of_scope}
+    assert statuses == {ElementStatus.UNREACHABLE}
+    assert run.artifact.verdict.label is Verdict.INSUFFICIENT_DATA
+    assert run.artifact.citations == ()

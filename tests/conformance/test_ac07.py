@@ -327,3 +327,41 @@ def test_the_html_page_adds_no_numeral_of_its_own(registry, context, adapters, s
         allowed = set(_NUMERAL.findall(artifact.render()))
         shown = set(_NUMERAL.findall(_text_content(artifact.render_html())))
         assert shown <= allowed, f"{sorted(shown - allowed)} appear only in the HTML"
+
+
+# -- the bottom line ----------------------------------------------------------
+
+
+def test_the_bottom_line_refuses_an_unsourced_reconstruction(
+    registry, context, adapters, store
+) -> None:
+    """The bottom line checks the reconstruction itself, not only via render."""
+    from dataclasses import replace
+
+    from engine.render import bottom_line
+
+    artifact = verify(CLAIM, context, registry, adapters, store).artifact
+    tampered = replace(artifact, _reconstruction="Prices rose 999.9 index_points.")
+    basis = tampered._bottom_line_basis()
+    for emitter in (bottom_line.as_text, bottom_line.as_html):
+        with pytest.raises(UnsourcedFigure, match="999.9"):
+            emitter(basis)
+    with pytest.raises(UnsourcedFigure):
+        tampered.to_dict()
+
+
+def test_every_figure_in_the_bottom_line_links_to_its_citation(
+    registry, context, adapters, store
+) -> None:
+    import re
+
+    artifact = verify(CLAIM, context, registry, adapters, store).artifact
+    page = artifact.render_html()
+    section = page[page.index('<section class="bottom-line">'):]
+    section = section[:section.index("</section>")]
+    anchors = set(re.findall(r'href="#retrieval-([^"]+)"', section))
+    assert anchors, "the bottom line cites no source"
+    # Every link lands on a citation entry on the same page.
+    assert anchors <= {str(r.id) for r in artifact.citations}
+    for rid in anchors:
+        assert f'id="retrieval-{rid}"' in page

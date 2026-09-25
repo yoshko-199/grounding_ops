@@ -70,7 +70,7 @@ LEVELS = [
     ("7", "If you put two sheep in a field, and then another two, you’ve got four sheep "
           "in that field for ever.", Verdict.INSUFFICIENT_DATA, {}),
     ("8", "the density of steel is 7700 kg per cubic metre.",
-     Verdict.INSUFFICIENT_DATA, {"7700": ElementStatus.UNVERIFIED}),
+     Verdict.INDETERMINATE, {"7700": ElementStatus.CONTESTED_BY_DEFINITION}),
     ("8v", "the density of carbon steel is 7700 kg per cubic metre.",
      Verdict.INDETERMINATE, {"7700": ElementStatus.VERIFIED}),
     ("8x", "the density of carbon steel is 9000 kg per cubic metre.",

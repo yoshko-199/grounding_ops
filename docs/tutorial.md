@@ -70,6 +70,26 @@ ORIGINAL CLAIM
 Everything the engine produces is marked unconfirmed until a person signs it
 off. You will do that yourself in step 7.
 
+### The bottom line
+
+Next comes the answer in plain words. It opens like this:
+
+```
+BOTTOM LINE
+  In plain words. The full record, with every reason and figure, follows.
+  Verdict: MISLEADING. The figures as stated check out, but the conclusion depends on how the comparison is made. Made another way the source accepts, it reverses.
+  Checked against: ZZ Price Index (zzstat).
+  True: “rose” holds. Over the retrieved series the figure moved the way the claim says.
+  Not checkable: “due to” — a claim about causes. …
+  Not checkable: “incompetence” — opinion or evaluative language, with no fact in it to check.
+```
+
+It goes on to the closest version the sources support, whether the
+conclusion survived other comparisons, the sources, and a note that the
+verdict is provisional. Each of those is backed by a section further down.
+The rest of this step reads those sections, which is where you check that
+the bottom line is right.
+
 ### The reconstruction
 
 ```

@@ -167,3 +167,70 @@ def test_naming_the_currency_routes_cleanly(store) -> None:
     )
     assert run.artifact.routing, "a claim naming its currency must route"
     assert "euro" in run.artifact.routing[0].measure.lower()
+
+
+# ---------------------------------------------------------------------------
+# Contested, with figures: both reported, neither chosen (§6.1, §6.2).
+#
+# §6.1: Contested by definition means "custodians measure different things";
+# "both are reported, with the definitional gap explained". §6.2 maps it to
+# Indeterminate. Until the divergence recorded as D1 was fixed, a tie between
+# measures stopped at routing, no custodian was consulted, and the claim was
+# folded into Insufficient Data — the reader was told nothing settles a claim
+# that two custodians each settle a neighbouring version of.
+# ---------------------------------------------------------------------------
+
+DEMO_PACKS = pathlib.Path(__file__).resolve().parents[2] / "packs" / "demo"
+STEEL = "the density of steel is 7700 kg per cubic metre."
+
+
+def _demo_run(store):
+    from datetime import date
+
+    from engine.codes import JurisdictionCode, LanguageCode
+    from engine.context import ClaimContext
+    from engine.custodians.fixture import build_fixture_custodians
+    from engine.packs.registry import PackRegistry
+    from engine.pipeline import verify
+
+    context = ClaimContext(
+        jurisdiction=JurisdictionCode("XD"),
+        language=LanguageCode("en"),
+        stated_at=date(2024, 1, 1),
+    )
+    return verify(
+        STEEL, context, PackRegistry.from_directory(DEMO_PACKS),
+        build_fixture_custodians(), store,
+    )
+
+
+def test_a_contested_claim_reports_every_custodians_figure(store) -> None:
+    from engine.elements import ElementStatus
+    from engine.verdicts import Verdict
+
+    run = _demo_run(store)
+    assert run.decision.failure is not None and not run.decision.routed
+
+    assert run.artifact.verdict.label is Verdict.INDETERMINATE
+    assert {e.status for e in run.elements if not e.is_out_of_scope} == {
+        ElementStatus.CONTESTED_BY_DEFINITION
+    }
+    # Both custodians' figures, not the nearest one's.
+    assert {c.custodian_id for c in run.artifact.citations} == {"xdstd", "xdmat"}
+
+
+def test_each_contested_measure_names_the_others_as_its_alternatives(store) -> None:
+    run = _demo_run(store)
+    names = {note.measure for note in run.artifact.routing}
+    assert names == {"Density of carbon steel", "Density of stainless steel"}
+    for note in run.artifact.routing:
+        assert set(note.alternatives_considered) == names - {note.measure}
+
+
+def test_the_contested_figures_render_with_their_sources(store) -> None:
+    run = _demo_run(store)
+    text = run.artifact.render()
+    html = run.artifact.render_html()
+    for citation in run.artifact.citations:
+        assert citation.series_id in text
+        assert f'id="retrieval-{citation.id}"' in html

@@ -23,6 +23,8 @@ import html
 from dataclasses import dataclass, field
 
 from engine.elements import DerivedElement
+from engine.render import bottom_line
+from engine.render.bottom_line import Finding
 from engine.render.figures import _NUMERAL, Payload, UnsourcedFigure
 from engine.store.events import Retrieval
 from engine.verdicts import ProposedVerdict, Verdict
@@ -78,6 +80,14 @@ class Artifact:
     #: "Nothing was discarded" beside "does not reconstruct" read as a whole
     #: claim dropped by a ledger claiming otherwise.
     decomposed: bool = True
+    #: Verbatim fragments of the claim that verified in band B: right to
+    #: within a rounding step, not exactly. §9.2: "The `rounded` tag on Band B
+    #: surfaces in output." It was computed and stored and never shown, so a
+    #: reader could not tell an exact match from a rounded one.
+    rounded: tuple[str, ...] = ()
+    #: Every element, kept or removed, with what happened to it. The bottom
+    #: line is written from these; the ledger holds only the removed ones.
+    findings: tuple[Finding, ...] = ()
     _lines: tuple[str, ...] = field(default=(), compare=False)
 
     # -- the only ways out --------------------------------------------------
@@ -92,6 +102,11 @@ class Artifact:
         payload.line("ORIGINAL CLAIM").text("  ")
         payload.quoted(self.claim_text).line().line()
 
+        # The verdict in plain words, before the record that justifies it. It
+        # states every removed element too, so it is no more detachable than
+        # the reconstruction it carries (see engine.render.bottom_line).
+        bottom_line.write(payload, self._bottom_line_basis())
+
         payload.line("RECONSTRUCTED")
         if self.does_reconstruct:
             self._render_reconstruction(payload)
@@ -100,6 +115,12 @@ class Artifact:
             payload.line(
                 "  The surviving elements do not compose into a coherent statement."
             )
+        for fragment in self.rounded:
+            # The claim's own figure, through the quoted channel: it is the
+            # claimant's number being described, not a figure asserted here.
+            payload.text("  Verified to within rounding, not exactly: ")
+            payload.quoted(fragment.strip())
+            payload.line(" (tagged rounded)")
         payload.line()
 
         # §7.1 — the ledger is in the same payload, not behind a control, a
@@ -138,6 +159,8 @@ class Artifact:
             "reconstruction": self._reconstruction if self.does_reconstruct else None,
             "does_reconstruct": self.does_reconstruct,
             "decomposed": self.decomposed,
+            "bottom_line": bottom_line.as_text(self._bottom_line_basis()),
+            "rounded": [fragment.strip() for fragment in self.rounded],
             "element_set_hash": self.element_set_hash,
             "discard_ledger": [
                 {"fragment": e.fragment, "status": e.status, "reason": e.reason}
@@ -210,6 +233,7 @@ class Artifact:
 
         out.append('<section class="claim"><h2>Original claim</h2>')
         out.append(f"<blockquote>{e(self.claim_text)}</blockquote></section>")
+        out.append(bottom_line.as_html(self._bottom_line_basis()))
 
         # §7.1 — one section holds both. A reader cannot scroll to the
         # reconstruction without passing through the frame that carries the
@@ -230,6 +254,11 @@ class Artifact:
             out.append('<p class="reconstruction">does not reconstruct</p>')
             out.append(
                 "<p>The surviving elements do not compose into a coherent statement.</p>"
+            )
+        for fragment in self.rounded:
+            out.append(
+                f'<p class="rounded">Verified to within rounding, not exactly: '
+                f"<q>{e(fragment.strip())}</q> (tagged <code>rounded</code>)</p>"
             )
         out.append('<h3 class="ledger-heading">Discard ledger</h3>')
         if self.ledger:
@@ -342,6 +371,43 @@ class Artifact:
         return self.render()
 
     # -- sections -----------------------------------------------------------
+
+    def _bottom_line_basis(self) -> bottom_line.Basis:
+        # An artifact built without findings still states every ledger row,
+        # so the bottom line can never omit what was removed.
+        findings = self.findings or tuple(
+            Finding(entry.fragment, "", entry.status) for entry in self.ledger
+        )
+        return bottom_line.Basis(
+            claim_text=self.claim_text,
+            label=self.verdict.label.value,
+            state=self.verdict.state.value,
+            findings=findings,
+            reconstruction=self._reconstruction if self.does_reconstruct else None,
+            sources=tuple(
+                bottom_line.Source(
+                    retrieval_id=r.id,
+                    custodian_id=r.custodian_id,
+                    series_id=r.series_id,
+                    value=str(r.value),
+                    unit=r.unit,
+                    reference_period=r.reference_period,
+                    revision_status=r.revision_status.value,
+                    retrieved_at=r.retrieved_at.date().isoformat(),
+                )
+                for r in self.citations
+            ),
+            sweep_ran=self.sweep.ran,
+            flips=tuple(
+                bottom_line.Flip(row.test.value, row.alternative, row.computed_from_retrieval_id)
+                for row in self.sweep.rows
+                if not row.conclusion_holds
+            ),
+            sweep_reason=self.sweep.reason_not_run,
+            implied=tuple(render_as_implication(d) for d in self.derived),
+            decomposed=self.decomposed,
+            measures=tuple(f"{note.measure} ({note.custodian})" for note in self.routing),
+        )
 
     def _render_reconstruction(self, payload: Payload) -> None:
         """Emit the reconstruction, with every numeral in it tied to a retrieval.

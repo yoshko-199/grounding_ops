@@ -168,12 +168,13 @@ disappearing.
 |---|---|
 | `[UNCONFIRMED — ...]` | Present until a person signs the verdict off |
 | `ORIGINAL CLAIM` | The claim as submitted, verbatim |
-| `RECONSTRUCTED` | The claim rebuilt from verified elements only, or `does not reconstruct` |
+| `BOTTOM LINE` | The verdict in plain words, one labelled line each: *Verdict*, *Checked against*, one line per element (*True*, *False*, *Cannot be settled*, *Not checked*, *Not checkable*), *Implied, not checked* per derived element, *Closest version the sources support*, *Tested against other readings*, *Sources*, *Open to correction*. Figures carry their reference period and series. `--json` carries it as `"bottom_line"`. What each line is for: [overview §4](../overview.md#the-bottom-line) |
+| `RECONSTRUCTED` | The claim rebuilt from verified elements only, or `does not reconstruct`. Then, for each figure verified only to within rounding (band B), "Verified to within rounding, not exactly", quoting it; `--json` lists them under `"rounded"` |
 | `DISCARD LEDGER` | Every element removed, with its status and the reason. "Nothing was discarded" when a decomposed claim lost nothing. "Not decomposed" when no pack's vocabulary applied, so nothing was examined; `--json` then carries `"decomposed": false` |
 | `VERDICT` | The label and its rationale |
-| `ROBUSTNESS SWEEP` | The flip table: each admissible alternative, and whether the conclusion holds under it |
+| `ROBUSTNESS SWEEP` | The flip table: each admissible alternative, and whether the conclusion holds under it. A `last_break` row appears only when a declared series break falls inside the retrieved span, and is anchored at the first observation on or after it |
 | `CITATIONS` | One entry per retrieval: custodian, series, figure, reference period, revision status, continuity status, caveat |
-| `ROUTING` | Measure, custodian, rationale, alternatives considered |
+| `ROUTING` | Measure, custodian, rationale, alternatives considered. When a claim matches several measures equally (contested by definition), one entry per measure, each naming the others as its alternatives, and every one of their figures under `CITATIONS` |
 | `DERIVED ELEMENTS` | Implications extracted from the claim, tagged and marked proposed |
 | `ATTRIBUTION` | Only when `--claimant` or `--venue` was given |
 
@@ -186,7 +187,8 @@ part of the artifact is behind a collapsible control. Every verdict label sits
 in the same container, with no per-label class a stylesheet could use to make
 Insufficient Data look like an error. The markup adds no numeral of its own,
 so there are no counts and no numbered citations. Citations are addressed by
-retrieval id. Consecutive citations that share a framing caveat show it once,
+retrieval id, and each figure in the bottom line links to its citation.
+Consecutive citations that share a framing caveat show it once,
 immediately before them; a caveat that changes starts a new group. The text
 render still prints the caveat under each citation.
 
@@ -243,6 +245,13 @@ Reads back a verification `cli/verify.py` already persisted — the claim, its
 elements, its discard ledger, its latest verdict, its latest reconstruction,
 its citations, its sweep rows, and its derived elements. Performs no
 retrieval and resolves no route; every value comes from the store.
+
+It opens with the same `BOTTOM LINE` as `verify`, written from the stored
+rows alone. It follows the current verdict row, so after sign-off it says a
+person has reviewed the verdict, and after a rejection that no label is
+published. The stored rows keep measure ids rather than names, so *Checked
+against* names the measure id, and they keep no reason for a sweep that
+did not run.
 
 ### Arguments
 

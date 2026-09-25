@@ -124,3 +124,29 @@ def test_the_html_render_grows_with_content(registry, context, adapters, store) 
         context, registry, adapters, store,
     )
     assert len(long.artifact.render_html()) > len(short.artifact.render_html())
+
+
+def test_the_bottom_line_takes_no_length_budget_and_grows_with_content(
+    registry, context, adapters, store
+) -> None:
+    """Plainer words, not a shorter record: one line per element, no budget."""
+    from engine.pipeline import verify
+    from engine.render import bottom_line
+
+    for emitter in (bottom_line.lines, bottom_line.write, bottom_line.as_text,
+                    bottom_line.as_html):
+        parameters = set(inspect.signature(emitter).parameters)
+        for budget in ("max_length", "maxlen", "limit", "chars", "width", "truncate"):
+            assert budget not in parameters
+    text = (ROOT / "engine" / "render" / "bottom_line.py").read_text(encoding="utf-8")
+    assert "textwrap" not in text
+    assert not re.search(r"\[:\s*\d+\s*\]", text)
+
+    short = verify("prices rose in 2021", context, registry, adapters, store)
+    long = verify(
+        "prices rose over the last three years due to governmental incompetence",
+        context, registry, adapters, store,
+    )
+    assert len(long.artifact.to_dict()["bottom_line"]) > len(
+        short.artifact.to_dict()["bottom_line"]
+    )

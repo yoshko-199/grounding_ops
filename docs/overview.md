@@ -167,6 +167,40 @@ Three things are worth noticing.
 
 Because figures get revised, an element can go from Verified to Contradicted — and the reconstruction gets *smaller*. That's a first-class outcome, not an error. A claim that gained support and then lost it is exactly the trajectory the system should make visible, and it's the reason reconstruction must be re-derived rather than appended to: an append-based rebuilder can grow, but it cannot correctly shrink.
 
+### The bottom line
+
+The full artifact is written for someone auditing the result. Every result
+also opens with a **bottom line**, written for someone who wants the answer:
+the verdict in plain words, what the record supports, what it contradicts,
+what no record could settle, the closest version of the claim the sources
+back, and the sources. The deep dive stays exactly as it was, below it.
+
+Its lines follow the working order of an empirical check:
+
+| Step of the check | Line in the bottom line |
+|---|---|
+| Isolate the checkable assertion from opinion and rhetoric | *True*, *False* and *Cannot be settled* for what was compared with a figure. *Not checked* for what could have been but wasn't. *Not checkable* for opinion, prediction and causes |
+| Define the evidence that would settle it: the metric, time frame and definitions | *Checked against*: the published measure and who publishes it. Each *True* or *False* line names the figure and its reference period |
+| Go to primary authoritative sources | *Sources*: custodian, series, revision and retrieval date. In the web UI each figure links to its citation |
+| Look for disconfirming evidence and other explanations | *Tested against other readings*: whether the conclusion survives the other baselines and time windows the source itself accepts. This is the robustness sweep in plain words |
+| Document every source and step | The full record follows the bottom line, in the same output |
+| A verdict calibrated to the evidence, open to correction | *Verdict*: the label and what it means for this claim. *Open to correction*: whether a person has reviewed it, and that a revised figure reopens it |
+
+Two rules keep it honest.
+
+**It is not a shorter record, only a plainer one.** It lists every element the
+ledger removes, next to the closest verified version, so lifted out on its
+own it still says what was dropped. It has no length limit and is never
+produced by itself, only inside the full output. Anything else would bring
+back the detachable, shareable summary that §7.1 and §7.2 of the
+specification rule out.
+
+**Plain words may not overstate.** The sentence for each label is fixed, not
+generated. It never calls a claim false unless the record contradicted it.
+Insufficient Data reads "neither confirmed nor refuted", and says it is not a
+finding that the claim is false. Every figure goes out with its retrieval,
+and nothing is counted.
+
 ---
 
 ## 5. How it generalises without diluting

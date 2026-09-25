@@ -48,8 +48,8 @@ claimant's words.
 | 5 | Covid-19 epidemic originated from a Chinese research lab | Insufficient Data | Causal, with no quantity: out of scope |
 | 6 | Vaccines cause Autism in children | Insufficient Data | Causal: out of scope, and no derived element, because "cause" is active voice ([R3](../spec/proposals/v0.6-requirements.md#r3-active-voice-causal-verbs)) |
 | 7 | If you put two sheep in a field… | Insufficient Data | Arithmetic: out of scope |
-| 8 | the density of steel is 7700 kg per cubic metre. | Insufficient Data | "Steel" matches two measures from two custodians (carbon and stainless) equally, and binding reports them as contested. v0.5 says both figures should be reported and the claim be *Indeterminate*; today it folds to Insufficient Data ([D1](../spec/proposals/v0.6-requirements.md#d1-contested-by-definition-folds-into-insufficient-data)) |
-| 8v | the density of carbon steel is 7700 kg per cubic metre. | Indeterminate | Verified within band B (the published value is close but not equal), and capped as a level claim. The `rounded` tag is recorded but not yet shown ([D2](../spec/proposals/v0.6-requirements.md#d2-the-band-b-rounded-tag-is-never-shown)) |
+| 8 | the density of steel is 7700 kg per cubic metre. | Indeterminate | "Steel" matches two measures from two custodians (carbon and stainless) equally. Both are retrieved and cited, "7700" is *contested by definition*, and neither is chosen for the claim, as §6.1 requires ([D1](../spec/proposals/v0.6-requirements.md#d1-contested-by-definition-folds-into-insufficient-data), fixed) |
+| 8v | the density of carbon steel is 7700 kg per cubic metre. | Indeterminate | Verified within band B (the published value is close but not equal), shown as "Verified to within rounding, not exactly", and capped as a level claim ([D2](../spec/proposals/v0.6-requirements.md#d2-the-band-b-rounded-tag-is-never-shown), fixed) |
 | 8x | the density of carbon steel is 9000 kg per cubic metre. | False | Band C: contradicted |
 | 9 | The U.S. has a highly progressive tax-and-transfer system… | Insufficient Data | Evaluative, with no quantity: out of scope |
 | 10 | In the U.S … the nation's murder rate has been cut by more than half since 1991 | Misleading | The fall verifies against the series start, but the latest year rose, so the claim flips against the prior-year baseline. The sweep is catching a baseline choice |
@@ -57,6 +57,18 @@ claimant's words.
 
 `tests/unit/test_demo_pack.py` pins every row, so changing a demo value moves
 the claim it serves and fails a test.
+
+Each result opens with a **bottom line**, the verdict in plain words. Claim 8's
+reads, in part:
+
+```
+Verdict: INDETERMINATE. Not settled either way. The claim could refer to more than one measured thing, …
+Cannot be settled: “7700” cannot be settled as stated. The published figures it could be compared with are … The claim does not say which it means.
+```
+
+`tests/unit/test_bottom_line.py` pins what each row's bottom line says. What
+every line is for is explained in the
+[overview](../overview.md#the-bottom-line).
 
 ## Where the demo stops
 
