@@ -295,3 +295,12 @@ fuzzy_trigger_matching = true
   index_points = ["index points"]
   seats = ["seats"]
   persons = ["persons", "people"]
+
+  [lexicons.unit_prefixes]
+  # Interface v1.7. Unit id -> the phrases written *before* a numeral: "£5",
+  # "USD 5". No fixture measure is published in a currency; they are declared
+  # so that a figure given in one is recognised as such and not compared,
+  # instead of being read as a bare number against whatever measure binds.
+  pounds_sterling = ["£", "GBP"]
+  us_dollars = ["$", "US$", "USD"]
+  euros = ["€", "EUR"]

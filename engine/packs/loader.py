@@ -351,6 +351,10 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
     failures.extend(_quantity_form_failures(language, quantity_form, forbidden))
     unit_phrases, unit_failures = _unit_phrases(language, raw.get("unit_phrases"))
     failures.extend(unit_failures)
+    unit_prefixes, prefix_failures = _unit_phrases(
+        language, raw.get("unit_prefixes"), field="unit_prefixes", version="v1.7"
+    )
+    failures.extend(prefix_failures)
 
     return Lexicon(
         language=language,
@@ -361,6 +365,7 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
         surface_vocabulary=vocabulary,
         quantity_form=quantity_form,
         unit_phrases=unit_phrases,
+        unit_prefixes=unit_prefixes,
         fuzzy_trigger_matching=bool(raw.get("fuzzy_trigger_matching", False)),
         # Interface v1.3, optional. Absent means "no declared name in this
         # language", which is a conservative under-fire of §9.8.2 rule 1, not
@@ -370,9 +375,14 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
 
 
 def _unit_phrases(
-    language: str, raw: object
+    language: str, raw: object, *, field: str = "unit_phrases", version: str = "v1.6"
 ) -> tuple[dict[str, tuple[str, ...]], list[str]]:
     """Interface v1.6: the phrases that name each unit, checked before any use.
+
+    Also v1.7's `unit_prefixes`, under the same rules: the two tables differ
+    only in which side of the numeral a phrase is read on. Ownership is
+    checked within one table, not across the two, because position already
+    separates "5 USD" from "USD 5".
 
     Required, like `surface_vocabulary`, so a language never inherits another
     language's unit words by silence; an explicitly empty table is allowed and
@@ -382,7 +392,7 @@ def _unit_phrases(
     """
     if not isinstance(raw, dict):
         return {}, [
-            f"lexicon {language}: unit_phrases is required (interface v1.6). Declare "
+            f"lexicon {language}: {field} is required (interface {version}). Declare "
             "an empty table explicitly if this language names no units yet"
         ]
     failures: list[str] = []
@@ -393,7 +403,7 @@ def _unit_phrases(
             isinstance(p, str) and p.strip() for p in listed
         ):
             failures.append(
-                f"lexicon {language}: unit_phrases.{unit} must be a list of non-empty strings"
+                f"lexicon {language}: {field}.{unit} must be a list of non-empty strings"
             )
             continue
         for phrase in listed:

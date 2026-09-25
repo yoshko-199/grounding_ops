@@ -148,3 +148,16 @@ def test_a_quantity_is_anchored_over_its_stated_unit(lexicon) -> None:
     assert [e.fragment for e in quantities] == ["0.3 percentage points", "61 seats"]
     for element in quantities:
         assert element.span.resolve(claim) == element.fragment
+
+
+def test_a_quantity_is_anchored_over_a_unit_written_before_it(lexicon) -> None:
+    """Interface v1.7. "£5" is one element: the currency is what the claimant
+    said the five is in."""
+    from engine.verification.decompose import decompose
+
+    claim = "the fee rose from £5 to US$12"
+    elements = decompose(claim, ClaimId(), lexicon)
+    quantities = [e for e in elements if e.kind is ElementKind.QUANTITY]
+    assert [e.fragment.strip() for e in quantities] == ["£5", "US$12"]
+    for element in quantities:
+        assert element.span.resolve(claim) == element.fragment

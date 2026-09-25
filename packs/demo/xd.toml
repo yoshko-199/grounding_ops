@@ -303,3 +303,8 @@ fuzzy_trigger_matching = true
     "g per cubic centimetre", "g per cubic centimeter",
   ]
   per_hundred_thousand = ["per hundred thousand", "per one hundred thousand"]
+
+  [lexicons.unit_prefixes]
+  # Interface v1.7. Declared empty: none of the ten supplied claims states a
+  # figure with a unit written before it, and no demo measure is published
+  # in a currency.

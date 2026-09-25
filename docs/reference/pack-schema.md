@@ -146,7 +146,8 @@ every claim in it.
 | `forbidden_connectives` | list of string | yes | Connectives that may never appear in a reconstruction |
 | `element_slot_order` | list of string | yes | The order element surfaces compose in |
 | `quantity_form` | string | yes | How a reconstruction states its figure. See below |
-| `unit_phrases` | table | yes | Unit id → phrases naming it. May be empty. See below |
+| `unit_phrases` | table | yes | Unit id → phrases naming it after a number. May be empty. See below |
+| `unit_prefixes` | table | yes | Unit id → phrases naming it before a number. May be empty. See below |
 | `fuzzy_trigger_matching` | bool | no | Default `false`. See below |
 | `names` | list of string | no | Default empty. See below |
 | `surface_vocabulary` | table | yes | See below |
@@ -200,6 +201,25 @@ Fahrenheit above belongs to no demo measure, and declaring it is what stops
 longest phrase first and requires a word boundary after it. A phrase may not
 contain a numeral or appear under two units. An empty table is valid and reads
 no unit, which is the behaviour before v1.6.
+
+### `unit_prefixes`
+
+Interface v1.7. The same as `unit_phrases`, for units written *before* the
+number.
+
+```toml
+[lexicons.unit_prefixes]
+pounds_sterling = ["£", "GBP"]
+us_dollars = ["$", "US$", "USD"]
+```
+
+"£5" and "USD 5" become elements carrying their currency. A figure is
+compared only if every unit stated around it, before and after, is the
+measure's `unit`, so "£4.2 percent", which names two, is not compared.
+Matching takes the longest prefix first ("US$" before "$") and requires a
+word boundary before it ("USD" is never read out of "XUSD"). It is a separate
+table so that which side of the number a phrase belongs on is declared, not
+guessed.
 
 ### `fuzzy_trigger_matching`
 

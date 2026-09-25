@@ -181,6 +181,12 @@ class Lexicon:
     # from its measure's is not compared at all (§3: a converted figure is one
     # no retrieval supports).
     unit_phrases: dict[str, tuple[str, ...]]
+    # Interface v1.7. The same, for phrases written *before* the numeral:
+    # "£5", "US$ 12", "USD 5". Required and may be empty, for the reason
+    # unit_phrases is. Kept apart from it so that position is declared, not
+    # guessed: a phrase in this table is only ever read ending right before a
+    # number, and one in unit_phrases only ever starting right after one.
+    unit_prefixes: dict[str, tuple[str, ...]]
     # Interface v1.2. Pack data, versioned and reviewable, on the same footing
     # as the trigger lists themselves (AC-3). Off unless a pack says otherwise.
     fuzzy_trigger_matching: bool = False

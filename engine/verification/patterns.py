@@ -109,6 +109,35 @@ def unit_at(
     return None
 
 
+def unit_before(
+    text: str, position: int, unit_prefixes: dict[str, tuple[str, ...]]
+) -> tuple[str, int] | None:
+    """The pack-declared unit written just before ``position``, and where it starts.
+
+    The mirror of :func:`unit_at`: optional whitespace back from the numeral,
+    then the longest declared prefix that ends there, case-insensitively, and
+    starts at a word boundary. Longest first, so "US$5" is read as the whole
+    "US$" rather than a bare "$" some other unit declares; the boundary, so
+    "USD" is never read out of the end of "XUSD".
+    """
+    end = position
+    while end > 0 and text[end - 1] in " \t\u00a0":
+        end -= 1
+    lowered = text.lower()
+    candidates = sorted(
+        ((phrase, unit) for unit, phrases in unit_prefixes.items() for phrase in phrases),
+        key=lambda pair: -len(pair[0]),
+    )
+    for phrase, unit in candidates:
+        start = end - len(phrase)
+        if start < 0 or lowered[start:end] != phrase.lower():
+            continue
+        if phrase[:1].isalnum() and start > 0 and (text[start - 1].isalnum() or text[start - 1] == "_"):
+            continue
+        return unit, start
+    return None
+
+
 # Tokens carrying no measure identity, dropped before measure binding so that
 # an incidental "the" does not count as evidence for a measure named "The
 # Something Index".

@@ -194,9 +194,12 @@ def _quantity(
 ) -> ElementOutcome:
     """§9.2's numeric bands, or Unverified where the fragment states no figure."""
     claimed = _claimed_value(element.fragment)
-    stated = _claimed_unit(element.fragment, lexicon)
-    if claimed is not None and stated is not None and stated != measure.unit:
-        # Interface v1.6. Checked before the bands, because the bands would
+    stated = _claimed_units(element.fragment, lexicon)
+    if claimed is not None and any(unit != measure.unit for unit in stated):
+        # Interface v1.6, and v1.7 for a unit written before the numeral.
+        # Every unit the claim states must be the measure's: "£4.2 percent"
+        # names two, and comparing it would mean choosing which one the
+        # claimant meant. Checked before the bands, because the bands would
         # answer: 212 against a Celsius series is far outside tolerance, and a
         # true statement would come back contradicted. Converting is not an
         # option either — the converted figure would be one nobody published.
@@ -240,13 +243,15 @@ def _quantity(
     )
 
 
-def _claimed_unit(fragment: str, lexicon: Lexicon) -> str | None:
-    """The unit id the fragment names after its numeral, if the lexicon knows it."""
+def _claimed_units(fragment: str, lexicon: Lexicon) -> tuple[str, ...]:
+    """Every unit id the fragment names around its numeral that the lexicon knows:
+    one written before it (interface v1.7) and one after it (v1.6)."""
     match = patterns.NUMBER.search(fragment)
     if not match:
-        return None
-    found = patterns.unit_at(fragment, match.end(1), lexicon.unit_phrases)
-    return found[0] if found else None
+        return ()
+    before = patterns.unit_before(fragment, match.start(1), lexicon.unit_prefixes)
+    after = patterns.unit_at(fragment, match.end(1), lexicon.unit_phrases)
+    return tuple(found[0] for found in (before, after) if found)
 
 
 def _claimed_value(fragment: str) -> Decimal | None:

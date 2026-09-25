@@ -51,6 +51,7 @@ def _lexicon(vocabulary: dict[SurfaceCategory, tuple[str, ...]] | None = None) -
         surface_vocabulary=surface,
         quantity_form=", standing at {figure} in {period}",
         unit_phrases={},
+        unit_prefixes={},
     )
 
 

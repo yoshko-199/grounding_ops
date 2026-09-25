@@ -374,6 +374,12 @@ fuzzy_trigger_matching = true
   # admitted yet. Empty keeps the pre-v1.6 behaviour: a bare number is
   # compared, and no unit is read.
 
+  [lexicons.unit_prefixes]
+  # Interface v1.7. Declared empty, for the reason unit_phrases is: the
+  # measures are shekels per unit of foreign currency, and a prefix such as
+  # "₪" names the shekel, which all three measures share, so it could not
+  # tell them apart and no phrase is admitted until claims have been reviewed.
+
 [[routing_rules]]
 measure_id = "fx_representative_eur"
 custodian_id = "boi"
