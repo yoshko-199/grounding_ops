@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "grounding-ops"
 version = "0.5.0"
-description = "Claim Verification & Reconstruction Engine — implementation of docs/spec/claim-verification-engine.v0.5.md"
+description = "Claim Verification & Reconstruction Engine — implementation of docs/spec/claim-verification-engine.v0.6.md"
 requires-python = ">=3.11"
 dependencies = []
 

@@ -60,5 +60,5 @@ its text. Both are natural next steps; neither exists today.
 Citations are read back too, but only as much as the schema currently
 records: which retrievals a claim's artifact cited, in order, not which
 specific element each one verified. A retrieval can be reused by many claims
-inside its TTL (`docs/spec/claim-verification-engine.v0.5.md` §8), so that
+inside its TTL (`docs/spec/claim-verification-engine.v0.6.md` §8), so that
 finer link is a many-to-many relationship the schema does not yet carry.

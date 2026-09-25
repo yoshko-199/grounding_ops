@@ -139,6 +139,7 @@ composition_connectives = ["and", ", ", "; ", "then"]
 forbidden_connectives = ["because", "due to", "therefore", "although"]
 element_slot_order = ["time_period", "entity", "measure", "direction", "quantity"]
 quantity_form = ", standing at {figure} in {period}"
+approximation_words = ["about", "around", "roughly"]
 fuzzy_trigger_matching = true
 
   [lexicons.unit_phrases]
@@ -174,6 +175,8 @@ and left uncompared, instead of being read as a bare number and contradicted.
 An empty table is valid but reads no unit at all. `unit_prefixes` is the same
 for units written before the number, such as currency symbols, and
 `scale_words` names the words for thousand, million, billion and trillion.
+`approximation_words` lists words like "about" that mark a figure as
+approximate; leave out bounds such as "nearly" and "over".
 If a custodian publishes a series "in thousands" or "£ million", declare that
 measure's `published_scale`, or a claim stated with a scale word will be
 compared against the figure as if it were in base units.

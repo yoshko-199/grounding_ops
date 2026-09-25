@@ -92,5 +92,5 @@ change fits.
 
 3. **If you still believe the criterion itself is wrong**, that is a
    specification change, not a test change. Write down why, propose it
-   against the [specification](../spec/claim-verification-engine.v0.5.md),
+   against the [specification](../spec/claim-verification-engine.v0.6.md),
    and leave the test as it is until that is decided.

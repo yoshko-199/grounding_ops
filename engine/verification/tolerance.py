@@ -15,7 +15,7 @@ session, a claimant, or an operator preference could arrive.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import ROUND_HALF_DOWN, ROUND_HALF_UP, Decimal
 from typing import Final
 
 from engine.elements import ElementKind, ElementStatus, ToleranceBand
@@ -68,12 +68,21 @@ def band_for(
     feeling can reach this function, because there is no parameter for it.
     """
     if discrete or kind is ElementKind.DISCRETE_COUNT:
-        # Exact match. u = 1, tolerance zero (§9.2).
-        exact = claim_value == published_value
-        return ToleranceOutcome(
-            band=ToleranceBand.A if exact else ToleranceBand.C,
-            status=ElementStatus.VERIFIED if exact else ElementStatus.CONTRADICTED,
-        )
+        # Exact match at the precision the claim states (§9.2, as amended in
+        # v0.6). The claim's exponent is its stated precision `s`: a count
+        # written in full has exponent zero, so `s = 1` and it must match
+        # exactly, as before. A count stated with a scale word ("29
+        # thousand") or an approximation word ("about 29,000") carries a
+        # coarser one, and matches if the published count rounds to it —
+        # Verified, tagged `rounded`, because a count that is right only at a
+        # stated precision is worth the reader seeing. Never a relative
+        # tolerance, and never Band B's allowance: a count is right at the
+        # precision stated or it is wrong.
+        if claim_value == published_value:
+            return ToleranceOutcome(ToleranceBand.A, ElementStatus.VERIFIED)
+        if claim_value.as_tuple().exponent > 0 and _rounds_to(claim_value, published_value):
+            return ToleranceOutcome(ToleranceBand.B, ElementStatus.VERIFIED, rounded=True)
+        return ToleranceOutcome(ToleranceBand.C, ElementStatus.CONTRADICTED)
 
     if kind in BINARY_KINDS:
         # Superlatives and directions are resolved by the caller against the
@@ -112,8 +121,16 @@ def _rounds_to(claim_value: Decimal, published_value: Decimal) -> bool:
     # figure to the nearest billion (interface v1.8). Clamping the exponent at
     # zero, as this did when no claim could carry a scale, would demand the
     # published figure be exactly five billion.
+    #
+    # An exact half rounds to either neighbour (§9.2 as amended in v0.6).
+    # Round-half-up and round-half-even are both conventions in common use,
+    # and the context default (half to even) chose one for the claimant: "5"
+    # against a published 4.5 was Contradicted while "4" was Verified.
     quantum = Decimal(1).scaleb(claim_value.as_tuple().exponent)
-    return published_value.quantize(quantum) == claim_value
+    return any(
+        published_value.quantize(quantum, rounding=mode) == claim_value
+        for mode in (ROUND_HALF_UP, ROUND_HALF_DOWN)
+    )
 
 
 def direction_holds(claimed_rise: bool, first: Decimal, last: Decimal) -> bool:

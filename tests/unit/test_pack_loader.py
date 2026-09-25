@@ -542,3 +542,29 @@ def test_an_unknown_published_scale_is_rejected(tmp_path: pathlib.Path) -> None:
     assert "unknown published_scale 'lots'" in _failures(
         tmp_path, old, old + '\npublished_scale = "lots"'
     )
+
+
+# -- interface v1.9: approximation_words ------------------------------------------------
+
+APPROX = 'approximation_words = ["about", "around", "roughly", "approximately", "circa"]'
+
+
+def test_pack_loads_the_approximation_words() -> None:
+    lexicon = load(FIXTURE).lexicon("en")  # type: ignore[arg-type]
+    assert "about" in lexicon.approximation_words
+    assert "nearly" not in lexicon.approximation_words
+
+
+@pytest.mark.parametrize(
+    "replacement,expected",
+    [
+        ("", "approximation_words is required"),
+        ('approximation_words = ["about", "c2"]', "contains a numeral"),
+        ('approximation_words = ["about", "GBP"]', "both an approximation word and a unit prefix"),
+        ('approximation_words = ["about", ""]', "must be non-empty strings"),
+    ],
+)
+def test_a_malformed_approximation_word_is_rejected(
+    tmp_path: pathlib.Path, replacement: str, expected: str
+) -> None:
+    assert expected in _failures(tmp_path, APPROX, replacement)

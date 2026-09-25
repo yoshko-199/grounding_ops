@@ -255,14 +255,23 @@ def _claimed(fragment: str, lexicon: Lexicon) -> tuple[Decimal | None, tuple[str
     unit before the numeral (v1.7), a scale word after it (v1.8), a unit
     after that (v1.6). "£5bn" is five times ten to the ninth, in pounds.
     The scaled value keeps the precision the claimant used: five billion is
-    "to the nearest billion", which is what §9.2's rounding test reads.
+    "to the nearest billion", which is what §9.2's rounding test reads. An
+    approximation word before the figure widens that precision to the last
+    non-zero digit written (§9.2 as amended in v0.6).
     """
     match = patterns.NUMBER.search(fragment)
     if not match:
         return None, ()
     reading = patterns.read_quantity(fragment, match, lexicon)
     try:
-        value = Decimal(match.group(1).replace(",", "")).scaleb(reading.exponent)
+        written = Decimal(match.group(1).replace(",", ""))
+        # "About 29,000" is stated to its last non-zero digit (§9.2, v0.6):
+        # normalising drops the trailing zeros into the exponent, so the
+        # stated precision the bands read becomes a thousand. Without the
+        # word, the zeros are digits and the count is held to exact match.
+        if reading.approximate:
+            written = written.normalize()
+        value = written.scaleb(reading.exponent)
     except InvalidOperation:
         return None, reading.units
     return value, reading.units

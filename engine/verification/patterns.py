@@ -157,17 +157,27 @@ class QuantityReading:
     end: int
     exponent: int
     units: tuple[str, ...]
+    #: Whether a declared approximation word precedes the figure (interface
+    #: v1.9): "about 29,000". Widens the stated precision (§9.2, v0.6).
+    approximate: bool = False
 
 
 def read_quantity(text: str, match: re.Match[str], lexicon: Lexicon) -> QuantityReading:
     """Read a NUMBER match in ``text`` against the lexicon's declared forms.
 
-    A unit written before the numeral (interface v1.7), then a scale word
+    An approximation word (interface v1.9), a unit written before the
+    numeral (v1.7), then a scale word
     straight after it (v1.8), then a unit after that (v1.6): "£5bn",
     "5 billion pounds", "28.7 thousand people". Anything undeclared is left
     out, and NUMBER's own English unit group still ends a bare match.
     """
     prefix = unit_before(text, match.start(1), lexicon.unit_prefixes)
+    # An approximation word before the figure, or before its unit prefix:
+    # "about 29,000", "roughly £5bn" (interface v1.9).
+    approx = unit_before(
+        text, prefix[1] if prefix else match.start(1),
+        {"approximate": lexicon.approximation_words},
+    )
     scale = unit_at(
         text, match.end(1), {s.value: words for s, words in lexicon.scale_words.items()}
     )
@@ -178,11 +188,18 @@ def read_quantity(text: str, match: re.Match[str], lexicon: Lexicon) -> Quantity
         end = scale[1]
     else:
         end = match.end()
+    if approx:
+        start = approx[1]
+    elif prefix:
+        start = prefix[1]
+    else:
+        start = match.start()
     return QuantityReading(
-        start=prefix[1] if prefix else match.start(),
+        start=start,
         end=end,
         exponent=Scale(scale[0]).exponent if scale else 0,
         units=tuple(found[0] for found in (prefix, after) if found),
+        approximate=approx is not None,
     )
 
 

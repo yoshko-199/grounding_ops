@@ -55,7 +55,7 @@ Information-oriented. Look things up here; do not read it through.
 | [Glossary](reference/glossary.md) | Every term used with a precise meaning, with the full set of values where there is one |
 | [Pack schema](reference/pack-schema.md) | Every field of a custodian pack TOML file |
 | [Source schema](reference/source-schema.md) | Every field of a harvest source TOML file |
-| [Specification v0.5](spec/claim-verification-engine.v0.5.md) | The normative design: stages, taxonomies, persistence model, resolved decisions |
+| [Specification v0.6](spec/claim-verification-engine.v0.6.md) | The normative design: stages, taxonomies, persistence model, resolved decisions |
 | [Acceptance criteria](spec/acceptance-criteria.md) | The anti-laundering constraints as binary pass/fail tests |
 | [Custodian pack interface](spec/custodian-pack-interface.md) | The normative contract a pack must satisfy |
 | [Requirements for the next specification version](spec/proposals/v0.6-requirements.md) | Proposal: eight gaps and three divergences from v0.5 that the demo pack exposed, each with evidence and a suggested approach |

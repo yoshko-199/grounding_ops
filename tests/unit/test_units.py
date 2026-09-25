@@ -145,3 +145,25 @@ def test_the_scale_word_is_read_between_the_number_and_its_unit(
     assert text[reading.start:reading.end] == span
     assert reading.exponent == exponent
     assert reading.units == units
+
+
+# -- approximation words (interface v1.9) --------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "text,span,approximate",
+    [
+        ("about 29,000", "about 29,000", True),
+        ("roughly £5bn", "roughly £5bn", True),
+        ("around 28.7 thousand people", "around 28.7 thousand people", True),
+        ("Approximately 30", "Approximately 30", True),
+        # Bounds are not approximations, and a word must start at a boundary.
+        ("nearly 29,000", "29,000", False),
+        ("the roundabout 5", "5", False),
+        ("29,000", "29,000", False),
+    ],
+)
+def test_an_approximation_word_joins_the_figure(text: str, span: str, approximate: bool) -> None:
+    reading = _reading(text)
+    assert text[reading.start:reading.end].strip() == span
+    assert reading.approximate is approximate

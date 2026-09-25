@@ -7,7 +7,7 @@ authoritative-looking text is exactly what a bad actor, or a careless change,
 would want to launder a conclusion through. So the important properties are
 not left to good intentions. Each one is placed where the structure of the
 code makes it hard to lose, and then asserted by a test that fails the build.
-The [specification](spec/claim-verification-engine.v0.5.md) puts it plainly:
+The [specification](spec/claim-verification-engine.v0.6.md) puts it plainly:
 a principle that cannot fail a build is decoration.
 
 The same idea runs through every section below: **put the guarantee where

@@ -426,3 +426,83 @@ def test_no_scaled_figure_reaches_output(tmp_path, context, adapters, store) -> 
     for output in (artifact.render(), artifact.render_html(), str(artifact.to_dict())):
         for scaled in ("28700000", "2.87E+7", "28.7E+6"):
             assert scaled not in output
+
+
+# -- rounded counts, exact halves and approximation (§9.2 as amended in v0.6) ------
+#
+# AC-13 v1.4: a count written in full is exact; a count stated with a scale
+# word is Verified, tagged `rounded`, exactly when the published count rounds
+# to it at the stated precision; one step of that precision off is
+# Contradicted; trailing zeros written in full are digits; an exact half
+# verifies either neighbour, for continuous and discrete measures alike; and
+# the stated precision comes from nothing but the claim's text.
+
+
+def _count(claim: Decimal, published: str):
+    return band_for(claim, Decimal(published), published_precision=Decimal("1"),
+                    discrete=True, kind=ElementKind.DISCRETE_COUNT)
+
+
+def test_a_count_written_in_full_is_held_to_exact_match() -> None:
+    for written in ("28701", "29000"):  # off by one, and trailing zeros
+        outcome = _count(Decimal(written), "28700")
+        assert outcome.status is ElementStatus.CONTRADICTED
+        assert outcome.band is ToleranceBand.C
+
+
+def test_a_scaled_count_verifies_rounded_only_where_the_count_rounds_to_it() -> None:
+    thousand = 3
+    matched = _count(Decimal("29").scaleb(thousand), "28700")
+    assert matched.status is ElementStatus.VERIFIED
+    assert matched.band is ToleranceBand.B and matched.tag == "rounded"
+
+    for off_by_a_step in ("28", "30"):
+        outcome = _count(Decimal(off_by_a_step).scaleb(thousand), "28700")
+        assert outcome.status is ElementStatus.CONTRADICTED
+
+    # Equal at a coarser stated precision is exact, so carries no tag.
+    equal = _count(Decimal("28.7").scaleb(thousand), "28700")
+    assert equal.band is ToleranceBand.A and equal.tag is None
+
+
+def test_an_exact_half_verifies_either_neighbour() -> None:
+    thousand = 3
+    for neighbour in ("28", "29"):
+        assert _count(Decimal(neighbour).scaleb(thousand), "28500").status is ElementStatus.VERIFIED
+    # A continuous measure, stated more coarsely than the series: Δ is
+    # outside both allowances, so the rounding test alone decides. Half to
+    # even verified "4" and contradicted "5".
+    for neighbour in ("4", "5"):
+        assert _band(neighbour, "4.5") is ToleranceBand.A
+
+
+def test_there_is_no_floor_on_stated_precision() -> None:
+    """Decided with the adoption: "0.03 million" verifies against 28,700, as
+    stated, and the `rounded` tag and the cited count show the exact figure."""
+    outcome = _count(Decimal("0.03").scaleb(6), "28700")
+    assert outcome.status is ElementStatus.VERIFIED and outcome.tag == "rounded"
+
+
+@pytest.mark.parametrize(
+    "claim,status,rounded",
+    [
+        ("registered job-seekers were 29 thousand", ElementStatus.VERIFIED, True),
+        ("registered job-seekers were about 29,000", ElementStatus.VERIFIED, True),
+        ("registered job-seekers were roughly 30 thousand", ElementStatus.VERIFIED, True),
+        ("registered job-seekers were about 28,700", ElementStatus.VERIFIED, False),
+        # Without the approximation word, the zeros are digits.
+        ("registered job-seekers were 29,000", ElementStatus.CONTRADICTED, False),
+        ("registered job-seekers were 28 thousand", ElementStatus.CONTRADICTED, False),
+    ],
+)
+def test_the_stated_precision_comes_from_the_claims_text(
+    claim: str, status: ElementStatus, rounded: bool, registry, context, adapters, store
+) -> None:
+    from engine.pipeline import verify
+
+    run = verify(claim, context, registry, adapters, store)
+    element = next(e for e in run.elements if e.kind is ElementKind.QUANTITY)
+    assert element.status is status
+    assert (element.tolerance_band is ToleranceBand.B) is rounded
+    if rounded:
+        assert f"{element.fragment.strip()} (tagged rounded)" in run.artifact.render()

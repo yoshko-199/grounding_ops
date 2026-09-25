@@ -116,7 +116,7 @@ custodian's own publication, cited, or it stays `[confirm]`.
 | Learn | [Tutorial: your first change](tutorial-contributor.md): trace a claim through the stages, break a guarantee on purpose, and add a test |
 | Everyday tasks | [Run the full gate](how-to/run-the-full-gate.md) · [Contribute a change](how-to/contribute-a-change.md) · [Add a regression test](how-to/add-a-regression-test.md) · [Fuzz claim shapes](how-to/fuzz-claim-shapes.md) |
 | Look up | [Codebase reference](reference/codebase.md): layout, stage-to-module map, import rules, test suite · [Acceptance criteria](spec/acceptance-criteria.md) |
-| Understand | [Why the code is shaped this way](architecture.md) · [Specification v0.5](spec/claim-verification-engine.v0.5.md) |
+| Understand | [Why the code is shaped this way](architecture.md) · [Specification v0.6](spec/claim-verification-engine.v0.6.md) |
 
 The specification is the authority. When behaviour and the spec disagree, one
 of them is wrong, and the question is which, not which one to bend.

@@ -249,6 +249,11 @@ element_slot_order = ["time_period", "entity", "measure", "direction", "quantity
 # Interface v1.5: what the reconstruction's figure is -- a level at its
 # reference period, not the size of a change.
 quantity_form = ", standing at {figure} in {period}"
+# Interface v1.9: words that mark a figure as approximate when written right
+# before it ("about 29,000"), read by spec §9.2 (v0.6) as stating it to its
+# last non-zero digit. Bounds ("nearly", "over", "up to") are deliberately
+# absent: they say which side the truth lies on, which is not rounding.
+approximation_words = ["about", "around", "roughly", "approximately", "circa"]
 # Real claims carry typos. A trigger missed on a misspelling under-fires
 # silently, and a derived element is gated and never verified, so the cost of
 # a false trigger is a reviewer's attention rather than a laundered fact.

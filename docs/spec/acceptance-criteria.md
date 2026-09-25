@@ -1,6 +1,8 @@
 # Acceptance Criteria
 
-**v1.3** — companion to [`claim-verification-engine.v0.5.md`](claim-verification-engine.v0.5.md).
+**v1.4** — companion to [`claim-verification-engine.v0.6.md`](claim-verification-engine.v0.6.md).
+
+> **v1.4** amends [AC-13](#ac-13--tolerance-determinism) for spec v0.6's §9.2: discrete counts are an exact match at the precision the claim states, an exact half rounds to either neighbour, and a claim's stated precision comes from its own text alone.
 
 ---
 
@@ -197,11 +199,13 @@ Assert that a break detected by heuristic — without a `custodian_notice_ref` �
 
 **Test.** For a fixed claim figure and published figure, assert the assigned band is a pure function of `published_precision`, `unit`, and `discrete` from the pack. Assert no per-claim, per-claimant, or per-session input affects the band.
 
-Assert the binary overrides bypass the numeric bands: a superlative element with a near-miss series, a direction element with the wrong sign, and a discrete-count element off by one all resolve to **Contradicted**, not Verified.
+Assert the binary overrides bypass the numeric bands: a superlative element with a near-miss series and a direction element with the wrong sign resolve to **Contradicted**, not Verified. **[v1.4]** For discrete counts, assert that a count written in full and off by one resolves to **Contradicted**; that a count stated with a scale word is **Verified**, tagged `rounded`, exactly when the published count rounds to it at the stated precision; that the same count off by one step of that precision is **Contradicted**; that a count written in full with trailing zeros is held to exact match; and that an approximation word before a count widens its stated precision to the last non-zero digit.
+
+**[v1.4]** Assert that a published figure exactly halfway between two values at the claim's precision verifies a claim of either neighbour, for a continuous measure and for a discrete count.
 
 Assert Band B assignments render their `rounded` tag.
 
-**Fails if:** the same figure pair yields different bands across runs; if a superlative, direction, or discrete element is Verified by a numeric tolerance; or if a `rounded` tag is assigned but not rendered.
+**Fails if:** the same figure pair yields different bands across runs; if a superlative, direction, or discrete element is Verified by a numeric tolerance; if a `rounded` tag is assigned but not rendered; or **[v1.4]** if a count's stated precision is taken from anything but the claim's text.
 
 ---
 

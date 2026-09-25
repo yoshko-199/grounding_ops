@@ -21,7 +21,7 @@ used here, see the [glossary](glossary.md).
 ## Stages and the modules that own them
 
 `engine/pipeline.py` wires the stages in the order
-[§4 of the specification](../spec/claim-verification-engine.v0.5.md#4-pipeline)
+[§4 of the specification](../spec/claim-verification-engine.v0.6.md#4-pipeline)
 fixes, and decides nothing itself.
 
 | Stage | Name | Module |
