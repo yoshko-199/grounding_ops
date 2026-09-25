@@ -40,9 +40,10 @@ Fields each measure needs, all `[confirm]` until read from the authority:
 | Cadence and revision policy | `[confirm]` | `[confirm]` | `[confirm]` | `[confirm]` |
 | Known confusions | Pressure and altitude; Celsius and Fahrenheit (see [R1](../proposals/v0.6-requirements.md#r1-units)) | First sealing against later reissues (see [R2](../proposals/v0.6-requirements.md#r2-event-dates)) | Structural steel against stainless and other alloys | The FBI's offence-based murder rate against the death-registration homicide rate other bodies publish |
 
-Even filled in, claims 1 and 4 would meet the engine limits the demo pack
-shows: the unit gap (R1) and the event-date gap (R2). A real figure doesn't
-remove a missing element kind.
+Even filled in, claim 4 would meet the event-date gap the demo pack shows
+(R2): a real figure doesn't remove a missing element kind. Claim 1's unit gap
+(R1) is closed: its Fahrenheit figure is left uncompared unless the custodian
+publishes the figure in Fahrenheit too.
 
 ## The claims no figure settles
 

@@ -56,7 +56,13 @@ def decompose(claim_text: str, claim_id: ClaimId, lexicon: Lexicon) -> tuple[Ele
         candidates.append(_Candidate(match.start(), match.end(), ElementKind.DIRECTION))
 
     for match in patterns.NUMBER.finditer(claim_text):
-        candidates.append(_Candidate(match.start(), match.end(), ElementKind.QUANTITY))
+        # A unit the pack's lexicon names takes precedence over NUMBER's own
+        # English unit group, and joins the element (interface v1.6), so
+        # "212 degrees Fahrenheit" is one element carrying its unit rather
+        # than a bare 212 that would be compared against any series at all.
+        declared = patterns.unit_at(claim_text, match.end(1), lexicon.unit_phrases)
+        end = declared[1] if declared else match.end()
+        candidates.append(_Candidate(match.start(), end, ElementKind.QUANTITY))
 
     for match in patterns.finditer_any(
         claim_text, lexicon.surface_vocabulary[SurfaceCategory.PREDICTION]

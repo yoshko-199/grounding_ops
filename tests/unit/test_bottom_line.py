@@ -67,20 +67,28 @@ def test_every_level_opens_with_its_label_and_keeps_the_order(cid: str) -> None:
 
 def test_a_contradicted_figure_states_the_published_one() -> None:
     section = _section(_claim("1"))
-    assert "True: “100” matches the published figure, 99.96" in section
-    assert "False: “212” is contradicted. The published figure is 99.96" in section
+    assert "True: “100 degrees Celsius” matches the published figure, 99.96" in section
     assert "xdstd / XD-BOIL" in section
+    section = _section(_claim("10x"))
+    assert "False: “9 per hundred thousand” is contradicted. The published figure is 6.1" in section
+
+
+def test_a_figure_in_another_unit_is_not_checked_and_says_why() -> None:
+    section = _section(_claim("1"))
+    assert ("Not checked: “212 degrees Fahrenheit” — stated in a different unit from the "
+            "one the source publishes, so it was not compared") in section
+    assert "False:" not in section
 
 
 def test_a_rounded_match_says_it_is_not_exact() -> None:
     section = _section(_claim("8v"))
-    assert "“7700” is right to within rounding, not exactly" in section
+    assert "“7700 kg per cubic metre” is right to within rounding, not exactly" in section
     assert "7810" in section
 
 
 def test_a_contested_claim_names_every_figure_it_could_mean() -> None:
     section = _section(_claim("8"))
-    assert "Cannot be settled: “7700”" in section
+    assert "Cannot be settled: “7700 kg per cubic metre”" in section
     assert "7810" in section and "7950" in section
     assert "The claim does not say which it means." in section
     assert "Closest version the sources support: none." in section

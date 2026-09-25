@@ -22,6 +22,16 @@ from engine.verification import patterns, tolerance
 from engine.verification.retrieve import PullOutcome
 
 
+#: The reason an element carries when the claim states its figure in a unit
+#: other than the one its measure is published in. A fixed string, because the
+#: bottom line recognises it to say the same thing in plain words.
+UNIT_MISMATCH = (
+    "the claim states this figure in a different unit from the one the custodian "
+    "publishes it in. It is not converted, because a converted figure is one no "
+    "retrieval supports, so it was not compared"
+)
+
+
 @dataclass(frozen=True, slots=True)
 class ElementOutcome:
     element: Element
@@ -96,7 +106,7 @@ def assign(
         return _direction(element, pull, claim_text, lexicon)
     if element.kind is ElementKind.SUPERLATIVE:
         return _superlative(element, pull)
-    return _quantity(element, measure, pull)
+    return _quantity(element, measure, pull, lexicon)
 
 
 def _out_of_scope(element: Element) -> ElementOutcome:
@@ -179,9 +189,22 @@ def _superlative(element: Element, pull: PullOutcome) -> ElementOutcome:
     )
 
 
-def _quantity(element: Element, measure: Measure, pull: PullOutcome) -> ElementOutcome:
+def _quantity(
+    element: Element, measure: Measure, pull: PullOutcome, lexicon: Lexicon
+) -> ElementOutcome:
     """§9.2's numeric bands, or Unverified where the fragment states no figure."""
     claimed = _claimed_value(element.fragment)
+    stated = _claimed_unit(element.fragment, lexicon)
+    if claimed is not None and stated is not None and stated != measure.unit:
+        # Interface v1.6. Checked before the bands, because the bands would
+        # answer: 212 against a Celsius series is far outside tolerance, and a
+        # true statement would come back contradicted. Converting is not an
+        # option either — the converted figure would be one nobody published.
+        # So the element is not compared, and says why.
+        return _settled(
+            element, ElementStatus.UNVERIFIED, UNIT_MISMATCH,
+            continuity=pull.continuity.status,
+        )
     if claimed is None:
         # A time period or an unquantified fragment. It anchors the retrieval
         # but asserts no figure of its own to compare.
@@ -215,6 +238,15 @@ def _quantity(element: Element, measure: Measure, pull: PullOutcome) -> ElementO
         ),
         rounded=outcome.rounded,
     )
+
+
+def _claimed_unit(fragment: str, lexicon: Lexicon) -> str | None:
+    """The unit id the fragment names after its numeral, if the lexicon knows it."""
+    match = patterns.NUMBER.search(fragment)
+    if not match:
+        return None
+    found = patterns.unit_at(fragment, match.end(1), lexicon.unit_phrases)
+    return found[0] if found else None
 
 
 def _claimed_value(fragment: str) -> Decimal | None:

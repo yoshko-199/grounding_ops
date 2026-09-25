@@ -118,6 +118,14 @@ contested-by-definition fold, the unrendered `rounded` tag, and the
 [real-figures scaffold](spec/packs/demo-real.md) waits for the authorities'
 pages to be fetched.
 
+**Units are read.** Pack interface v1.6 adds a required `unit_phrases`
+table to each lexicon. A declared unit after a numeral joins the quantity
+element, and a figure stated in a unit other than its measure's is
+*unverified* — never compared, never converted. Claim 1's "212 degrees
+Fahrenheit" is no longer contradicted by a Celsius series, and "fell 0.3
+percentage points" is no longer read as "0.3 percent" and compared against
+the rate's level ([R1](spec/proposals/v0.6-requirements.md#r1-units)).
+
 **Reconstruction figures say what they are.** A reconstruction's figure is
 the level at the end of the retrieved span, and it used to follow the
 direction word bare, so "rose 102.4 index_points" read as the size of the

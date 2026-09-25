@@ -286,3 +286,20 @@ fuzzy_trigger_matching = true
     "will", "shall", "going to", "expected to", "forecast to",
     "forecasted to", "next year", "next month", "next quarter", "projected",
   ]
+
+  [lexicons.unit_phrases]
+  # Interface v1.6. See packs/fixture/zz.toml. Fahrenheit and grams per cubic
+  # centimetre name units no demo measure is published in, which is exactly
+  # why they are declared: claim 1's "212 degrees Fahrenheit" must be read as
+  # Fahrenheit, not as a bare number to compare against the Celsius series.
+  degrees_celsius = ["degrees celsius", "degree celsius", "celsius", "°c"]
+  degrees_fahrenheit = ["degrees fahrenheit", "degree fahrenheit", "fahrenheit", "°f"]
+  kilograms_per_cubic_metre = [
+    "kg per cubic metre", "kg per cubic meter",
+    "kilograms per cubic metre", "kilograms per cubic meter",
+  ]
+  grams_per_cubic_centimetre = [
+    "grams per cubic centimetre", "grams per cubic centimeter",
+    "g per cubic centimetre", "g per cubic centimeter",
+  ]
+  per_hundred_thousand = ["per hundred thousand", "per one hundred thousand"]

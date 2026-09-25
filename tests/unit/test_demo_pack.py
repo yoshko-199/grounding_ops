@@ -57,10 +57,11 @@ def _statuses(run) -> dict[str, ElementStatus]:
 # id, claim, expected verdict, expected element statuses (a subset)
 LEVELS = [
     ("1", "Water boils at 100 degrees Celsius (212 degrees Fahrenheit) at sea level.",
-     Verdict.SUBSTANTIALLY_INACCURATE,
-     {"100": ElementStatus.VERIFIED, "212": ElementStatus.CONTRADICTED}),
+     Verdict.INDETERMINATE,
+     {"100 degrees Celsius": ElementStatus.VERIFIED,
+      "212 degrees Fahrenheit": ElementStatus.UNVERIFIED}),
     ("1v", "Water boils at 100 degrees Celsius at sea level.",
-     Verdict.INDETERMINATE, {"100": ElementStatus.VERIFIED}),
+     Verdict.INDETERMINATE, {"100 degrees Celsius": ElementStatus.VERIFIED}),
     ("2", "Pizza is the most delicious food in the world.", Verdict.INSUFFICIENT_DATA, {}),
     ("3", "Humans are classified as mammals.", Verdict.INSUFFICIENT_DATA, {}),
     ("4", "King John of England signed the Magna Carta in 1225",
@@ -70,11 +71,12 @@ LEVELS = [
     ("7", "If you put two sheep in a field, and then another two, you’ve got four sheep "
           "in that field for ever.", Verdict.INSUFFICIENT_DATA, {}),
     ("8", "the density of steel is 7700 kg per cubic metre.",
-     Verdict.INDETERMINATE, {"7700": ElementStatus.CONTESTED_BY_DEFINITION}),
+     Verdict.INDETERMINATE,
+     {"7700 kg per cubic metre": ElementStatus.CONTESTED_BY_DEFINITION}),
     ("8v", "the density of carbon steel is 7700 kg per cubic metre.",
-     Verdict.INDETERMINATE, {"7700": ElementStatus.VERIFIED}),
+     Verdict.INDETERMINATE, {"7700 kg per cubic metre": ElementStatus.VERIFIED}),
     ("8x", "the density of carbon steel is 9000 kg per cubic metre.",
-     Verdict.FALSE, {"9000": ElementStatus.CONTRADICTED}),
+     Verdict.FALSE, {"9000 kg per cubic metre": ElementStatus.CONTRADICTED}),
     ("9", "The U.S. has a highly progressive tax-and-transfer system that redistributes "
           "massive sums of money.", Verdict.INSUFFICIENT_DATA, {}),
     ("10", "In the U.S gun violence is alien to most people's experiences and the nation's "
@@ -82,6 +84,17 @@ LEVELS = [
      Verdict.MISLEADING, {"cut": ElementStatus.VERIFIED, "since 1991": ElementStatus.VERIFIED}),
     ("10v", "the homicide rate fell since 1991",
      Verdict.ACCURATE, {"fell": ElementStatus.VERIFIED, "since 1991": ElementStatus.VERIFIED}),
+    # Appended, so the index references below keep pointing at the same rows.
+    # Claim 1 was the demo's route to Substantially inaccurate only because its
+    # Fahrenheit figure was compared against a Celsius series (R1). With units
+    # read, that route is gone, and this variant reaches the level honestly:
+    # the fall is real, the stated level is not.
+    ("10x", "the murder rate fell since 1991 to 9 per hundred thousand",
+     Verdict.SUBSTANTIALLY_INACCURATE,
+     {"fell": ElementStatus.VERIFIED, "9 per hundred thousand": ElementStatus.CONTRADICTED}),
+    ("8u", "the density of carbon steel is 7.8 grams per cubic centimetre",
+     Verdict.INDETERMINATE,
+     {"7.8 grams per cubic centimetre": ElementStatus.UNVERIFIED}),
 ]
 
 
@@ -108,7 +121,7 @@ def test_the_demo_covers_every_claim_level_the_engine_can_reach() -> None:
 def test_band_b_is_verified_and_recorded_as_band_b() -> None:
     """7700 against a published 7810 is within band B: verified, rounded."""
     run = _run("the density of carbon steel is 7700 kg per cubic metre.")
-    element = next(e for e in run.elements if e.fragment.strip() == "7700")
+    element = next(e for e in run.elements if e.fragment.strip() == "7700 kg per cubic metre")
     assert element.status is ElementStatus.VERIFIED
     assert element.tolerance_band is ToleranceBand.B
 
@@ -125,10 +138,16 @@ def test_misleading_flips_on_a_declared_baseline_only() -> None:
 # -- the gaps, pinned as current behaviour ---------------------------------------
 
 
-def test_unit_gap_fahrenheit_is_compared_against_celsius() -> None:
-    """Requirement R1 (units). When units are read, this element should become
-    unverified for a unit mismatch rather than contradicted."""
-    assert _statuses(_run(LEVELS[0][1]))["212"] is ElementStatus.CONTRADICTED
+def test_units_fahrenheit_is_not_compared_against_celsius() -> None:
+    """Requirement R1 (units), built in interface v1.6. This test pinned the gap
+    as contradicted; with units read, the figure is not compared at all."""
+    from engine.verification.element_verdict import UNIT_MISMATCH
+
+    run = _run(LEVELS[0][1])
+    assert _statuses(run)["212 degrees Fahrenheit"] is ElementStatus.UNVERIFIED
+    assert run.discard_reasons[
+        next(e for e in run.elements if "Fahrenheit" in e.fragment).id.value
+    ] == UNIT_MISMATCH
 
 
 def test_event_date_gap_a_year_is_a_period() -> None:
