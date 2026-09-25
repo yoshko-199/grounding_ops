@@ -1,6 +1,8 @@
 # Custodian Pack Interface
 
-**Normative contract, v1.4** — companion to [`claim-verification-engine.v0.4.md`](claim-verification-engine.v0.4.md) §9.4.
+**Normative contract, v1.5** — companion to [`claim-verification-engine.v0.4.md`](claim-verification-engine.v0.4.md) §9.4.
+
+> **v1.5** adds a required `quantity_form` to §3.6 `lexicons`: the words a reconstruction places around its figure, with exactly one `{figure}` and one `{period}` placeholder. Spec §9.9.1 fixes a *quantity with unit* slot after the direction slot, and the slot rendered the bare figure there, so *"prices rose 102.4 index_points"* read as the size of the rise when it was the level at the end of the retrieved span. What the figure is — a level, at a reference period — is language, so it is pack data rather than an English phrase in the pipeline (§9.4). Required, for the reason v1.4's `surface_vocabulary` is: a default would be one language's wording applied silently to every other. The template may carry no numeral and no forbidden connective, since it appears inside every clause the reconstructor composes. Packs at v1.4 do not load against v1.5.
 
 > **v1.4** adds a required `surface_vocabulary` block to §3.6 `lexicons`, keyed by a new closed set (`rise`, `fall`, `prediction`). Direction and prediction detection used to reach `engine/verification/patterns.py`'s hardcoded English regexes from four call sites regardless of what any pack declared — exactly the "pipeline hardcodes one language" failure §9.4 forbids for everything else. Required, unlike `names[]` in v1.3: an optional field here would just add a second silent-under-fire mode instead of removing the one that existed. Every pack must now declare its own rise/fall/prediction vocabulary, with an empty list where a category genuinely does not apply — the same "declare it explicitly" discipline `derivation_triggers` already enforces. Note the one thing this migration does not preserve: the old `PREDICTION` pattern also matched "by 20XX" (a bare future year), which needed a digit wildcard no plain phrase list can express, and no test exercised it — dropped rather than faked.
 >
@@ -121,6 +123,7 @@ Per measure. Methodology revisions, base-year changes, and definitional breaks f
 | `composition_connectives` | yes | The enumeration and sequencing connectives the reconstructor may join elements with (spec §9.9). Enumeration and sequencing only |
 | `forbidden_connectives` | yes | Causal, evaluative, concessive, and explanatory connectives. A reconstruction containing one fails before emission |
 | `element_slot_order` | yes | The slot order an element renders into for this language (spec §9.9.1) |
+| `quantity_form` | yes | **v1.5.** How the quantity slot states its figure in this language: a template with exactly one `{figure}` (the retrieval's value and unit) and one `{period}` (its reference period), and no other placeholder, numeral or forbidden connective. It must say that the figure is a level at that period, never leave it to read as the size of a change. A form opening with punctuation attaches to the preceding slot without a space. English: `", standing at {figure} in {period}"` |
 
 Two of these fields carry far more weight than a translation table normally would.
 

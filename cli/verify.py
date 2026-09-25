@@ -11,19 +11,19 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
-import sqlite3
 import sys
-from datetime import date
 
-from engine.codes import InvalidCode, LanguageCode
+from cli.compose import (
+    OperatorError,
+    load_registry,
+    open_store,
+    parse_stated_at,
+    split_provenance,
+    verify_and_persist,
+)
 from engine.custodians.fixture import build_fixture_custodians
 from engine.custodians.live import build_live_custodians
-from engine.ingest.split import RawProvenance, split
-from engine.packs.registry import PackRegistry
-from engine.pipeline import verify
-from engine.store.events import RetrievalStore
-from engine.store.identity_writer import write_identity
-from engine.store.writer import write_pack, write_verification
+from engine.ingest.split import RawProvenance
 
 #: The repository root, so the default store is one database rather than one
 #: per working directory. Resolved the same way `scripts/harvest_corpus.py`
@@ -112,23 +112,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        stated_at = (
-            date.fromisoformat(args.stated_at) if args.stated_at else date.today()
-        )
-    except ValueError:
-        # A malformed date is an operator error, and it must not reach the
-        # pipeline: every tolerance band and the continuity check are indexed
-        # on when the claim was made. Reported like any other bad code rather
-        # than raised, because a traceback here reads as a crash in the engine.
-        print(
-            f"error: not a date: {args.stated_at!r}. Expected ISO format, "
-            "for example 2021-06-01",
-            file=sys.stderr,
-        )
-        return 2
-
-    try:
-        context, identity = split(
+        stated_at = parse_stated_at(args.stated_at)
+        context, identity = split_provenance(
             RawProvenance(
                 stated_at=stated_at,
                 language=args.language,
@@ -137,61 +122,19 @@ def main(argv: list[str] | None = None) -> int:
                 venue=args.venue,
             )
         )
-    except InvalidCode as exc:
+        registry = load_registry(args.packs)
+        store = open_store(args.store)
+    except OperatorError as exc:
+        # Every one of these is the operator's input, reported as such.
+        # Exit 2, never a traceback, and never a verdict: see cli/compose.py.
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
-    # A pack directory that is missing, or that holds no packs, is an operator
-    # error and not a verdict. Left unchecked it reaches the reader as
-    # Insufficient Data — "no jurisdiction could be established" — which is
-    # the correct sentence for a claim no pack covers and a badly misleading
-    # one for a claim whose packs were simply never loaded. The two are
-    # indistinguishable in the output, which is exactly the confusion §6.1
-    # keeps Unverified and Unreachable apart to avoid.
-    packs_dir = pathlib.Path(args.packs)
-    if not packs_dir.is_dir():
-        print(
-            f"error: no pack directory at {args.packs!r}. Nothing would be loaded, "
-            "and every claim would return Insufficient Data for the wrong reason",
-            file=sys.stderr,
-        )
-        return 2
-    if not any(packs_dir.glob("*.toml")):
-        print(
-            f"error: {args.packs!r} contains no pack files. Nothing would be loaded, "
-            "and every claim would return Insufficient Data for the wrong reason",
-            file=sys.stderr,
-        )
-        return 2
-
-    registry = PackRegistry.from_directory(args.packs)
-    try:
-        if args.store != ":memory:":
-            pathlib.Path(args.store).parent.mkdir(parents=True, exist_ok=True)
-        store = RetrievalStore(args.store)
-    except (OSError, sqlite3.Error) as exc:
-        # An unwritable directory, a path that is already a directory, a
-        # corrupt database, or a concurrent run holding the lock. All are
-        # operator errors and all reported the way this file reports the
-        # others: a traceback out of the store constructor reads as a crash
-        # in the engine, which is the one thing it is not.
-        print(f"error: cannot open retrieval store {args.store!r}: {exc}", file=sys.stderr)
-        return 2
     adapters = build_fixture_custodians()
     if args.live:
         adapters.update(build_live_custodians())
     try:
-        run = verify(args.claim, context, registry, adapters, store)
-        # §8's other fifteen tables, written here rather than inside `verify`
-        # itself: persistence is composition-root bookkeeping, not a
-        # verification rule, and `engine.store.writer` is not importable from
-        # `engine.verification` for exactly that reason. Identity is written
-        # by a second, separate module — see its docstring for why one
-        # function among these would not do.
-        if run.decision and run.decision.pack:
-            write_pack(store, run.decision.pack)
-        write_verification(store, run)
-        write_identity(store, run.claim_id, identity)
+        run = verify_and_persist(args.claim, context, identity, registry, store, adapters)
     finally:
         # §8 keeps retrievals as events with a TTL. An event that dies with the
         # process is not an event, and the store's commits are only durable if

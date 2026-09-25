@@ -22,7 +22,6 @@ what is still language-general.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 from engine.elements import Element, ElementKind
@@ -99,14 +98,20 @@ def decompose(claim_text: str, claim_id: ClaimId, lexicon: Lexicon) -> tuple[Ele
 def _lexicon_matches(
     claim_text: str, lexicon: Lexicon, operation_prefix: str, kind: ElementKind
 ) -> list[_Candidate]:
-    """Find pack-declared trigger phrases, as literal spans of the claim."""
+    """Find pack-declared trigger phrases, as whole-word spans of the claim.
+
+    Whole words, as derivation (`derive.py`) and the surface vocabulary
+    (`patterns.finditer_any`) already match. A bare substring search found the
+    superlative trigger "ever" inside "every", "never" and "however", so
+    "prices rose every year" gained a superlative element the claimant never
+    asserted, and a superlative bypasses the tolerance bands entirely.
+    """
     out: list[_Candidate] = []
     for operation, phrases in lexicon.derivation_triggers.items():
         if not operation.value.startswith(operation_prefix):
             continue
-        for phrase in phrases:
-            for match in re.finditer(re.escape(phrase), claim_text, re.I):
-                out.append(_Candidate(match.start(), match.end(), kind))
+        for match in patterns.finditer_any(claim_text, tuple(phrases)):
+            out.append(_Candidate(match.start(), match.end(), kind))
     return out
 
 

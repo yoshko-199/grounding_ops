@@ -405,3 +405,30 @@ def test_missing_surface_vocabulary_block_entirely_is_rejected(tmp_path: pathlib
     assert not report.admitted
     failures = "\n".join(report.failures)
     assert "surface_vocabulary" in failures
+
+
+# -- interface v1.5: quantity_form -------------------------------------------
+
+QUANTITY_FORM = 'quantity_form = ", standing at {figure} in {period}"'
+
+
+def test_pack_loads_the_quantity_form() -> None:
+    lexicon = load(FIXTURE).lexicon("en")  # type: ignore[arg-type]
+    assert lexicon.quantity_form == ", standing at {figure} in {period}"
+
+
+@pytest.mark.parametrize(
+    "replacement,expected",
+    [
+        ("", "quantity_form is required"),
+        ('quantity_form = ", standing at {figure}"', "{period} exactly once"),
+        ('quantity_form = "{figure} {figure} in {period}"', "{figure} exactly once"),
+        ('quantity_form = "{figure} in {period} of {unit}"', "no placeholder other than"),
+        ('quantity_form = "{figure} in {period}, up 2"', "may not contain a numeral"),
+        ('quantity_form = "{figure} in {period} due to policy"', "forbidden connective"),
+    ],
+)
+def test_a_malformed_quantity_form_is_rejected(
+    tmp_path: pathlib.Path, replacement: str, expected: str
+) -> None:
+    assert expected in _failures(tmp_path, QUANTITY_FORM, replacement)

@@ -27,8 +27,13 @@ from typing import Final
 
 # A numeral, with an optional unit marker. Kept deliberately narrow: a bare
 # integer inside a date is caught by the time patterns first.
+#
+# Not a digit joined to a word by a hyphen. "Covid-19", "F-35" and "G-7" are
+# names, and decomposing their digits made a quantity element the claim never
+# asserted, listed in the ledger as unverified. A number after a space or a
+# digit ("fell to -5", "2021-22") is still a number.
 NUMBER: Final = re.compile(
-    r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(%|percent|percentage points?|points?)?",
+    r"(?<![\w.])(?<![^\W\d_][-‐‑])(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(%|percent|percentage points?|points?)?",
     re.I,
 )
 

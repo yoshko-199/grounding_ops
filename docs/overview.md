@@ -167,6 +167,40 @@ Three things are worth noticing.
 
 Because figures get revised, an element can go from Verified to Contradicted — and the reconstruction gets *smaller*. That's a first-class outcome, not an error. A claim that gained support and then lost it is exactly the trajectory the system should make visible, and it's the reason reconstruction must be re-derived rather than appended to: an append-based rebuilder can grow, but it cannot correctly shrink.
 
+### The bottom line
+
+The full artifact is written for someone auditing the result. Every result
+also opens with a **bottom line**, written for someone who wants the answer:
+the verdict in plain words, what the record supports, what it contradicts,
+what no record could settle, the closest version of the claim the sources
+back, and the sources. The deep dive stays exactly as it was, below it.
+
+Its lines follow the working order of an empirical check:
+
+| Step of the check | Line in the bottom line |
+|---|---|
+| Isolate the checkable assertion from opinion and rhetoric | *True*, *False* and *Cannot be settled* for what was compared with a figure. *Not checked* for what could have been but wasn't. *Not checkable* for opinion, prediction and causes |
+| Define the evidence that would settle it: the metric, time frame and definitions | *Checked against*: the published measure and who publishes it. Each *True* or *False* line names the figure and its reference period |
+| Go to primary authoritative sources | *Sources*: custodian, series, revision and retrieval date. In the web UI each figure links to its citation |
+| Look for disconfirming evidence and other explanations | *Tested against other readings*: whether the conclusion survives the other baselines and time windows the source itself accepts. This is the robustness sweep in plain words |
+| Document every source and step | The full record follows the bottom line, in the same output |
+| A verdict calibrated to the evidence, open to correction | *Verdict*: the label and what it means for this claim. *Open to correction*: whether a person has reviewed it, and that a revised figure reopens it |
+
+Two rules keep it honest.
+
+**It is not a shorter record, only a plainer one.** It lists every element the
+ledger removes, next to the closest verified version, so lifted out on its
+own it still says what was dropped. It has no length limit and is never
+produced by itself, only inside the full output. Anything else would bring
+back the detachable, shareable summary that §7.1 and §7.2 of the
+specification rule out.
+
+**Plain words may not overstate.** The sentence for each label is fixed, not
+generated. It never calls a claim false unless the record contradicted it.
+Insufficient Data reads "neither confirmed nor refuted", and says it is not a
+finding that the claim is false. Every figure goes out with its retrieval,
+and nothing is counted.
+
 ---
 
 ## 5. How it generalises without diluting
@@ -177,10 +211,10 @@ The pipeline itself knows nothing about any country.
 
 The temptation in a multi-jurisdiction design is a generic fallback: when no custodian is known, search the web and use whatever looks official. That single convenience would void the anti-fabrication rule everywhere at once. Instead, an unknown jurisdiction produces *Insufficient Data* — a correct answer rather than a gap.
 
-An incomplete pack degrades to conservative outcomes rather than routing confidently on partial knowledge. The [draft Israel pack](spec/packs/israel.md) is deliberately shipped as **not admitted**, with its missing fields marked for confirmation rather than filled in from recollection — which would have made the pack itself an instance of the failure the whole system exists to prevent.
+An incomplete pack degrades to conservative outcomes rather than routing confidently on partial knowledge. The [Israel pack](spec/packs/israel.md) is deliberately shipped narrow: three exchange-rate measures admitted from the Bank of Israel's own publications, and every other field marked for confirmation rather than filled in from recollection. Filling them from memory would have made the pack itself an instance of the failure the whole system exists to prevent.
 
 ---
 
 ## 6. Status
 
-The specification is closed at v0.4 and the engine is built: Stages 0-11 run end to end, and all eighteen acceptance criteria execute as tests against a synthetic fixture jurisdiction. No real pack is admitted yet, so every real claim currently returns *Insufficient Data* — the correct answer rather than a gap. The spec has [four open questions](spec/claim-verification-engine.v0.5.md#10-remaining-open-questions) — sweep cost, sign-off throughput at volume, which implication patterns the six derivation operations still miss, and how anchoring works when a claim arrives paraphrased. See the [roadmap](plan.md).
+The specification is closed at v0.5 and the engine is built: Stages 0-11 run end to end, and all eighteen acceptance criteria execute as tests against a synthetic fixture jurisdiction. Three Israeli exchange-rate measures are admitted and route, but live retrieval has never run from the development environment, so every real claim currently returns *Insufficient Data*. That is the correct answer rather than a gap. The spec has [four open questions](spec/claim-verification-engine.v0.5.md#10-remaining-open-questions) — sweep cost, sign-off throughput at volume, which implication patterns the six derivation operations still miss, and how anchoring works when a claim arrives paraphrased. See the [roadmap](plan.md).

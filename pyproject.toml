@@ -12,7 +12,7 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
 
-# Console scripts for the three trial-facing commands only. Deliberately not
+# Console scripts for the four trial-facing commands only. Deliberately not
 # scripts/*.py: harvest_corpus.py, check_spec.py and fuzz_shapes.py are
 # development tooling that already locates the repository root itself
 # (harvest_corpus.py's own docstring: "needs no PYTHONPATH"), and turning
@@ -22,6 +22,7 @@ dev = ["pytest>=7.0"]
 grounding-verify = "cli.verify:main"
 grounding-show = "cli.show:main"
 grounding-signoff = "cli.signoff:main"
+grounding-serve = "cli.serve:main"
 
 [tool.setuptools.packages.find]
 # Only what the installed commands import. `plugins` is deliberately absent:

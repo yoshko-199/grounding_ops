@@ -95,6 +95,45 @@ It also sharpens what a corpus is for. A corpus assembled from such a source mea
 - **Approximate dates are refused, not rounded.** A source that displays an estimated date where it could not establish the real one — a common and openly stated practice — cannot supply a `stated_at`, because §9.2 bands and §9.5 continuity are both indexed on when the claim was made. An approximate date there does not degrade the answer; it produces a confident answer to a different question. `CandidateClaim.stated_at()` raises rather than guessing, and a source that says nothing about its dating has every record capped at approximate.
 - **Text transforms are recorded.** §9.7.1 anchors derived elements to spans of the original, so text silently rewritten in transit — tags stripped, entities decoded — yields spans that resolve to the wrong words much later. Every edit between the received body and the stored text is named on the record, and the raw body is kept.
 
+**Ten supplied claims, run end to end.** See the
+[validation page](validation-ten-claims.md). They found three defects, now
+fixed with tests:
+
+- a digit inside a name ("Covid-19") decomposed as a figure;
+- superlative triggers matched inside other words ("ever" in "every");
+- an undecomposed claim's empty ledger read "Nothing was discarded".
+
+They also found two gaps, recorded rather than patched: active-voice
+causal verbs ("A causes B") are missed, because the trigger model assumes
+the effect comes first, and a two-part claim joined by "and" derives as one.
+
+**A demo pack for the ten claims.** [`packs/demo`](how-to/try-the-demo-pack.md)
+is a synthetic jurisdiction with invented values that land the claims on
+every reachable verdict. Building it produced
+[requirements for the next specification version](spec/proposals/v0.6-requirements.md):
+eight gaps, including units, event dates, compound claims and unaccounted
+text, and three divergences from v0.5. Those three were the
+contested-by-definition fold, the unrendered `rounded` tag, and the
+`last_break` anchor, and all three are fixed. A
+[real-figures scaffold](spec/packs/demo-real.md) waits for the authorities'
+pages to be fetched.
+
+**Reconstruction figures say what they are.** A reconstruction's figure is
+the level at the end of the retrieved span, and it used to follow the
+direction word bare, so "rose 102.4 index_points" read as the size of the
+rise. Interface v1.5 adds a required `quantity_form` to each lexicon, and the
+figure now goes out with its reference period: "rose, standing at 102.4
+index_points in 2021-12".
+
+**A plain-words bottom line.** Every result, live or read back, opens with the
+verdict in plain words: what is true, what is false, what cannot be settled
+or checked, the closest version the sources support, the disconfirmation
+check, and the sources. It follows the order of an empirical check and keeps
+the artifact's rules: it lists every removed element, takes no length budget,
+and every figure carries its retrieval
+([overview §4](overview.md#the-bottom-line), requirement R9 in the
+[proposals](spec/proposals/v0.6-requirements.md#r9-a-plain-language-bottom-line)).
+
 ### 2.2a Divergence from the prior art, deliberately retained
 
 The `israeli-fact-checker` skill's method (`SKILL.md` Step 1, `references/domain-checklist.md`) and this spec agree on almost everything — its eight-step workflow maps stage for stage onto the pipeline, and its verdict scale corresponds one-to-one with §6.2. Two differences are real and are kept:
@@ -265,6 +304,40 @@ property of a signature or an import graph rather than a rule to remember:
 
 ### 3.1 What is not done
 
+- **A local web UI is in progress.** It implements the reader and reviewer
+  screens designed on the UIX canvas. The first piece is
+  `Artifact.render_html()`: an HTML form of the artifact that runs the text
+  render first as its gate. It is held to AC-1, AC-2, AC-5 and AC-7 by
+  assertions of its own in the conformance files for those criteria.
+  `cli/serve.py` serves it: a stdlib `http.server` app at the composition
+  root with a verify form, the artifact page, and a read-back page, sharing
+  `cli/compose.py` with the command line so the two front ends cannot
+  drift. See [how to use the web UI](how-to/use-the-web-ui.md). The
+  sign-off queue is in it too: `/queue` lists what awaits review, and a
+  form after each proposed record confirms, amends or rejects through the
+  same `cli/compose.sign_off_stored` the command line now uses. The form
+  reads five named fields and nothing else, and a test asserts that every
+  row beneath the verdict is byte-identical after a sign-off. That is AC-10,
+  restated at the UI.
+
+  Driving the UI in a real browser then found what the unit tests could
+  not. The pages' `no-referrer` policy made Chrome send `Origin: null` on
+  the UI's own forms, and the cross-origin check refused every one. The
+  policy is now `same-origin`, and the check prefers the browser's
+  `Sec-Fetch-Site`. The full flow, verify through sign-off, now passes in
+  headless Chromium at desktop and phone widths.
+
+  At phone width the page was dominated by one framing caveat repeated
+  under every citation. The HTML now states a shared caveat once before
+  the citations it covers, and the flip table stacks on narrow screens.
+  The UIX canvas was corrected to match what the code enforces: one
+  verdict container for every label, and no counted numerals.
+
+  Writing it surfaced two design rules the canvas had broken. A count such as
+  "four of ten alternatives flip" is a numeral nobody retrieved, so it fails
+  §3 as surely as an invented statistic. And Insufficient Data must share the
+  verdict container of every other label rather than get a box of its own.
+
 - **Retrievals persist, and now so does everything else `verify()` produces.**
   `--store` defaults to a durable database under the repository root, so a
   retrieval outlives its process and the TTL is honoured across runs —
@@ -327,7 +400,7 @@ property of a signature or an import graph rather than a rule to remember:
   the more ambitious fix was rejected rather than attempted.
 - **Packaging.** `pip install -e .` now installs `grounding-verify`,
   `grounding-show`, and `grounding-signoff` as console scripts (see
-  [installing the three CLIs](reference/cli.md#installing-the-three-clis)),
+  [installing the console scripts](reference/cli.md#installing-the-console-scripts)),
   verified by an actual editable install in a scratch environment, not just a
   parseable `pyproject.toml`. `--packs` is anchored to the repository root
   like `--store`, and a missing or empty pack directory now exits `2`: a

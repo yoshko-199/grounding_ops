@@ -9,7 +9,7 @@ You need Python 3.11 or later and a checkout of this repository. Nothing else �
 there are no dependencies to install. Every command below runs with
 `PYTHONPATH=.` and needs nothing more; if you would rather install the
 commands once and drop that prefix, see
-[installing the three CLIs](reference/cli.md#installing-the-three-clis).
+[installing the console scripts](reference/cli.md#installing-the-console-scripts).
 
 **About twenty minutes.** Type the commands rather than skimming them; each one
 shows you something the next one builds on.
@@ -70,15 +70,40 @@ ORIGINAL CLAIM
 Everything the engine produces is marked unconfirmed until a person signs it
 off. You will do that yourself in step 7.
 
+### The bottom line
+
+Next comes the answer in plain words. It opens like this:
+
+```
+BOTTOM LINE
+  In plain words. The full record, with every reason and figure, follows.
+  Verdict: MISLEADING. The figures as stated check out, but the conclusion depends on how the comparison is made. Made another way the source accepts, it reverses.
+  Checked against: ZZ Price Index (zzstat).
+  True: “rose” holds. Over the retrieved series the figure moved the way the claim says.
+  Not checkable: “due to” — a claim about causes. …
+  Not checkable: “incompetence” — opinion or evaluative language, with no fact in it to check.
+```
+
+It goes on to the closest version the sources support, whether the
+conclusion survived other comparisons, the sources, and a note that the
+verdict is provisional. Each of those is backed by a section further down.
+The rest of this step reads those sections, which is where you check that
+the bottom line is right.
+
 ### The reconstruction
 
 ```
 RECONSTRUCTED
-  Over the last three years ZZ Price Index rose 102.4 index_points.
+  Over the last three years ZZ Price Index rose, standing at 102.4 index_points in 2021-12.
 ```
 
 This is the claim rebuilt from **only the parts that survived checking**. Notice
 what is gone: there is no "due to", and no "incompetence".
+
+The figure is the index's level at the end of the retrieved span, with the
+month it belongs to. It is not the size of the rise; the claim stated no size,
+so the reconstruction states none. The words around the figure come from the
+pack's `quantity_form`.
 
 ### The discard ledger
 

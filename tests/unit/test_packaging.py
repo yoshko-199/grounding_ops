@@ -46,10 +46,13 @@ def test_every_console_script_resolves_to_a_real_callable() -> None:
 
 def test_console_scripts_only_cover_the_trial_facing_clis() -> None:
     """scripts/*.py are deliberately not entry points -- see pyproject.toml's
-    own comment on why. This is the negative half of that decision."""
+    own comment on why. This is the negative half of that decision. The web
+    UI is trial-facing, so it is the fourth."""
     data = _pyproject()
     scripts = data["project"]["scripts"]
-    assert set(scripts) == {"grounding-verify", "grounding-show", "grounding-signoff"}
+    assert set(scripts) == {
+        "grounding-verify", "grounding-show", "grounding-signoff", "grounding-serve",
+    }
 
 
 def test_packages_find_excludes_tests() -> None:

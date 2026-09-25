@@ -6,20 +6,23 @@ The framing is not "is this true?" but *"what part of this survives contact with
 
 **Status: specification closed at v0.5; engine implemented and conformance-tested against a synthetic fixture pack.** All eighteen acceptance criteria run as tests, alongside claim-shape fuzzing over every generated shape.
 
-One real measure is admitted — the Bank of Israel representative US dollar rate, in [`packs/live/il.toml`](packs/live/il.toml) — built from the Bank's own publications. It **routes but does not retrieve**, because no adapter exists for that custodian. Every other real claim returns *Insufficient Data*, which is the correct answer rather than a gap. [`docs/spec/packs/israel.md`](docs/spec/packs/israel.md) records what remains blocked.
+Three real measures are admitted, all from the Bank's own publications: the Bank of Israel's representative rates for the US dollar, the euro and sterling, in [`packs/live/il.toml`](packs/live/il.toml). They **route but do not retrieve**. The Bank of Israel adapter is wired only with `--live`, and it has never run against the live service, because the development environment's egress blocks it. So a claim about those rates comes back with its elements *Unreachable* and the verdict *Insufficient Data*, and every other real claim returns *Insufficient Data* too. That is the correct answer rather than a gap. [`docs/spec/packs/israel.md`](docs/spec/packs/israel.md) records what remains blocked.
 
 ```
 python3 scripts/check_spec.py                    # document consistency
-python3 -m pytest tests/                         # 534 tests, 18 criteria
+python3 -m pytest tests/                         # 697 tests, 18 criteria
 python3 scripts/fuzz_shapes.py --all             # every claim shape
 PYTHONPATH=. python3 cli/verify.py "prices rose over the last three years \
   due to governmental incompetence" --jurisdiction ZZ
 ```
 
-`pip install -e .` installs `grounding-verify`, `grounding-show`, and
-`grounding-signoff` as console scripts, so `grounding-verify "..." --jurisdiction ZZ`
-works without the `PYTHONPATH=.` prefix — see the
-[CLI reference](docs/reference/cli.md#installing-the-three-clis).
+`pip install -e .` installs `grounding-verify`, `grounding-show`,
+`grounding-signoff`, and `grounding-serve` as console scripts, so
+`grounding-verify "..." --jurisdiction ZZ` works without the `PYTHONPATH=.`
+prefix — see the
+[CLI reference](docs/reference/cli.md#installing-the-console-scripts).
+`grounding-serve` opens the same pipeline in a browser at
+`http://127.0.0.1:8000/` — see [how to use the web UI](docs/how-to/use-the-web-ui.md).
 
 ---
 
@@ -29,6 +32,7 @@ works without the `PYTHONPATH=.` prefix — see the
 
 | If you want to | Go to |
 |---|---|
+| Get oriented, whatever your role | [Onboarding guide](docs/onboarding.md) |
 | Run your first claim through the engine | [Tutorial](docs/tutorial.md) |
 | Do one specific task | [How-to guides](docs/README.md#how-to-guides) |
 | Look up a flag, field, or exit code | [CLI](docs/reference/cli.md) · [Pack schema](docs/reference/pack-schema.md) · [Source schema](docs/reference/source-schema.md) |
@@ -43,9 +47,9 @@ works without the `PYTHONPATH=.` prefix — see the
 | [`docs/spec/claim-verification-engine.v0.4.md`](docs/spec/claim-verification-engine.v0.4.md) | Superseded. Archived for diffing |
 | [`docs/spec/claim-verification-engine.v0.3.md`](docs/spec/claim-verification-engine.v0.3.md) | Superseded. Archived for diffing |
 | [`docs/spec/claim-verification-engine.v0.2.md`](docs/spec/claim-verification-engine.v0.2.md) | Superseded. Archived for diffing |
-| [`docs/spec/acceptance-criteria.md`](docs/spec/acceptance-criteria.md) | The anti-laundering constraints as seventeen numbered, binary pass/fail criteria |
+| [`docs/spec/acceptance-criteria.md`](docs/spec/acceptance-criteria.md) | The anti-laundering constraints as eighteen numbered, binary pass/fail criteria |
 | [`docs/spec/custodian-pack-interface.md`](docs/spec/custodian-pack-interface.md) | Normative contract for jurisdiction packs — how routing generalises without diluting |
-| [`docs/spec/packs/israel.md`](docs/spec/packs/israel.md) | First pack instance, draft. Not yet admitted |
+| [`docs/spec/packs/israel.md`](docs/spec/packs/israel.md) | First pack instance: three exchange-rate measures admitted, everything else still draft |
 | [`docs/spec/claim-verification-engine.v0.1.md`](docs/spec/claim-verification-engine.v0.1.md) | The original draft, archived verbatim for diffing |
 | [`docs/plan.md`](docs/plan.md) | Roadmap — what is settled, what is next, what gates implementation |
 
@@ -81,7 +85,7 @@ It also converts §7's six prose principles into criteria that can fail a build.
 |---|---|
 | `engine/` | The pipeline. Stages 0–11, no network client, no source it did not get from a loaded pack |
 | `packs/` | Custodian packs — who is authoritative for which measure in which jurisdiction |
-| `cli/` | Verify a claim, read a stored one back, and sign one off |
+| `cli/` | Verify a claim, read a stored one back, and sign one off — on the command line or in a local web UI |
 | `plugins/harvest/` | **Outside the engine.** Scans declared sources and accounts for candidate *claims*. It may reach the network; nothing in `engine/` may reach it |
 | `plugins/shapes/` | Claim-shape fuzzing. A harness, so it drives the engine — but nothing in `engine/` may reach it either |
 | `sources/` | Source declarations for the harvester. See [`sources/README.md`](sources/README.md) |

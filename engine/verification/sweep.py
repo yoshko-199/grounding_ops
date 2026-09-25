@@ -155,7 +155,7 @@ def _baseline_sweep(
         "prior_period": retrievals[-2] if len(retrievals) >= 2 else None,
         "prior_year": retrievals[-13] if len(retrievals) >= 13 else retrievals[0],
         "series_start": retrievals[0],
-        "last_break": retrievals[len(retrievals) // 2],
+        "last_break": _last_break_anchor(measure, retrievals),
     }
 
     for baseline in measure.admissible_baselines:
@@ -175,6 +175,54 @@ def _baseline_sweep(
             )
         )
     return rows
+
+
+def _last_break_anchor(
+    measure: Measure, retrievals: tuple[Retrieval, ...]
+) -> Retrieval | None:
+    """The first observation on the basis of the latest declared break.
+
+    §9.3's "since the last break" baseline, with §9.5's break register as its
+    only source. This used to anchor at the middle of the series whatever the
+    pack declared, so a series with no break at all still produced a
+    last_break row, and a verdict could flip on a comparison against a break
+    that does not exist.
+
+    Only a declared break strictly inside the retrieved span counts. A break
+    before the first observation leaves the whole span on one basis, and one
+    after the last is not yet in the data. With no such break, or a reference
+    period that does not parse as a date, there is no anchor and no row:
+    silence here is the honest output, since the alternative is a guess.
+    """
+    starts = [_period_start(r.reference_period) for r in retrievals]
+    if any(start is None for start in starts):
+        return None
+    first, last = starts[0], starts[-1]
+    inside = [b.effective_date for b in measure.series_breaks if first < b.effective_date <= last]
+    if not inside:
+        return None
+    latest_break = max(inside)
+    for retrieval, start in zip(retrievals, starts):
+        if start >= latest_break:
+            return retrieval
+    return None
+
+
+def _period_start(reference_period: str):
+    """The first day a reference period covers: `YYYY`, `YYYY-MM` or `YYYY-MM-DD`."""
+    from datetime import date
+
+    parts = reference_period.strip().split("-")
+    try:
+        if len(parts) == 1 and len(parts[0]) == 4:
+            return date(int(parts[0]), 1, 1)
+        if len(parts) == 2:
+            return date(int(parts[0]), int(parts[1]), 1)
+        if len(parts) == 3:
+            return date(int(parts[0]), int(parts[1]), int(parts[2]))
+    except ValueError:
+        return None
+    return None
 
 
 def _window_sweep(

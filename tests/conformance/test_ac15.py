@@ -175,6 +175,7 @@ def test_composing_a_forbidden_connective_raises(element_set) -> None:
         forbidden_connectives=("because",),
         element_slot_order=LEXICON.element_slot_order,
         surface_vocabulary=LEXICON.surface_vocabulary,
+        quantity_form=LEXICON.quantity_form,
     )
     # Two measures, so there is a join for the connective to occupy. A single
     # clause has no seam and would pass for the wrong reason.
@@ -295,6 +296,30 @@ def test_a_sourced_figure_renders(element_set) -> None:
     assert "102.4" in result.text
 
 
+def test_the_figure_is_stated_as_a_level_at_its_period() -> None:
+    """Interface v1.5. The bare figure after a direction word read as the size
+    of the change: "rose 102.4 index_points" is the level at the end of the
+    span, not the rise. The pack's quantity form places the figure with its
+    reference period, and the words around it come from the pack alone."""
+    from dataclasses import replace
+
+    figure = Figure(
+        value=Decimal("102.4"),
+        unit="index_points",
+        retrieval_id=RetrievalId("r-1"),
+        reference_period="2021-12",
+    )
+    rose = VerifiedElement(_element("rose", ElementKind.DIRECTION), MEASURE, figure=figure)
+    text = reconstruct(frozenset({rose}), LEXICON).text
+    assert "rose, standing at 102.4 index_points in 2021-12" in text
+    assert "rose 102.4" not in text
+
+    other = replace(LEXICON, quantity_form=" (figure {figure}, period {period})")
+    assert "rose (figure 102.4 index_points, period 2021-12)" in reconstruct(
+        frozenset({rose}), other
+    ).text
+
+
 # -- the lexicon under test -------------------------------------------------
 
 from engine.codes import LanguageCode  # noqa: E402
@@ -310,4 +335,5 @@ LEXICON = Lexicon(
     ),
     element_slot_order=("time_period", "entity", "measure", "direction", "quantity"),
     surface_vocabulary={category: () for category in SurfaceCategory},
+    quantity_form=", standing at {figure} in {period}",
 )

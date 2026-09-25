@@ -195,3 +195,60 @@ def test_a_verdict_leaves_the_pipeline_proposed_not_final() -> None:
     verdict = evaluate((), SweepResult(), routed=False, reconstructs=False)
     assert not verdict.is_final
     assert not verdict.exportable
+
+
+# -- the last_break baseline is anchored at a declared break, or not at all ----
+
+
+def _series(pack, periods_and_values: list[tuple[str, str]]):
+    """Retrievals for the price index over the given periods."""
+    from datetime import date, datetime, timezone
+    from decimal import Decimal
+
+    from engine.custodians.base import Observation, RevisionStatus
+    from engine.store.events import RetrievalStore
+
+    store = RetrievalStore(":memory:")
+    now = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    out = []
+    for period, value in periods_and_values:
+        year, month = (int(x) for x in period.split("-"))
+        out.append(store.record(
+            Observation("ZZ-PRICE", period, Decimal(value), RevisionStatus.FINAL, date(year, month, 1)),
+            custodian_id="zzstat", cadence="monthly", unit="index_points",
+            continuity_status="no_break_crossed", now=now,
+        ))
+    store.close()
+    return tuple(out)
+
+
+def test_last_break_is_skipped_when_no_declared_break_is_inside_the_span(pack) -> None:
+    """The price index declares one break, at the start of the year 2020. A
+    series lying wholly after it is on one basis, so there is no last_break
+    comparison to make, and no row. The old anchor was the middle of the
+    series, which produced a row, and could produce a flip, from a break that
+    was not there."""
+    measure = pack.measure("price_index")
+    retrievals = _series(pack, [("2021-01", "100.0"), ("2021-06", "103.0"), ("2021-12", "101.0")])
+    rows = sweep._baseline_sweep(measure, retrievals, claimed_rise=True)
+    assert "last_break" not in [row.alternative for row in rows]
+
+
+def test_last_break_anchors_at_the_first_observation_after_the_break(pack) -> None:
+    """With the break inside the span, the anchor is the first observation on
+    the new basis, not the middle of the series."""
+    measure = pack.measure("price_index")
+    # Enough observations after the break that the middle of the series
+    # (index three) is not the first one after it (index two), so the old
+    # midpoint anchor cannot pass this by coincidence.
+    retrievals = _series(pack, [
+        ("2019-06", "90.0"), ("2019-12", "95.0"),
+        ("2020-01", "99.0"), ("2020-06", "96.0"), ("2020-12", "98.5"),
+        ("2021-06", "98.0"), ("2021-12", "97.0"),
+    ])
+    rows = {row.alternative: row for row in sweep._baseline_sweep(measure, retrievals, claimed_rise=True)}
+    assert rows["last_break"].computed_from_retrieval_id == retrievals[2].id
+    # Since the break the index fell, so "rose" flips against it, whatever
+    # the whole series says.
+    assert rows["last_break"].conclusion_holds is False
+    assert rows["series_start"].conclusion_holds is True

@@ -11,7 +11,7 @@ presentation by another route and never passes through here.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 
 from engine.codes import LanguageCode
@@ -22,12 +22,14 @@ from engine.elements import (
     Element,
     ElementKind,
     ElementStatus,
+    ToleranceBand,
     VerifiedElement,
 )
 from engine.ids import ClaimId
 from engine.packs.registry import PackRegistry
 from engine.packs.schema import Lexicon, SurfaceCategory
 from engine.render.artifact import Artifact, DiscardEntry, RoutingNote
+from engine.render.bottom_line import Finding
 from engine.store.events import RetrievalStore
 from engine.verification import (
     claim_verdict,
@@ -157,10 +159,39 @@ def verify(
             compares_across_time=any(e.kind in _CROSS_TIME for e in elements),
         )
 
+    # §6.1: contested by definition means "two authoritative custodians
+    # differ because they measure different things. Both reported, with the
+    # definitional gap explained." Routing declines to choose between the
+    # tied measures, which is right, and this used to stop there: nothing was
+    # retrieved, the elements read "no measure was bound", and the verdict
+    # folded into Insufficient Data. Now each contested measure is pulled from
+    # its own custodian and every figure is cited, so the reader sees the
+    # disagreement rather than being told there was nothing to see.
+    contested = decision.failure is route.RoutingFailure.CONTESTED_BY_DEFINITION
+    contested_pulls: list[retrieve.PullOutcome] = []
+    if contested:
+        for measure in decision.contested:
+            custodian = pack.custodian(measure.custodian_id)
+            if custodian is None or measure.custodian_id not in adapters:
+                continue
+            contested_pulls.append(
+                retrieve.pull(
+                    measure,
+                    custodian,
+                    adapters[measure.custodian_id],
+                    store,
+                    now=now,
+                    compares_across_time=any(e.kind in _CROSS_TIME for e in elements),
+                )
+            )
+    contested_figures = tuple(r for p in contested_pulls for r in p.retrievals)
+
     assigned: list[Element] = []
     reasons: dict[str, str] = {}
     for element in elements:
         outcome = element_verdict.assign(element, decision.measure, pull, claim_text, lexicon)
+        if contested and outcome.element.status is not ElementStatus.OUT_OF_SCOPE:
+            outcome = _contested(element, decision, contested_pulls, contested_figures)
         assigned.append(outcome.element)
         reasons[outcome.element.id.value] = outcome.reason
 
@@ -182,13 +213,24 @@ def verify(
             discarded=discarded,
         )
         if pull and pull.retrievals and decision.measure
-        else SweepResult(ran=False, reason_not_run="no series was retrieved")
+        else SweepResult(
+            ran=False,
+            reason_not_run=(
+                "the claim matches more than one measure, so there is no single "
+                "series whose baselines and windows could be swept"
+                if contested_figures
+                else "no series was retrieved"
+            ),
+        )
     )
 
     proposed = claim_verdict.evaluate(
         tuple(assigned),
         sweep_result,
-        routed=decision.routed,
+        # A contested claim whose figures were retrieved is not unrouted: every
+        # contested custodian was consulted, and the verdict is the one §6.2
+        # gives definitional disagreement, Indeterminate.
+        routed=decision.routed or bool(contested_figures),
         reconstructs=rebuilt.does_reconstruct,
     )
 
@@ -226,7 +268,7 @@ def verify(
         ),
         verdict=proposed,
         sweep=sweep_result,
-        citations=pull.retrievals if pull else (),
+        citations=pull.retrievals if pull else contested_figures,
         routing=(
             (
                 RoutingNote(
@@ -237,15 +279,79 @@ def verify(
                 ),
             )
             if decision.routed and decision.measure
+            else tuple(
+                RoutingNote(
+                    measure=measure.name,
+                    custodian=measure.custodian_id,
+                    rationale=(
+                        "one of the measures this claim matches equally well; the "
+                        "claim does not say which it means"
+                    ),
+                    alternatives_considered=tuple(
+                        other.name for other in decision.contested if other is not measure
+                    ),
+                )
+                for measure in decision.contested
+            )
+            if contested_figures
             else ()
         ),
         derived=derived_elements,
         unconfirmed_marker="UNCONFIRMED — proposed, not signed off",
+        findings=tuple(
+            Finding(
+                fragment=e.fragment,
+                kind=e.kind.value,
+                status=e.status.value if e.status else "unresolved",
+                band=e.tolerance_band.value if e.tolerance_band else None,
+            )
+            for e in assigned
+        ),
+        rounded=tuple(
+            e.fragment for e in assigned
+            if e.status is ElementStatus.VERIFIED and e.tolerance_band is ToleranceBand.B
+        ),
     )
     return VerificationRun(
         artifact, tuple(assigned), derived_elements,
         claim_id=claim_id, context=context, decision=decision, discard_reasons=reasons,
         diagnostic=pull.diagnostic if pull else "",
+    )
+
+
+def _contested(
+    element: Element,
+    decision: route.RoutingDecision,
+    pulls: list[retrieve.PullOutcome],
+    figures: tuple,
+) -> element_verdict.ElementOutcome:
+    """An in-scope element of a claim that matched several measures equally."""
+    names = "; ".join(f"{m.name} ({m.custodian_id})" for m in decision.contested)
+    if figures:
+        return element_verdict.ElementOutcome(
+            replace(element, status=ElementStatus.CONTESTED_BY_DEFINITION),
+            (
+                f"the claim matches more than one declared measure equally well, and "
+                f"they measure different things: {names}. Each custodian's figure is in "
+                "the citation record, with the caveat that separates them. The claim "
+                "does not say which it means, so none is chosen for it"
+            ),
+        )
+    reached = any(p.blocked_status is not ElementStatus.UNREACHABLE for p in pulls)
+    return element_verdict.ElementOutcome(
+        replace(
+            element,
+            status=ElementStatus.UNVERIFIED if reached else ElementStatus.UNREACHABLE,
+        ),
+        (
+            f"the claim matches more than one declared measure equally well: {names}. "
+            + (
+                "Their custodians were reached and publish no covering figure"
+                if reached
+                else "None of their custodians could be reached this session, so "
+                "no figure could be reported"
+            )
+        ),
     )
 
 
@@ -320,6 +426,9 @@ def _unrouted(
             verdict=verdict,
             sweep=SweepResult(ran=False, reason_not_run="no series was retrieved"),
             unconfirmed_marker="UNCONFIRMED — proposed, not signed off",
+            # Both callers return before decomposition: there was no pack, or
+            # no lexicon, to decompose with.
+            decomposed=False,
         ),
         (),
         (),

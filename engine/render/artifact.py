@@ -19,14 +19,25 @@ wanted."
 
 from __future__ import annotations
 
+import html
 from dataclasses import dataclass, field
 
 from engine.elements import DerivedElement
+from engine.render import bottom_line
+from engine.render.bottom_line import Finding
 from engine.render.figures import _NUMERAL, Payload, UnsourcedFigure
 from engine.store.events import Retrieval
 from engine.verdicts import ProposedVerdict, Verdict
 from engine.verification.derive import render_as_implication
 from engine.verification.sweep import FlipRow, SweepResult
+
+
+#: What an empty ledger says when the claim never reached decomposition, as
+#: opposed to one that was decomposed and lost nothing.
+_NOT_DECOMPOSED = (
+    "Not decomposed: no pack's vocabulary applies to this claim, so nothing was "
+    "examined, kept or discarded. The verdict says why."
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +74,20 @@ class Artifact:
     routing: tuple[RoutingNote, ...] = ()
     derived: tuple[DerivedElement, ...] = ()
     unconfirmed_marker: str = ""
+    #: False when the claim never reached decomposition: no pack resolved, or
+    #: the pack has no lexicon for its language. The ledger is then empty
+    #: because nothing was examined, not because nothing was removed, and
+    #: "Nothing was discarded" beside "does not reconstruct" read as a whole
+    #: claim dropped by a ledger claiming otherwise.
+    decomposed: bool = True
+    #: Verbatim fragments of the claim that verified in band B: right to
+    #: within a rounding step, not exactly. §9.2: "The `rounded` tag on Band B
+    #: surfaces in output." It was computed and stored and never shown, so a
+    #: reader could not tell an exact match from a rounded one.
+    rounded: tuple[str, ...] = ()
+    #: Every element, kept or removed, with what happened to it. The bottom
+    #: line is written from these; the ledger holds only the removed ones.
+    findings: tuple[Finding, ...] = ()
     _lines: tuple[str, ...] = field(default=(), compare=False)
 
     # -- the only ways out --------------------------------------------------
@@ -77,6 +102,11 @@ class Artifact:
         payload.line("ORIGINAL CLAIM").text("  ")
         payload.quoted(self.claim_text).line().line()
 
+        # The verdict in plain words, before the record that justifies it. It
+        # states every removed element too, so it is no more detachable than
+        # the reconstruction it carries (see engine.render.bottom_line).
+        bottom_line.write(payload, self._bottom_line_basis())
+
         payload.line("RECONSTRUCTED")
         if self.does_reconstruct:
             self._render_reconstruction(payload)
@@ -85,6 +115,12 @@ class Artifact:
             payload.line(
                 "  The surviving elements do not compose into a coherent statement."
             )
+        for fragment in self.rounded:
+            # The claim's own figure, through the quoted channel: it is the
+            # claimant's number being described, not a figure asserted here.
+            payload.text("  Verified to within rounding, not exactly: ")
+            payload.quoted(fragment.strip())
+            payload.line(" (tagged rounded)")
         payload.line()
 
         # §7.1 — the ledger is in the same payload, not behind a control, a
@@ -96,6 +132,8 @@ class Artifact:
                 payload.quoted(entry.fragment)
                 payload.line(f" [{entry.status}]")
                 payload.line(f"      {entry.reason}")
+        elif not self.decomposed:
+            payload.line(f"  {_NOT_DECOMPOSED}")
         else:
             payload.line("  Nothing was discarded.")
         payload.line()
@@ -120,6 +158,9 @@ class Artifact:
             "claim": self.claim_text,
             "reconstruction": self._reconstruction if self.does_reconstruct else None,
             "does_reconstruct": self.does_reconstruct,
+            "decomposed": self.decomposed,
+            "bottom_line": bottom_line.as_text(self._bottom_line_basis()),
+            "rounded": [fragment.strip() for fragment in self.rounded],
             "element_set_hash": self.element_set_hash,
             "discard_ledger": [
                 {"fragment": e.fragment, "status": e.status, "reason": e.reason}
@@ -163,10 +204,210 @@ class Artifact:
             "unconfirmed": bool(self.unconfirmed_marker),
         }
 
+    def render_html(self) -> str:
+        """The full artifact as an HTML fragment. There is no partial render here either.
+
+        A web page is one more code path that emits the reconstruction, so
+        AC-1 enumerates it like any other: it carries the ledger in the same
+        payload, never behind a control. It is built beside :meth:`render`
+        rather than on :meth:`to_dict` for two reasons. The reconstruction is a
+        private field with no public accessor, and only this type may read it.
+        And ``to_dict`` is never scanned for numerals, so a page built on it
+        would be the one output path AC-7 did not reach.
+
+        :meth:`render` runs first as the gate. It raises ``UnsourcedFigure``
+        before any markup exists, so this method can emit only an artifact the
+        text render has already accepted. What it adds is markup and fixed
+        headings, and neither may carry a numeral: no counts ("four of ten
+        flip"), no numbered citations. A count is computed, not retrieved,
+        and §3 does not distinguish between the two. Citations are addressed
+        by retrieval id, which appears in attributes and never in text.
+        """
+        self.render()
+
+        e = html.escape
+        out: list[str] = ['<article class="artifact">']
+
+        if self.unconfirmed_marker:
+            out.append(f'<p class="unconfirmed" role="status">{e(self.unconfirmed_marker)}</p>')
+
+        out.append('<section class="claim"><h2>Original claim</h2>')
+        out.append(f"<blockquote>{e(self.claim_text)}</blockquote></section>")
+        out.append(bottom_line.as_html(self._bottom_line_basis()))
+
+        # §7.1 — one section holds both. A reader cannot scroll to the
+        # reconstruction without passing through the frame that carries the
+        # ledger, and no control hides either.
+        out.append('<section class="reconstruction-and-ledger">')
+        out.append("<h2>Reconstructed</h2>")
+        if self.does_reconstruct:
+            anchor = self.citations[-1].id if self.citations else None
+            if anchor is None:
+                out.append(f'<p class="reconstruction">{e(self._reconstruction)}</p>')
+            else:
+                out.append(
+                    f'<p class="reconstruction" data-retrieval-id="{e(str(anchor))}">'
+                    f'{e(self._reconstruction)} '
+                    f'<a href="#retrieval-{e(str(anchor))}">source</a></p>'
+                )
+        else:
+            out.append('<p class="reconstruction">does not reconstruct</p>')
+            out.append(
+                "<p>The surviving elements do not compose into a coherent statement.</p>"
+            )
+        for fragment in self.rounded:
+            out.append(
+                f'<p class="rounded">Verified to within rounding, not exactly: '
+                f"<q>{e(fragment.strip())}</q> (tagged <code>rounded</code>)</p>"
+            )
+        out.append('<h3 class="ledger-heading">Discard ledger</h3>')
+        if self.ledger:
+            out.append('<ul class="ledger">')
+            for entry in self.ledger:
+                out.append(
+                    f'<li><span class="fragment">{e(entry.fragment)}</span> '
+                    f'<span class="status">{e(entry.status)}</span>'
+                    f'<p class="reason">{e(entry.reason)}</p></li>'
+                )
+            out.append("</ul>")
+        elif not self.decomposed:
+            out.append(f'<p class="ledger">{e(_NOT_DECOMPOSED)}</p>')
+        else:
+            out.append('<p class="ledger">Nothing was discarded.</p>')
+        out.append("</section>")
+
+        # §7.5 — one container for every label. The label is the only thing
+        # that varies; there is no per-label class, so no stylesheet can give
+        # Insufficient Data the error styling AC-5 forbids.
+        out.append('<section class="verdict"><h2>Verdict</h2>')
+        out.append(f'<p class="verdict-label">{e(_label(self.verdict.label))}</p>')
+        out.append(f'<p class="verdict-rationale">{e(self.verdict.rationale)}</p>')
+        if self.verdict.capped:
+            out.append(f'<p class="verdict-cap">Capped: {e(self.verdict.cap_reason)}</p>')
+        out.append("</section>")
+
+        out.append('<section class="sweep"><h2>Robustness sweep</h2>')
+        if not self.sweep.ran:
+            out.append("<p>Could not run.</p>")
+            out.append(f"<p>{e(self.sweep.reason_not_run)}</p>")
+            out.append("<p>The verdict is capped accordingly; silence is not a pass.</p>")
+        else:
+            out.append('<table class="flip-table"><thead><tr><th scope="col">Result</th>'
+                       '<th scope="col">Alternative</th><th scope="col">What was compared</th>'
+                       "</tr></thead><tbody>")
+            for row in self.sweep.rows:
+                result = "holds" if row.conclusion_holds else "flips"
+                out.append(
+                    f'<tr class="{result}" data-retrieval-id="{e(str(row.computed_from_retrieval_id))}">'
+                    f"<td>{result}</td>"
+                    f"<td>{e(row.test.value)}: {e(row.alternative)}</td>"
+                    f"<td>{e(row.detail)}</td></tr>"
+                )
+            out.append("</tbody></table>")
+        out.append("</section>")
+
+        out.append('<section class="citations"><h2>Citations</h2>')
+        if not self.citations:
+            out.append("<p>No retrieval was performed.</p>")
+        else:
+            # A measure's framing caveat usually applies to every figure in its
+            # series, and repeating it under each one buried the citations: a
+            # year of monthly figures printed the same paragraph twelve times.
+            # So consecutive citations sharing a caveat are grouped and the
+            # caveat is stated once, before them. Nothing is dropped: a caveat
+            # that changes starts a new group, and every citation keeps its
+            # own entry. The text render still repeats it per citation.
+            groups: list[tuple[str | None, list[Retrieval]]] = []
+            for retrieval in self.citations:
+                if groups and groups[-1][0] == retrieval.caveat:
+                    groups[-1][1].append(retrieval)
+                else:
+                    groups.append((retrieval.caveat, [retrieval]))
+            for caveat, members in groups:
+                if caveat:
+                    out.append(
+                        f'<p class="caveat">caveat on the citations that follow: {e(caveat)}</p>'
+                    )
+                out.append('<ul class="citation-list">')
+                for retrieval in members:
+                    rid = e(str(retrieval.id))
+                    out.append(
+                        f'<li id="retrieval-{rid}">'
+                        f'<span class="series">{e(retrieval.custodian_id)} / {e(retrieval.series_id)}</span> '
+                        f'<span class="figure">{e(str(retrieval.value))} {e(retrieval.unit)}</span> '
+                        f'<span class="period">for {e(retrieval.reference_period)}</span>'
+                        f'<p class="provenance">revision {e(retrieval.revision_status.value)}; '
+                        f"retrieved {e(retrieval.retrieved_at.isoformat())}; "
+                        f"continuity {e(retrieval.continuity_status)}</p></li>"
+                    )
+                out.append("</ul>")
+        out.append("</section>")
+
+        out.append('<section class="routing"><h2>Routing</h2>')
+        if not self.routing:
+            out.append("<p>No route was established.</p>")
+        else:
+            for note in self.routing:
+                out.append(f'<p class="route">{e(note.measure)} → {e(note.custodian)}</p>')
+                out.append(f"<p>{e(note.rationale)}</p>")
+                for alternative in note.alternatives_considered:
+                    out.append(f'<p class="considered">considered: {e(alternative)}</p>')
+        out.append("</section>")
+
+        if self.derived:
+            out.append('<section class="derived"><h2>Derived elements (proposed, not confirmed)</h2>')
+            for element in self.derived:
+                out.append(
+                    f'<div class="derived-element"><span class="tag">{e(element.tag.value)}</span>'
+                    f"<p>{e(render_as_implication(element))}</p>"
+                    f'<p class="operation">operation: {e(element.operation.value)}</p></div>'
+                )
+            out.append("</section>")
+
+        out.append("</article>")
+        return "\n".join(out)
+
     def __str__(self) -> str:
         return self.render()
 
     # -- sections -----------------------------------------------------------
+
+    def _bottom_line_basis(self) -> bottom_line.Basis:
+        # An artifact built without findings still states every ledger row,
+        # so the bottom line can never omit what was removed.
+        findings = self.findings or tuple(
+            Finding(entry.fragment, "", entry.status) for entry in self.ledger
+        )
+        return bottom_line.Basis(
+            claim_text=self.claim_text,
+            label=self.verdict.label.value,
+            state=self.verdict.state.value,
+            findings=findings,
+            reconstruction=self._reconstruction if self.does_reconstruct else None,
+            sources=tuple(
+                bottom_line.Source(
+                    retrieval_id=r.id,
+                    custodian_id=r.custodian_id,
+                    series_id=r.series_id,
+                    value=str(r.value),
+                    unit=r.unit,
+                    reference_period=r.reference_period,
+                    revision_status=r.revision_status.value,
+                    retrieved_at=r.retrieved_at.date().isoformat(),
+                )
+                for r in self.citations
+            ),
+            sweep_ran=self.sweep.ran,
+            flips=tuple(
+                bottom_line.Flip(row.test.value, row.alternative, row.computed_from_retrieval_id)
+                for row in self.sweep.rows
+                if not row.conclusion_holds
+            ),
+            sweep_reason=self.sweep.reason_not_run,
+            implied=tuple(render_as_implication(d) for d in self.derived),
+            decomposed=self.decomposed,
+            measures=tuple(f"{note.measure} ({note.custodian})" for note in self.routing),
+        )
 
     def _render_reconstruction(self, payload: Payload) -> None:
         """Emit the reconstruction, with every numeral in it tied to a retrieval.

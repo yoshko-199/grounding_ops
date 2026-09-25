@@ -160,6 +160,7 @@ LEXICON = Lexicon(
     forbidden_connectives=("because", "due to"),
     element_slot_order=("time_period", "entity", "measure", "direction", "quantity"),
     surface_vocabulary={category: () for category in SurfaceCategory},
+    quantity_form=", standing at {figure} in {period}",
 )
 
 
@@ -304,6 +305,7 @@ FUZZY_LEXICON = Lexicon(
     forbidden_connectives=("because", "due to", "therefore"),
     element_slot_order=("time_period", "entity", "measure", "direction", "quantity"),
     surface_vocabulary={category: () for category in SurfaceCategory},
+    quantity_form=", standing at {figure} in {period}",
     fuzzy_trigger_matching=True,
 )
 

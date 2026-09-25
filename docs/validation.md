@@ -1,5 +1,8 @@
 # Validation run — five claims, against the prior art
 
+> A later run tested [ten supplied claims](validation-ten-claims.md) through
+> the command line and the web UI.
+
 A record of the engine run against five claims chosen to span the verdict
 space, each compared with the method of the `israeli-fact-checker` skill
 (v0.2 §11 prior art). The point is not that the two agree — they diverge
@@ -55,7 +58,7 @@ After the fix:
 
 ```
 RECONSTRUCTED
-  In 2021 ZZ survey unemployment rate fell 4.2 percent.
+  In 2021 ZZ survey unemployment rate fell, standing at 4.2 percent in 2021-12.
 VERDICT
   ACCURATE
 ```

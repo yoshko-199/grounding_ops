@@ -28,6 +28,11 @@ writer and the schema disagree about what a verification produces, this
 command is what would show it, because it has no other way to get the answer
 right.
 
+The text opens with the plain-words bottom line, written from the stored
+rows. After a sign-off it reflects the decision, so the same claim can read
+"not yet reviewed by a person" when verified and "A person has reviewed this
+verdict" when read back later.
+
 Add `--json` for the same content as structured data, or `--store PATH` to
 point at a database other than the default.
 

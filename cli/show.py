@@ -24,7 +24,10 @@ import sqlite3
 import sys
 
 from cli.verify import DEFAULT_STORE
+from engine.ids import RetrievalId
+from engine.render import bottom_line
 from engine.store.events import RetrievalStore
+from engine.verification.derive import IMPLICATION_PREFIX
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -151,6 +154,56 @@ def _load(store: RetrievalStore, claim_id: str) -> dict | None:
     }
 
 
+def stored_bottom_line(record: dict) -> bottom_line.Basis | None:
+    """The bottom line of a stored claim, from its stored rows alone.
+
+    Written from the same rows the rest of the read-back prints, so it says
+    nothing they do not. It reflects the current verdict row, sign-off
+    included, which is why a looked-up claim can read differently from the
+    moment it was verified. ``None`` when no verdict was recorded.
+    """
+    verdict = record["verdict"]
+    if not verdict:
+        return None
+    recon = record["reconstruction"]
+    sweeps = record["sweeps"]
+    measures = dict.fromkeys(e["measure_id"] for e in record["elements"] if e["measure_id"])
+    return bottom_line.Basis(
+        claim_text=record["text"],
+        label=verdict["label"],
+        state=verdict["state"],
+        findings=tuple(
+            bottom_line.Finding(e["fragment"], e["kind"], e["status"], e["tolerance_band"])
+            for e in record["elements"]
+        ),
+        reconstruction=recon["text"] if recon and recon["does_reconstruct"] else None,
+        sources=tuple(
+            bottom_line.Source(
+                retrieval_id=RetrievalId(c["id"]),
+                custodian_id=c["custodian_id"],
+                series_id=c["series_id"],
+                value=str(c["figure"]),
+                unit=c["unit"],
+                reference_period=c["reference_period"],
+                revision_status=c["revision_status"],
+                retrieved_at=str(c["retrieved_at"]).split("T")[0],
+            )
+            for c in record["citations"]
+        ),
+        sweep_ran=bool(sweeps),
+        flips=tuple(
+            bottom_line.Flip(s["test"], s["alternative"], RetrievalId(s["computed_from_retrieval_id"]))
+            for s in sweeps
+            if not s["conclusion_holds"]
+        ),
+        sweep_reason="",
+        # §9.7.5: as implication, never as quotation, exactly as the live render.
+        implied=tuple(f"{IMPLICATION_PREFIX} {d['text']}." for d in record["derived_elements"]),
+        decomposed=bool(record["elements"]),
+        measures=tuple(measures),
+    )
+
+
 def _render(record: dict) -> str:
     lines: list[str] = []
     lines.append(f"[STORED — claim {record['claim_id']}]")
@@ -158,6 +211,13 @@ def _render(record: dict) -> str:
     lines.append("ORIGINAL CLAIM")
     lines.append(f'  "{record["text"]}"')
     lines.append("")
+
+    basis = stored_bottom_line(record)
+    if basis is not None:
+        lines.append(bottom_line.HEADING.upper())
+        lines.append(f"  {bottom_line.LEAD}")
+        lines.extend(f"  {line}" for line in bottom_line.as_text(basis).splitlines())
+        lines.append("")
 
     lines.append("RECONSTRUCTED")
     recon = record["reconstruction"]
@@ -173,6 +233,8 @@ def _render(record: dict) -> str:
         for d in record["discards"]:
             lines.append(f'  - "{d["fragment"]}" [{d["status"]}]')
             lines.append(f"      {d['reason']}")
+    elif not record["elements"]:
+        lines.append("  Not decomposed: no elements were recorded for this claim, so nothing was kept or discarded.")
     else:
         lines.append("  Nothing was discarded.")
     lines.append("")

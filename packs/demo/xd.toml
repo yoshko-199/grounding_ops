@@ -1,0 +1,288 @@
+# Demo custodian pack — a synthetic jurisdiction for the ten supplied claims.
+#
+# XD is not a country and its custodians are not institutions. Like the ZZ
+# fixture, the pack carries no figures: values live in
+# engine/custodians/demo.py and reach the engine only through recorded
+# retrievals. Unlike ZZ, which exists to exercise the acceptance criteria, XD
+# exists to show the ten supplied claims (docs/validation-ten-claims.md)
+# landing on the full range of verification levels.
+#
+# The values are invented, and chosen on purpose to land each claim on a named
+# level. They are not the real figures for boiling points, steel or crime, and
+# must never be quoted as such. The real-figures counterpart is
+# docs/spec/packs/demo-real.md, where every figure stays [confirm] until it is
+# fetched from the authority's own publication.
+#
+# Measures, and what each is here to show:
+#   boiling_point_water      a level claim, band A, and the unit gap (°F vs °C)
+#   density_carbon_steel   | two custodians publishing definitionally distinct
+#   density_stainless_steel| measures that both match "density of steel"
+#                            -> Contested by definition
+#   charter_sealing_year     custodian with no adapter -> Unreachable
+#   murder_rate              annual series, falls then rises -> the sweep flips
+#   homicide_rate            annual series, falls throughout -> Accurate
+#
+# Run with: --packs packs/demo --jurisdiction XD
+
+[header]
+jurisdiction_id = "XD"
+languages = ["en"]
+authority_basis = "Demonstration. No statutory basis; this jurisdiction does not exist."
+pack_version = "1.0.0-demo"
+maintainer = "demo pack for docs/validation-ten-claims.md"
+
+# --------------------------------------------------------------------------
+# Custodians. Every name says "Demo", so none can be read as a real body.
+# --------------------------------------------------------------------------
+
+[[custodians]]
+id = "xdstd"
+name = "XD Demo Standards Office"
+mandate = "Demonstration standards body; publishes reference physical properties."
+cadence = "annual"
+revision_policy = "Reference values are final when published and superseded only by a new edition."
+access_method = "demo adapter, in process"
+integrity_annotation = "Demonstration values, invented for the demo pack. Not a real reference."
+
+[[custodians]]
+id = "xdmat"
+name = "XD Demo Materials Bureau"
+mandate = "Demonstration materials registry; publishes properties of alloy families."
+cadence = "annual"
+revision_policy = "Reference values are final when published and superseded only by a new edition."
+access_method = "demo adapter, in process"
+integrity_annotation = "Demonstration values, invented for the demo pack. Not a real reference."
+
+[[custodians]]
+id = "xdcrime"
+name = "XD Demo Crime Statistics Office"
+mandate = "Demonstration statistics office; compiles annual offence rates."
+cadence = "annual"
+revision_policy = "Annual rates are final when published."
+access_method = "demo adapter, in process"
+integrity_annotation = "Demonstration values, invented for the demo pack. Not real crime statistics."
+
+[[custodians]]
+id = "xdarch"
+name = "XD Demo Archive"
+mandate = "Demonstration archive holding a register of dated historical documents."
+cadence = "annual"
+revision_policy = "Register entries are not revised."
+access_method = "none configured: the demo deliberately wires no adapter for this custodian"
+integrity_annotation = "Declared without an adapter so that its elements show as Unreachable."
+
+# --------------------------------------------------------------------------
+# Measures
+# --------------------------------------------------------------------------
+
+[[measures]]
+id = "boiling_point_water"
+name = "Boiling point of water at sea level"
+definition = "Temperature at which pure water boils at standard sea-level atmospheric pressure, in degrees Celsius."
+custodian_id = "xdstd"
+series_identifier = "XD-BOIL"
+unit = "degrees_celsius"
+published_precision = 0.01
+discrete = false
+known_confusions = [
+  "Celsius against Fahrenheit; the demo series is published in Celsius only.",
+  "Sea-level pressure against altitude; water boils cooler where the air is thinner.",
+]
+admissible_baselines = ["prior_period"]
+admissible_windows = []
+admissible_source_ref = "XD Demo Standards Office, Demo Reference Tables"
+
+[[measures]]
+id = "density_carbon_steel"
+name = "Density of carbon steel"
+definition = "Mass per unit volume of plain carbon steel at room temperature, in kilograms per cubic metre."
+custodian_id = "xdstd"
+series_identifier = "XD-STEEL-CARBON"
+unit = "kilograms_per_cubic_metre"
+published_precision = 10.0
+discrete = false
+known_confusions = [
+  "Carbon steel against stainless steel; the alloy family changes the density.",
+]
+admissible_baselines = ["prior_period"]
+admissible_windows = []
+admissible_source_ref = "XD Demo Standards Office, Demo Reference Tables"
+
+[[measures]]
+id = "density_stainless_steel"
+name = "Density of stainless steel"
+definition = "Mass per unit volume of austenitic stainless steel at room temperature, in kilograms per cubic metre."
+custodian_id = "xdmat"
+series_identifier = "XD-STEEL-STAINLESS"
+unit = "kilograms_per_cubic_metre"
+published_precision = 10.0
+discrete = false
+known_confusions = [
+  "Stainless steel against carbon steel; the alloy family changes the density.",
+]
+admissible_baselines = ["prior_period"]
+admissible_windows = []
+admissible_source_ref = "XD Demo Materials Bureau, Demo Alloy Register"
+
+[[measures]]
+id = "charter_sealing_year"
+name = "Magna Carta sealing year"
+definition = "Year in which the charter was first sealed, from the archive's register of dated documents."
+custodian_id = "xdarch"
+series_identifier = "XD-CHARTER"
+unit = "year"
+published_precision = 1.0
+discrete = true
+known_confusions = [
+  "The first sealing against later reissues of the same charter.",
+]
+admissible_baselines = ["prior_period"]
+admissible_windows = []
+admissible_source_ref = "XD Demo Archive, Demo Register of Dated Documents"
+
+[[measures]]
+id = "murder_rate"
+name = "Murder rate"
+definition = "Murders and nonnegligent manslaughters per hundred thousand inhabitants, per year."
+custodian_id = "xdcrime"
+series_identifier = "XD-MURDER"
+unit = "per_hundred_thousand"
+published_precision = 0.1
+discrete = false
+known_confusions = [
+  "Murder rate against the count of murders; a population change moves one and not the other.",
+  "A long-run fall against the recent trend; the two can point in opposite directions.",
+]
+# Two baselines only. The sweep counts windows in observations and anchors
+# prior_year thirteen observations back, both assuming monthly data, so an
+# annual series declares neither. last_break is left out too: the sweep
+# anchors it at the middle of the series whatever breaks the pack declares,
+# and a demo must not earn its verdict from that. See
+# docs/spec/proposals/v0.6-requirements.md.
+admissible_baselines = ["prior_period", "series_start"]
+admissible_windows = []
+admissible_source_ref = "XD Demo Crime Statistics Office, Demo Annual Tables"
+
+[[measures]]
+id = "homicide_rate"
+name = "Homicide rate"
+definition = "All homicides per hundred thousand inhabitants, per year, from death registrations."
+custodian_id = "xdcrime"
+series_identifier = "XD-HOMICIDE"
+unit = "per_hundred_thousand"
+published_precision = 0.1
+discrete = false
+known_confusions = [
+  "Homicide against murder; homicide includes killings that are not crimes.",
+]
+admissible_baselines = ["prior_period", "series_start"]
+admissible_windows = []
+admissible_source_ref = "XD Demo Crime Statistics Office, Demo Annual Tables"
+
+# --------------------------------------------------------------------------
+# Routing rules
+# --------------------------------------------------------------------------
+
+[[routing_rules]]
+measure_id = "boiling_point_water"
+custodian_id = "xdstd"
+rationale = "Sole publisher of the demo reference tables."
+no_alternative_custodian = true
+
+[[routing_rules]]
+measure_id = "density_carbon_steel"
+custodian_id = "xdstd"
+rationale = "Publishes the demo reference value for carbon steel."
+alternatives_considered = [
+  "XD Demo Materials Bureau publishes stainless steel, a different alloy family, not an alternative source for this measure.",
+]
+
+[[routing_rules]]
+measure_id = "density_stainless_steel"
+custodian_id = "xdmat"
+rationale = "Maintains the demo alloy register, which records stainless steel."
+alternatives_considered = [
+  "XD Demo Standards Office publishes carbon steel, a different alloy family, not an alternative source for this measure.",
+]
+
+[[routing_rules]]
+measure_id = "charter_sealing_year"
+custodian_id = "xdarch"
+rationale = "Holds the demo register of dated documents."
+no_alternative_custodian = true
+
+[[routing_rules]]
+measure_id = "murder_rate"
+custodian_id = "xdcrime"
+rationale = "Compiles the demo annual offence rates."
+alternatives_considered = [
+  "The demo homicide rate counts all homicides from death registrations, a different measure, not an alternative source for this one.",
+]
+
+[[routing_rules]]
+measure_id = "homicide_rate"
+custodian_id = "xdcrime"
+rationale = "Compiles the demo homicide rate from death registrations."
+alternatives_considered = [
+  "The demo murder rate counts offences, a different measure, not an alternative source for this one.",
+]
+
+# --------------------------------------------------------------------------
+# Lexicons — interface §3.6. Copied from the ZZ fixture, with the changes
+# marked where they are made.
+# --------------------------------------------------------------------------
+
+[[lexicons]]
+language = "en"
+# A fictional name, deliberately not "U.S." or any real country: a synthetic
+# pack that claimed a real jurisdiction's name would let its invented values
+# answer a real question. Claims reach XD through the context hint instead.
+names = ["Demoland"]
+composition_connectives = ["and", ", ", "; ", "then"]
+forbidden_connectives = [
+  "because", "because of", "due to", "caused by", "thanks to",
+  "as a result of", "resulting in", "leading to", "owing to",
+  "therefore", "hence", "consequently", "which shows", "which proves",
+  "meaning that", "although", "despite", "even though", "however",
+]
+element_slot_order = ["time_period", "entity", "measure", "direction", "quantity"]
+# Interface v1.5: what the reconstruction's figure is -- a level at its
+# reference period, not the size of a change.
+quantity_form = ", standing at {figure} in {period}"
+# Real claims carry typos. A trigger missed on a misspelling under-fires
+# silently, and a derived element is gated and never verified, so the cost of
+# a false trigger is a reviewer's attention rather than a laundered fact.
+fuzzy_trigger_matching = true
+
+  [lexicons.derivation_triggers]
+  "causal-discharge" = ["due to", "because of", "thanks to", "caused by", "owing to", "as a result of"]
+  "inferential-discharge" = ["therefore", "hence", "which proves", "which shows", "consequently"]
+  # Not a bare "ever": it fires on "for ever", "ever since" and "have you ever",
+  # none of which ranks anything. Phrases that carry the ranking sense instead.
+  "superlative-discharge" = ["highest", "lowest", "first time", "record", "ever recorded", "of all time", "worst", "best"]
+  "comparative-discharge" = ["more than", "less than", "twice as", "half as", "worse than", "better than"]
+  "evaluative-discharge" = ["incompetence", "failure", "success", "mismanagement", "disaster", "triumph"]
+  "scope-discharge" = ["all", "every", "always", "never", "nobody", "everyone", "none"]
+
+  [lexicons.surface_vocabulary]
+  # Migrated verbatim from the hardcoded English regexes in
+  # engine/verification/patterns.py (interface v1.4). "by 20XX" is dropped
+  # deliberately: it needed a digit wildcard the vocabulary format does not
+  # support, and no test exercised it -- see docs/plan.md §2.5 for the note.
+  rise = [
+    "rose", "rise", "risen", "rising", "rises", "increased", "increases",
+    "increasing", "grew", "grown", "grows", "climbed", "climbs", "doubled",
+    "tripled", "surged", "surges", "up", "higher",
+  ]
+  fall = [
+    "fell", "fall", "fallen", "falling", "falls", "decreased", "decreases",
+    "decreasing", "dropped", "drops", "declined", "declines", "halved",
+    # Added for the demo: claim 10 says the rate "has been cut", and a fall
+    # the vocabulary does not know is a direction the sweep cannot test.
+    "cut",
+    "shrank", "shrunk", "plunged", "plunges", "down", "lower",
+  ]
+  prediction = [
+    "will", "shall", "going to", "expected to", "forecast to",
+    "forecasted to", "next year", "next month", "next quarter", "projected",
+  ]

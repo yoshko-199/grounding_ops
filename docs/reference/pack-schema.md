@@ -145,6 +145,7 @@ every claim in it.
 | `composition_connectives` | list of string | yes | Allowlist for joining verified elements |
 | `forbidden_connectives` | list of string | yes | Connectives that may never appear in a reconstruction |
 | `element_slot_order` | list of string | yes | The order element surfaces compose in |
+| `quantity_form` | string | yes | How a reconstruction states its figure. See below |
 | `fuzzy_trigger_matching` | bool | no | Default `false`. See below |
 | `names` | list of string | no | Default empty. See below |
 | `surface_vocabulary` | table | yes | See below |
@@ -156,6 +157,23 @@ An allowlist admitting enumeration and sequencing and **nothing** causal,
 evaluative, concessive, or explanatory. The loader rejects a pack that includes
 one of those — this is what stops a reconstructor from smoothing two adjacent
 verified facts into an implication neither supports.
+
+### `quantity_form`
+
+Interface v1.5. The words around the figure in a reconstruction, with exactly
+one `{figure}` placeholder (value and unit, from the retrieval) and one
+`{period}` (its reference period). The loader rejects any other placeholder,
+any numeral, and any forbidden connective.
+
+```toml
+quantity_form = ", standing at {figure} in {period}"
+```
+
+That renders `Over the last three years ZZ Price Index rose, standing at
+102.4 index_points in 2021-12.` Without the period, the figure straight after
+the direction word read as the size of the rise, when it is the level at the
+end of the retrieved span. A form that opens with punctuation attaches to the
+slot before it without a space.
 
 ### `fuzzy_trigger_matching`
 

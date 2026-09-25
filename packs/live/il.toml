@@ -333,6 +333,9 @@ forbidden_connectives = [
   "meaning that", "although", "despite", "even though", "however",
 ]
 element_slot_order = ["time_period", "entity", "measure", "direction", "quantity"]
+# Interface v1.5: what the reconstruction's figure is -- a level at its
+# reference period, not the size of a change.
+quantity_form = ", standing at {figure} in {period}"
 fuzzy_trigger_matching = true
 
   [lexicons.derivation_triggers]
