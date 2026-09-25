@@ -107,10 +107,12 @@ def _rounds_to(claim_value: Decimal, published_value: Decimal) -> bool:
     claimant used, and treating it as an error would penalise ordinary
     speech rather than inaccuracy.
     """
-    places = -claim_value.as_tuple().exponent
-    if places < 0:
-        places = 0
-    quantum = Decimal(1).scaleb(-places)
+    # A claim stated with a scale word carries a positive exponent: "£5bn" is
+    # five to the nearest billion, and is checked by rounding the published
+    # figure to the nearest billion (interface v1.8). Clamping the exponent at
+    # zero, as this did when no claim could carry a scale, would demand the
+    # published figure be exactly five billion.
+    quantum = Decimal(1).scaleb(claim_value.as_tuple().exponent)
     return published_value.quantize(quantum) == claim_value
 
 

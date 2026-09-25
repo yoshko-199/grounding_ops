@@ -73,6 +73,7 @@ The measure, not the source, is the unit of correctness.
 | `unit` | string | yes | e.g. `index_points`, `percent`, `seats`, `persons` |
 | `published_precision` | float | yes | The custodian's reporting precision |
 | `discrete` | bool | yes | `true` for counts, which match exactly |
+| `published_scale` | string | no | `one` (default), `thousand`, `million`, `billion` or `trillion`: the scale the series is published in, e.g. `thousand` for a table "in thousands". Used only when comparing a claim stated with a scale word |
 | `known_confusions` | list of string | yes | Measures this is routinely mistaken for. `["none known"]` if genuinely none |
 | `admissible_baselines` | list of string | yes | Comparison bases the sweep will vary |
 | `admissible_windows` | list of string | yes | Time windows the sweep will vary |
@@ -148,6 +149,7 @@ every claim in it.
 | `quantity_form` | string | yes | How a reconstruction states its figure. See below |
 | `unit_phrases` | table | yes | Unit id → phrases naming it after a number. May be empty. See below |
 | `unit_prefixes` | table | yes | Unit id → phrases naming it before a number. May be empty. See below |
+| `scale_words` | table | yes | Scale → the words for it. May be empty. See below |
 | `fuzzy_trigger_matching` | bool | no | Default `false`. See below |
 | `names` | list of string | no | Default empty. See below |
 | `surface_vocabulary` | table | yes | See below |
@@ -220,6 +222,30 @@ Matching takes the longest prefix first ("US$" before "$") and requires a
 word boundary before it ("USD" is never read out of "XUSD"). It is a separate
 table so that which side of the number a phrase belongs on is declared, not
 guessed.
+
+### `scale_words`
+
+Interface v1.8. The words for each scale, keyed by a closed set: `thousand`,
+`million`, `billion`, `trillion`.
+
+```toml
+[lexicons.scale_words]
+thousand = ["thousand", "k"]
+billion = ["billion", "bn"]
+```
+
+A scale word straight after a numeral, and before any unit, joins the quantity
+element: "£5bn" and "28.7 thousand people" are one element each. The claim's
+figure is scaled by the scale's power of ten, which the engine fixes (short
+scale), and compared against the published figure scaled by the measure's
+`published_scale`. The scaling is internal only: the output quotes the claim
+as written and cites the figure as published. A claim stated with a scale is
+judged at that precision, so "£5bn" is five to the nearest billion.
+
+A word may not contain a numeral, name two scales, or also be a unit phrase:
+both are read straight after the numeral, so a bare "m" could not say whether
+it meant million or metres. That is why the packs in this repository leave
+"m" out.
 
 ### `fuzzy_trigger_matching`
 

@@ -105,3 +105,43 @@ def test_no_prefix_is_read_where_none_is_declared_right_there(text: str) -> None
 
 def test_no_prefixes_reads_no_prefix() -> None:
     assert unit_before("£5", 1, {}) is None
+
+
+# -- scale words (interface v1.8) -------------------------------------------------
+
+import pathlib  # noqa: E402
+
+from engine.codes import JurisdictionCode, LanguageCode  # noqa: E402
+from engine.packs.registry import PackRegistry  # noqa: E402
+from engine.verification.patterns import NUMBER, read_quantity  # noqa: E402
+
+FIXTURE = pathlib.Path(__file__).resolve().parents[2] / "packs" / "fixture"
+
+
+def _reading(text: str):
+    lexicon = PackRegistry.from_directory(FIXTURE).get(JurisdictionCode("ZZ")).lexicon(
+        LanguageCode("en")
+    )
+    return read_quantity(text, NUMBER.search(text), lexicon)
+
+
+@pytest.mark.parametrize(
+    "text,span,exponent,units",
+    [
+        ("£5bn", "£5bn", 9, ("pounds_sterling",)),
+        ("28.7 thousand people", "28.7 thousand people", 3, ("persons",)),
+        ("28.7k", "28.7k", 3, ()),
+        ("US$ 1.2 trillion", "US$ 1.2 trillion", 12, ("us_dollars",)),
+        ("5 million", "5 million", 6, ()),
+        # A scale word must end at a word boundary.
+        ("5 billionaires", "5 ", 0, ()),
+        ("4.2 percent", "4.2 percent", 0, ("percent",)),
+    ],
+)
+def test_the_scale_word_is_read_between_the_number_and_its_unit(
+    text: str, span: str, exponent: int, units: tuple[str, ...]
+) -> None:
+    reading = _reading(text)
+    assert text[reading.start:reading.end] == span
+    assert reading.exponent == exponent
+    assert reading.units == units

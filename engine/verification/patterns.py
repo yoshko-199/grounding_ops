@@ -23,7 +23,13 @@ not *how* they are matched.
 from __future__ import annotations
 
 import re
-from typing import Final
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Final
+
+from engine.packs.schema import Scale
+
+if TYPE_CHECKING:
+    from engine.packs.schema import Lexicon
 
 # A numeral, with an optional unit marker. Kept deliberately narrow: a bare
 # integer inside a date is caught by the time patterns first.
@@ -136,6 +142,48 @@ def unit_before(
             continue
         return unit, start
     return None
+
+
+@dataclass(frozen=True, slots=True)
+class QuantityReading:
+    """What surrounds one numeral: [unit prefix] numeral [scale word] [unit].
+
+    One reading, shared by decomposition (which anchors the element over all
+    of it) and the element verdict (which compares it), so the two can never
+    disagree about what a claim said.
+    """
+
+    start: int
+    end: int
+    exponent: int
+    units: tuple[str, ...]
+
+
+def read_quantity(text: str, match: re.Match[str], lexicon: Lexicon) -> QuantityReading:
+    """Read a NUMBER match in ``text`` against the lexicon's declared forms.
+
+    A unit written before the numeral (interface v1.7), then a scale word
+    straight after it (v1.8), then a unit after that (v1.6): "£5bn",
+    "5 billion pounds", "28.7 thousand people". Anything undeclared is left
+    out, and NUMBER's own English unit group still ends a bare match.
+    """
+    prefix = unit_before(text, match.start(1), lexicon.unit_prefixes)
+    scale = unit_at(
+        text, match.end(1), {s.value: words for s, words in lexicon.scale_words.items()}
+    )
+    after = unit_at(text, scale[1] if scale else match.end(1), lexicon.unit_phrases)
+    if after:
+        end = after[1]
+    elif scale:
+        end = scale[1]
+    else:
+        end = match.end()
+    return QuantityReading(
+        start=prefix[1] if prefix else match.start(),
+        end=end,
+        exponent=Scale(scale[0]).exponent if scale else 0,
+        units=tuple(found[0] for found in (prefix, after) if found),
+    )
 
 
 # Tokens carrying no measure identity, dropped before measure binding so that

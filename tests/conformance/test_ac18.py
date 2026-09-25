@@ -161,3 +161,16 @@ def test_a_quantity_is_anchored_over_a_unit_written_before_it(lexicon) -> None:
     assert [e.fragment.strip() for e in quantities] == ["£5", "US$12"]
     for element in quantities:
         assert element.span.resolve(claim) == element.fragment
+
+
+def test_a_quantity_is_anchored_over_its_scale_word(lexicon) -> None:
+    """Interface v1.8. "£5bn" is one element: the scale is part of the figure
+    the claimant stated, and a bare 5 would be compared as five."""
+    from engine.verification.decompose import decompose
+
+    claim = "the budget was £5bn and 28.7 thousand people applied"
+    elements = decompose(claim, ClaimId(), lexicon)
+    quantities = [e for e in elements if e.kind is ElementKind.QUANTITY]
+    assert [e.fragment for e in quantities] == ["£5bn", "28.7 thousand people"]
+    for element in quantities:
+        assert element.span.resolve(claim) == element.fragment

@@ -60,13 +60,12 @@ def decompose(claim_text: str, claim_id: ClaimId, lexicon: Lexicon) -> tuple[Ele
         # English unit group, and joins the element (interface v1.6), so
         # "212 degrees Fahrenheit" is one element carrying its unit rather
         # than a bare 212 that would be compared against any series at all.
-        declared = patterns.unit_at(claim_text, match.end(1), lexicon.unit_phrases)
-        end = declared[1] if declared else match.end()
-        # And one written before the numeral (interface v1.7), so "£5" is one
-        # element carrying its currency, never a bare 5.
-        prefix = patterns.unit_before(claim_text, match.start(1), lexicon.unit_prefixes)
-        start = prefix[1] if prefix else match.start()
-        candidates.append(_Candidate(start, end, ElementKind.QUANTITY))
+        # A declared unit before the numeral (interface v1.7), a scale word
+        # after it (v1.8) and a unit after that (v1.6) all join the element, so
+        # "£5bn" is one element carrying its currency and its scale, never a
+        # bare 5.
+        reading = patterns.read_quantity(claim_text, match, lexicon)
+        candidates.append(_Candidate(reading.start, reading.end, ElementKind.QUANTITY))
 
     for match in patterns.finditer_any(
         claim_text, lexicon.surface_vocabulary[SurfaceCategory.PREDICTION]

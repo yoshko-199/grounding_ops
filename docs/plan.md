@@ -126,7 +126,9 @@ Fahrenheit" is no longer contradicted by a Celsius series, and "fell 0.3
 percentage points" is no longer read as "0.3 percent" and compared against
 the rate's level ([R1](spec/proposals/v0.6-requirements.md#r1-units)).
 Interface v1.7 adds `unit_prefixes` for units written before the number, so
-"£5" and "USD 5" carry their currency too.
+"£5" and "USD 5" carry their currency too, and v1.8 adds `scale_words`, so
+"£5bn" is five billion pounds rather than five, with an optional
+`published_scale` for series published in thousands or millions.
 
 **Reconstruction figures say what they are.** A reconstruction's figure is
 the level at the end of the retrieved span, and it used to follow the

@@ -380,6 +380,16 @@ fuzzy_trigger_matching = true
   # "₪" names the shekel, which all three measures share, so it could not
   # tell them apart and no phrase is admitted until claims have been reviewed.
 
+  [lexicons.scale_words]
+  # Interface v1.8. Scale -> the English words for it, read straight after a
+  # numeral and before any unit: "£5bn", "5 billion pounds". What each scale
+  # means is fixed in the engine (short scale); a pack only names it. A bare
+  # "m" is left out on purpose: after a number it is as often metres.
+  thousand = ["thousand", "k"]
+  million = ["million", "mn"]
+  billion = ["billion", "bn"]
+  trillion = ["trillion", "tn"]
+
 [[routing_rules]]
 measure_id = "fx_representative_eur"
 custodian_id = "boi"

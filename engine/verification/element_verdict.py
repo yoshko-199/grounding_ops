@@ -193,8 +193,7 @@ def _quantity(
     element: Element, measure: Measure, pull: PullOutcome, lexicon: Lexicon
 ) -> ElementOutcome:
     """§9.2's numeric bands, or Unverified where the fragment states no figure."""
-    claimed = _claimed_value(element.fragment)
-    stated = _claimed_units(element.fragment, lexicon)
+    claimed, stated = _claimed(element.fragment, lexicon)
     if claimed is not None and any(unit != measure.unit for unit in stated):
         # Interface v1.6, and v1.7 for a unit written before the numeral.
         # Every unit the claim states must be the measure's: "£4.2 percent"
@@ -219,11 +218,17 @@ def _quantity(
             continuity=pull.continuity.status,
         )
 
+    # Both sides at the same scale (interface v1.8). The claim's figure was
+    # already scaled by its scale word; the published figure and its precision
+    # are scaled by the measure's declared published_scale. Exact powers of
+    # ten, and internal: neither scaled figure is ever rendered. The output
+    # quotes the claim as written and cites the figure as published.
+    scale = measure.published_scale.exponent
     latest = pull.observations[-1]
     outcome = tolerance.band_for(
         claimed,
-        latest.value,
-        published_precision=Decimal(str(measure.published_precision)),
+        latest.value.scaleb(scale),
+        published_precision=Decimal(str(measure.published_precision)).scaleb(scale),
         discrete=measure.discrete,
         kind=element.kind,
     )
@@ -243,25 +248,24 @@ def _quantity(
     )
 
 
-def _claimed_units(fragment: str, lexicon: Lexicon) -> tuple[str, ...]:
-    """Every unit id the fragment names around its numeral that the lexicon knows:
-    one written before it (interface v1.7) and one after it (v1.6)."""
+def _claimed(fragment: str, lexicon: Lexicon) -> tuple[Decimal | None, tuple[str, ...]]:
+    """The claim's figure at its stated scale, and every unit it names.
+
+    Read exactly as decomposition read it (``patterns.read_quantity``): a
+    unit before the numeral (v1.7), a scale word after it (v1.8), a unit
+    after that (v1.6). "£5bn" is five times ten to the ninth, in pounds.
+    The scaled value keeps the precision the claimant used: five billion is
+    "to the nearest billion", which is what §9.2's rounding test reads.
+    """
     match = patterns.NUMBER.search(fragment)
     if not match:
-        return ()
-    before = patterns.unit_before(fragment, match.start(1), lexicon.unit_prefixes)
-    after = patterns.unit_at(fragment, match.end(1), lexicon.unit_phrases)
-    return tuple(found[0] for found in (before, after) if found)
-
-
-def _claimed_value(fragment: str) -> Decimal | None:
-    match = patterns.NUMBER.search(fragment)
-    if not match:
-        return None
+        return None, ()
+    reading = patterns.read_quantity(fragment, match, lexicon)
     try:
-        return Decimal(match.group(1).replace(",", ""))
+        value = Decimal(match.group(1).replace(",", "")).scaleb(reading.exponent)
     except InvalidOperation:
-        return None
+        return None, reading.units
+    return value, reading.units
 
 
 def _settled(
