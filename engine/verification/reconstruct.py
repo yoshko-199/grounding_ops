@@ -154,17 +154,31 @@ def _clauses(ordered: list[VerifiedElement], lexicon: Lexicon) -> list[str]:
     clauses: list[str] = []
     for measure_name in order:
         members = grouped[measure_name]
-        slots = _slots(members, measure_name)
+        slots = _slots(members, measure_name, lexicon)
         rendered = [slots[name] for name in lexicon.element_slot_order if slots.get(name)]
         # A clause needs more than a bare time period to say anything.
         if not any(slots.get(name) for name in ("direction", "quantity")):
             continue
         if rendered:
-            clauses.append(" ".join(rendered))
+            clauses.append(_join_slots(rendered))
     return clauses
 
 
-def _slots(members: list[VerifiedElement], measure_name: str) -> dict[str, str]:
+def _join_slots(rendered: list[str]) -> str:
+    """Space-join slots, except that a slot opening with punctuation attaches.
+
+    A pack's quantity form may open with a comma ("rose, standing at …"), and
+    a space before it would be a typo in every reconstruction.
+    """
+    out = rendered[0]
+    for part in rendered[1:]:
+        out += part if part[:1] in ",;:" else f" {part}"
+    return out
+
+
+def _slots(
+    members: list[VerifiedElement], measure_name: str, lexicon: Lexicon
+) -> dict[str, str]:
     """Fill the §9.9.1 slots from a measure's verified elements."""
     slots: dict[str, str] = {"measure": measure_name}
     ordered = sorted(members, key=lambda v: v.sort_key)
@@ -181,9 +195,20 @@ def _slots(members: list[VerifiedElement], measure_name: str) -> dict[str, str]:
     # that did not originate from a recorded retrieval, and a claim's own
     # numeral is not one — so an element carrying a number but no Figure
     # contributes no quantity, and the clause says only what the record says.
+    #
+    # The figure goes out inside the pack's quantity form, with its reference
+    # period (interface v1.5). A bare figure after the direction word read as
+    # the size of the change — "rose 102.4 index_points" — when it is the level
+    # at the end of the retrieved span. The period says which it is.
     for verified in ordered:
-        if verified.figure is not None:
-            slots.setdefault("quantity", verified.figure.render())  # type: ignore[union-attr]
+        figure = verified.figure
+        if figure is not None:
+            slots.setdefault(
+                "quantity",
+                lexicon.quantity_form.replace("{figure}", figure.render())  # type: ignore[union-attr]
+                .replace("{period}", figure.reference_period)  # type: ignore[union-attr]
+                .strip(),
+            )
             break
 
     return slots

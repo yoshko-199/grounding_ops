@@ -347,6 +347,9 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
             continue
         vocabulary[category] = tuple(vocabulary_raw[category.value])
 
+    quantity_form = raw.get("quantity_form", "")
+    failures.extend(_quantity_form_failures(language, quantity_form, forbidden))
+
     return Lexicon(
         language=language,
         derivation_triggers=triggers,
@@ -354,12 +357,54 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
         forbidden_connectives=forbidden,
         element_slot_order=tuple(raw.get("element_slot_order", ())),
         surface_vocabulary=vocabulary,
+        quantity_form=quantity_form,
         fuzzy_trigger_matching=bool(raw.get("fuzzy_trigger_matching", False)),
         # Interface v1.3, optional. Absent means "no declared name in this
         # language", which is a conservative under-fire of §9.8.2 rule 1, not
         # a validation failure — see the field's docstring in schema.py.
         names=tuple(raw.get("names", ())),
     )
+
+
+def _quantity_form_failures(
+    language: str, form: object, forbidden: tuple[str, ...]
+) -> list[str]:
+    """Interface v1.5: the quantity slot's template, checked before any use.
+
+    Exactly one `{figure}` and one `{period}`, and nothing else in braces, so
+    the template can place the retrieval's figure and reference period and
+    nothing more. No numeral, because a pack carries no figures (§3). No
+    forbidden connective, because the template sits inside every clause the
+    reconstructor composes, and a causal word there would be written into all
+    of them (§9.9.2).
+    """
+    if not isinstance(form, str) or not form.strip():
+        return [
+            f"lexicon {language}: quantity_form is required (interface v1.5). It says "
+            "what a reconstruction's figure is, a level at a reference period, in this "
+            "language"
+        ]
+    failures: list[str] = []
+    for placeholder in ("{figure}", "{period}"):
+        if form.count(placeholder) != 1:
+            failures.append(
+                f"lexicon {language}: quantity_form must contain {placeholder} exactly once"
+            )
+    if re.search(r"[{}]", form.replace("{figure}", "").replace("{period}", "")):
+        failures.append(
+            f"lexicon {language}: quantity_form may hold no placeholder other than "
+            "{figure} and {period}"
+        )
+    if re.search(r"\d", form):
+        failures.append(f"lexicon {language}: quantity_form may not contain a numeral (§3)")
+    lowered = form.lower()
+    for connective in forbidden:
+        if re.search(rf"\b{re.escape(connective.lower())}\b", lowered):
+            failures.append(
+                f"lexicon {language}: quantity_form contains the forbidden connective "
+                f"{connective!r} (§9.9.2)"
+            )
+    return failures
 
 
 def _cross_checks(

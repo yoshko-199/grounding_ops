@@ -94,11 +94,16 @@ the bottom line is right.
 
 ```
 RECONSTRUCTED
-  Over the last three years ZZ Price Index rose 102.4 index_points.
+  Over the last three years ZZ Price Index rose, standing at 102.4 index_points in 2021-12.
 ```
 
 This is the claim rebuilt from **only the parts that survived checking**. Notice
 what is gone: there is no "due to", and no "incompetence".
+
+The figure is the index's level at the end of the retrieved span, with the
+month it belongs to. It is not the size of the rise; the claim stated no size,
+so the reconstruction states none. The words around the figure come from the
+pack's `quantity_form`.
 
 ### The discard ledger
 

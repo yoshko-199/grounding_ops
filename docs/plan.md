@@ -118,6 +118,13 @@ contested-by-definition fold, the unrendered `rounded` tag, and the
 [real-figures scaffold](spec/packs/demo-real.md) waits for the authorities'
 pages to be fetched.
 
+**Reconstruction figures say what they are.** A reconstruction's figure is
+the level at the end of the retrieved span, and it used to follow the
+direction word bare, so "rose 102.4 index_points" read as the size of the
+rise. Interface v1.5 adds a required `quantity_form` to each lexicon, and the
+figure now goes out with its reference period: "rose, standing at 102.4
+index_points in 2021-12".
+
 **A plain-words bottom line.** Every result, live or read back, opens with the
 verdict in plain words: what is true, what is false, what cannot be settled
 or checked, the closest version the sources support, the disconfirmation

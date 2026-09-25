@@ -58,7 +58,7 @@ After the fix:
 
 ```
 RECONSTRUCTED
-  In 2021 ZZ survey unemployment rate fell 4.2 percent.
+  In 2021 ZZ survey unemployment rate fell, standing at 4.2 percent in 2021-12.
 VERDICT
   ACCURATE
 ```

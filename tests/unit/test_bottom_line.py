@@ -96,6 +96,9 @@ def test_an_unreachable_source_is_not_checked_and_cites_nothing() -> None:
 def test_misleading_names_the_comparison_it_fails_under() -> None:
     section = _section(_claim("10"))
     assert "it reverses under baseline: prior_period" in section
+    # The figure is the level at the end of the span, and says so; it was once
+    # rendered bare after "cut", where it read as the size of the cut.
+    assert "Murder rate cut, standing at 6.1 per_hundred_thousand in 2023." in section
 
 
 def test_accurate_says_it_survived_every_comparison() -> None:

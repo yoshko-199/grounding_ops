@@ -138,6 +138,7 @@ language = "en"
 composition_connectives = ["and", ", ", "; ", "then"]
 forbidden_connectives = ["because", "due to", "therefore", "although"]
 element_slot_order = ["time_period", "entity", "measure", "direction", "quantity"]
+quantity_form = ", standing at {figure} in {period}"
 fuzzy_trigger_matching = true
 
   [lexicons.derivation_triggers]
@@ -154,6 +155,10 @@ into a sentence. It admits enumeration and sequencing and nothing causal,
 evaluative, concessive, or explanatory — the loader rejects a pack that tries.
 This is what stops the reconstructor from smoothing two adjacent verified facts
 into an implication neither supports.
+
+`quantity_form` is how a reconstruction states its figure in this language:
+one `{figure}` and one `{period}`, worded so the figure reads as a level at
+that period and never as the size of a change.
 
 A pack that declares a language without a lexicon for it under-fires silently
 on every claim in that language.

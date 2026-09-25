@@ -246,6 +246,9 @@ forbidden_connectives = [
   "meaning that", "although", "despite", "even though", "however",
 ]
 element_slot_order = ["time_period", "entity", "measure", "direction", "quantity"]
+# Interface v1.5: what the reconstruction's figure is -- a level at its
+# reference period, not the size of a change.
+quantity_form = ", standing at {figure} in {period}"
 # Real claims carry typos. A trigger missed on a misspelling under-fires
 # silently, and a derived element is gated and never verified, so the cost of
 # a false trigger is a reviewer's attention rather than a laundered fact.

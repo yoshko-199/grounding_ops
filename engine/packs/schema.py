@@ -163,6 +163,14 @@ class Lexicon:
     # doesn't error, it just quietly finds none, which looks identical to a
     # claim that had no direction in it.
     surface_vocabulary: dict[SurfaceCategory, tuple[str, ...]]
+    # Interface v1.5. Required, for the reason surface_vocabulary is: the words
+    # around a figure are language, and language is pack data (§9.4, §9.9.1).
+    # A template carrying exactly one `{figure}` and one `{period}`. Before it
+    # existed the quantity slot was the bare figure, placed straight after the
+    # direction word, so "rose 102.4 index_points" read as the size of the rise
+    # when it was the level at the end of the span. The period is what says
+    # which: a figure rendered without it cannot say what it measures.
+    quantity_form: str
     # Interface v1.2. Pack data, versioned and reviewable, on the same footing
     # as the trigger lists themselves (AC-3). Off unless a pack says otherwise.
     fuzzy_trigger_matching: bool = False
