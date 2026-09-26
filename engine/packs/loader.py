@@ -373,6 +373,10 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
     failures.extend(prefix_failures)
     scale_words, scale_failures = _scale_words(language, raw.get("scale_words"), unit_phrases)
     failures.extend(scale_failures)
+    approximation_words, approx_failures = _approximation_words(
+        language, raw.get("approximation_words"), unit_prefixes
+    )
+    failures.extend(approx_failures)
 
     return Lexicon(
         language=language,
@@ -385,6 +389,7 @@ def _lexicon(raw: dict[str, Any], failures: list[str]) -> Lexicon | None:
         unit_phrases=unit_phrases,
         unit_prefixes=unit_prefixes,
         scale_words=scale_words,
+        approximation_words=approximation_words,
         fuzzy_trigger_matching=bool(raw.get("fuzzy_trigger_matching", False)),
         # Interface v1.3, optional. Absent means "no declared name in this
         # language", which is a conservative under-fire of §9.8.2 rule 1, not
@@ -439,6 +444,40 @@ def _unit_phrases(
             owner[key] = unit
         phrases[unit] = tuple(p.strip() for p in listed)
     return phrases, failures
+
+
+def _approximation_words(
+    language: str, raw: object, unit_prefixes: dict[str, tuple[str, ...]]
+) -> tuple[tuple[str, ...], list[str]]:
+    """Interface v1.9: words that mark a figure as approximate (§9.2, v0.6).
+
+    Required, may be empty, like the unit tables. No numeral, because a pack
+    carries no figures. None may also be a unit prefix: both are read before
+    the numeral, and a word that could be either would leave the engine
+    choosing what the claimant wrote.
+    """
+    if not isinstance(raw, list):
+        return (), [
+            f"lexicon {language}: approximation_words is required (interface v1.9). "
+            "Declare an empty list explicitly if this language marks no approximation"
+        ]
+    failures: list[str] = []
+    prefixes = {p.lower() for phrases in unit_prefixes.values() for p in phrases}
+    for word in raw:
+        if not isinstance(word, str) or not word.strip():
+            failures.append(
+                f"lexicon {language}: approximation_words must be non-empty strings"
+            )
+            continue
+        if re.search(r"\d", word):
+            failures.append(
+                f"lexicon {language}: approximation_words entry {word!r} contains a numeral (§3)"
+            )
+        if word.strip().lower() in prefixes:
+            failures.append(
+                f"lexicon {language}: {word!r} is both an approximation word and a unit prefix"
+            )
+    return tuple(w.strip() for w in raw if isinstance(w, str) and w.strip()), failures
 
 
 def _scale_words(

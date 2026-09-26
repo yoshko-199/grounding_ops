@@ -3,7 +3,7 @@
 The terms this repository uses with a precise meaning. Where a term has a
 closed set of values, every value is listed, in the form the code and the
 output use. The authority for each is the
-[specification](../spec/claim-verification-engine.v0.5.md); section
+[specification](../spec/claim-verification-engine.v0.6.md); section
 references point into it.
 
 ## A–C
@@ -195,8 +195,12 @@ candidate *claims*. It is not a custodian and can never be evidence. See
 and still verify, computed from the custodian's own published precision and
 never chosen per claim (§9.2). Band A verifies, Band B verifies tagged
 `rounded` (shown as "Verified to within rounding, not exactly"), and Band C
-contradicts. Superlatives, directions and discrete
-counts bypass the bands: they are right or wrong.
+contradicts. A figure exactly halfway between two values at the claim's
+precision rounds to either. Superlatives and directions bypass the bands: they
+are right or wrong. Discrete counts match exactly at the precision the claim
+states — a count written in full must be exact, and one stated with a scale
+word ("29 thousand") or an approximation word ("about 29,000") verifies,
+tagged `rounded`, if the published count rounds to it (§9.2, v0.6).
 
 **TTL.** How long a retrieval stays fresh, derived from the custodian's
 publication cadence. There is no grace period and no force flag.

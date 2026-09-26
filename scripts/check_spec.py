@@ -25,7 +25,7 @@ import glob
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # The current spec version. Bump when a new version file becomes current.
-CURRENT_SPEC = "docs/spec/claim-verification-engine.v0.5.md"
+CURRENT_SPEC = "docs/spec/claim-verification-engine.v0.6.md"
 CRITERIA = "docs/spec/acceptance-criteria.md"
 
 failures = []

@@ -43,7 +43,7 @@ reaches nothing: `harvest_corpus.py --dry-run` must exit **2**, never 0.
 
 ## What this is
 
-An implementation of `docs/spec/claim-verification-engine.v0.5.md`. A claim is
+An implementation of `docs/spec/claim-verification-engine.v0.6.md`. A claim is
 decomposed into atomic elements, each verified against a custodian of record,
 and a grounded version is rebuilt from only what survived — displayed
 inseparably from a ledger of what was removed and why.

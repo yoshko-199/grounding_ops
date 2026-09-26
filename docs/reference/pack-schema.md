@@ -150,6 +150,7 @@ every claim in it.
 | `unit_phrases` | table | yes | Unit id → phrases naming it after a number. May be empty. See below |
 | `unit_prefixes` | table | yes | Unit id → phrases naming it before a number. May be empty. See below |
 | `scale_words` | table | yes | Scale → the words for it. May be empty. See below |
+| `approximation_words` | list of string | yes | Words marking a figure as approximate. May be empty. See below |
 | `fuzzy_trigger_matching` | bool | no | Default `false`. See below |
 | `names` | list of string | no | Default empty. See below |
 | `surface_vocabulary` | table | yes | See below |
@@ -246,6 +247,25 @@ A word may not contain a numeral, name two scales, or also be a unit phrase:
 both are read straight after the numeral, so a bare "m" could not say whether
 it meant million or metres. That is why the packs in this repository leave
 "m" out.
+
+### `approximation_words`
+
+Interface v1.9. Words that, written directly before a figure or its unit
+prefix, say it is approximate.
+
+```toml
+approximation_words = ["about", "around", "roughly", "approximately", "circa"]
+```
+
+"About 29,000" becomes one element, and its stated precision widens to the
+last non-zero digit written, so it is judged as "29 thousand" is (spec §9.2):
+a count verifies, tagged `rounded`, if the published count rounds to it.
+Without the word, "29,000" is a count written in full and must match exactly.
+
+Declare only approximations. "Nearly", "over", "almost" and "up to" are
+bounds: they say which side of a figure the truth lies on, which is a
+comparison, not rounding. A word may not contain a numeral or also be a unit
+prefix.
 
 ### `fuzzy_trigger_matching`
 

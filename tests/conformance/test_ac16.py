@@ -164,6 +164,7 @@ LEXICON = Lexicon(
     unit_phrases={},
     unit_prefixes={},
     scale_words={},
+    approximation_words=(),
 )
 
 
@@ -312,6 +313,7 @@ FUZZY_LEXICON = Lexicon(
     unit_phrases={},
     unit_prefixes={},
     scale_words={},
+    approximation_words=(),
     fuzzy_trigger_matching=True,
 )
 

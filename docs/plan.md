@@ -2,7 +2,7 @@
 
 Living document. Records what is settled, what is built, and what is still missing.
 
-Companion to the [specification](spec/claim-verification-engine.v0.5.md) and the [overview](overview.md).
+Companion to the [specification](spec/claim-verification-engine.v0.6.md) and the [overview](overview.md).
 
 ---
 
@@ -129,10 +129,13 @@ Interface v1.7 adds `unit_prefixes` for units written before the number, so
 "£5" and "USD 5" carry their currency too, and v1.8 adds `scale_words`, so
 "£5bn" is five billion pounds rather than five, with an optional
 `published_scale` for series published in thousands or millions.
-A [draft amendment to §9.2](spec/proposals/9.2-rounded-counts.md) proposes
-judging a count stated with a scale word at the precision it states, since
-"29 thousand" against a published count is otherwise held to an exact match.
-It is not built.
+**Rounded counts (spec v0.6).** §9.2 now judges a count at the precision the
+claim states: "29 thousand" and "about 29,000" verify, tagged `rounded`,
+against a published count they round to, while "29,000" written in full is
+still an exact match. An exact half rounds to either neighbour for every
+measure, and there is no floor on stated precision. Pack interface v1.9 adds
+the lexicon's approximation words
+([the adopted draft](spec/proposals/9.2-rounded-counts.md)).
 
 **Reconstruction figures say what they are.** A reconstruction's figure is
 the level at the end of the retrieved span, and it used to follow the

@@ -53,6 +53,7 @@ def _lexicon(vocabulary: dict[SurfaceCategory, tuple[str, ...]] | None = None) -
         unit_phrases={},
         unit_prefixes={},
         scale_words={},
+        approximation_words=(),
     )
 
 

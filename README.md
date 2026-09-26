@@ -4,13 +4,13 @@ Specification work for a **Claim Verification & Reconstruction Engine** — a sy
 
 The framing is not "is this true?" but *"what part of this survives contact with the record, and what does the surviving part actually support?"*
 
-**Status: specification closed at v0.5; engine implemented and conformance-tested against a synthetic fixture pack.** All eighteen acceptance criteria run as tests, alongside claim-shape fuzzing over every generated shape.
+**Status: specification closed at v0.6; engine implemented and conformance-tested against a synthetic fixture pack.** All eighteen acceptance criteria run as tests, alongside claim-shape fuzzing over every generated shape.
 
 Three real measures are admitted, all from the Bank's own publications: the Bank of Israel's representative rates for the US dollar, the euro and sterling, in [`packs/live/il.toml`](packs/live/il.toml). They **route but do not retrieve**. The Bank of Israel adapter is wired only with `--live`, and it has never run against the live service, because the development environment's egress blocks it. So a claim about those rates comes back with its elements *Unreachable* and the verdict *Insufficient Data*, and every other real claim returns *Insufficient Data* too. That is the correct answer rather than a gap. [`docs/spec/packs/israel.md`](docs/spec/packs/israel.md) records what remains blocked.
 
 ```
 python3 scripts/check_spec.py                    # document consistency
-python3 -m pytest tests/                         # 770 tests, 18 criteria
+python3 -m pytest tests/                         # 792 tests, 18 criteria
 python3 scripts/fuzz_shapes.py --all             # every claim shape
 PYTHONPATH=. python3 cli/verify.py "prices rose over the last three years \
   due to governmental incompetence" --jurisdiction ZZ
@@ -43,7 +43,8 @@ prefix — see the
 | Document | What it is |
 |---|---|
 | [`docs/overview.md`](docs/overview.md) | **Start here.** High-level explanation with diagrams — what the system does, and why it cannot quietly become an advocacy tool |
-| [`docs/spec/claim-verification-engine.v0.5.md`](docs/spec/claim-verification-engine.v0.5.md) | **Current spec.** Pipeline, taxonomies, persistence model, and the resolved design decisions |
+| [`docs/spec/claim-verification-engine.v0.6.md`](docs/spec/claim-verification-engine.v0.6.md) | **Current spec.** Pipeline, taxonomies, persistence model, and the resolved design decisions |
+| [`docs/spec/claim-verification-engine.v0.5.md`](docs/spec/claim-verification-engine.v0.5.md) | Superseded. Archived for diffing |
 | [`docs/spec/claim-verification-engine.v0.4.md`](docs/spec/claim-verification-engine.v0.4.md) | Superseded. Archived for diffing |
 | [`docs/spec/claim-verification-engine.v0.3.md`](docs/spec/claim-verification-engine.v0.3.md) | Superseded. Archived for diffing |
 | [`docs/spec/claim-verification-engine.v0.2.md`](docs/spec/claim-verification-engine.v0.2.md) | Superseded. Archived for diffing |
@@ -105,7 +106,7 @@ The `israeli-fact-checker` skill (installed at `~/.claude/skills/`, outside this
 
 ## Open questions
 
-Four remain genuinely open and are listed in [v0.5 §10](docs/spec/claim-verification-engine.v0.5.md#10-remaining-open-questions): sweep cost against rate-limited custodian APIs, sign-off throughput at volume, which further implication patterns the six derivation operations still miss, and how span anchoring works when a claim arrives paraphrased rather than quoted.
+Four remain genuinely open and are listed in [v0.6 §10](docs/spec/claim-verification-engine.v0.6.md#10-remaining-open-questions): sweep cost against rate-limited custodian APIs, sign-off throughput at volume, which further implication patterns the six derivation operations still miss, and how span anchoring works when a claim arrives paraphrased rather than quoted.
 
 ## Checks
 

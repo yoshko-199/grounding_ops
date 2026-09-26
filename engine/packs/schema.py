@@ -221,6 +221,14 @@ class Lexicon:
     # unit: "£5bn", "5 billion pounds", "28.7 thousand people". Before it
     # existed "£5bn" was read as five pounds.
     scale_words: dict[Scale, tuple[str, ...]]
+    # Interface v1.9. Required, and may be declared empty. Words that, written
+    # directly before a figure, say it is approximate: "about 29,000",
+    # "roughly £5bn". Spec §9.2 (v0.6) reads them as widening the figure's
+    # stated precision to its last non-zero digit, so "about 29,000" is judged
+    # as "29 thousand" is. Bounds are not approximations: "nearly", "over" and
+    # "up to" say which side of a figure the truth lies, and belong to
+    # comparative derivation, never here.
+    approximation_words: tuple[str, ...]
     # Interface v1.2. Pack data, versioned and reviewable, on the same footing
     # as the trigger lists themselves (AC-3). Off unless a pack says otherwise.
     fuzzy_trigger_matching: bool = False

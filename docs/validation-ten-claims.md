@@ -103,9 +103,9 @@ using the remaining triggers ("record" inside "recorded") was added.
    comes first, so adding "cause" as a trigger would state the relationship
    backwards. Covering it needs a derivation operation that knows which
    flank is the cause, a change to the closed list in
-   [§9.7.2](spec/claim-verification-engine.v0.5.md#972-admissible-derivation-operations).
+   [§9.7.2](spec/claim-verification-engine.v0.6.md#972-admissible-derivation-operations).
    It is recorded as evidence for the
-   [derivation coverage question](spec/claim-verification-engine.v0.5.md#10-remaining-open-questions).
+   [derivation coverage question](spec/claim-verification-engine.v0.6.md#10-remaining-open-questions).
    The failure is in the safe direction: the implication is not surfaced,
    rather than surfaced wrongly.
 2. **A two-part claim derives as one.** Claim 10 joins two assertions with
