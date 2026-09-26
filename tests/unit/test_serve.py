@@ -104,6 +104,18 @@ def test_a_malformed_date_is_a_form_problem(app) -> None:
     assert "not a date" in response.body
 
 
+def test_a_form_problem_keeps_its_example_date_on_one_line(app) -> None:
+    """At phone width the example date broke at its hyphen, into two pieces.
+
+    The words are unchanged; only the date is held together.
+    """
+    response = _post(app, claim=WORKED, stated_at="yesterday")
+    problem = re.search(r'<p class="form-problem" role="status">(.*?)</p>', response.body).group(1)
+    assert '<span class="nowrap">2021-06-01</span>' in problem
+    assert re.sub(r"<[^>]+>", "", problem).endswith("Expected ISO format, for example 2021-06-01")
+    assert ".nowrap{white-space:nowrap}" in response.body
+
+
 def test_an_empty_claim_is_a_form_problem(app) -> None:
     response = _post(app, claim="   ")
     assert response.status == 400

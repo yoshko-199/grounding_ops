@@ -399,6 +399,10 @@ browser sends `Origin: null` even on the UI's own form posts, and the check
 above would refuse every one of them. The page
 uses system fonts and makes no network request of its own.
 
+A problem stated above a form keeps any ISO date in it on one line. At phone
+width a date otherwise breaks at a hyphen, and the example the message offers,
+the format to type, arrives in two pieces.
+
 ### Exit codes
 
 | Code | Meaning |

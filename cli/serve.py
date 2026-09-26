@@ -54,6 +54,7 @@ from engine.verification.claim_verdict import Verdict
 MAX_BODY = 64 * 1024
 
 _CLAIM_ID = re.compile(r"^[0-9a-fA-F-]{8,64}$")
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 _SECURITY_HEADERS = (
     # No scripts at all, no external requests: the page is markup and one
@@ -136,8 +137,7 @@ class App:
             chosen = " selected" if values.get("jurisdiction") == code else ""
             options.append(f'<option value="{e(code)}"{chosen}>{e(code)}</option>')
         problem_html = (
-            f'<p class="form-problem" role="status">Could not verify: {e(problem)}</p>'
-            if problem else ""
+            _problem_html("Could not verify: ", problem) if problem else ""
         )
         form = f"""{problem_html}
 <form method="post" action="/verify" class="verify-form">
@@ -227,7 +227,7 @@ class App:
         if awaiting:
             content += "\n" + _sign_off_form(claim_id, record["verdict"]["label"], problem, values or {})
         elif problem:
-            content = f'<p class="form-problem" role="status">{html.escape(problem)}</p>\n' + content
+            content = _problem_html("", problem) + "\n" + content
         return _page(status, "Stored record", content)
 
     def _queue(self) -> Response:
@@ -409,6 +409,16 @@ def _form_fields(headers: dict[str, str], body: bytes) -> dict[str, str] | Respo
         return _page(400, "Unreadable form", "<p>The form was not valid UTF-8.</p>")
 
 
+def _problem_html(lead: str, problem: str) -> str:
+    """A problem stated above a form, outside any verdict.
+
+    An ISO date is kept on one line. A narrow screen otherwise breaks it at a
+    hyphen, and the example the operator is told to follow arrives in two pieces.
+    """
+    text = _ISO_DATE.sub(lambda m: f'<span class="nowrap">{m.group(0)}</span>', html.escape(problem))
+    return f'<p class="form-problem" role="status">{lead}{text}</p>'
+
+
 def _sign_off_form(claim_id: str, proposed: str, problem: str, values: dict[str, str]) -> str:
     """§9.1's gate as a form: a decision, a name, and for an amendment a label
     and a reason. It has no field for anything beneath the claim-level label."""
@@ -431,8 +441,7 @@ def _sign_off_form(claim_id: str, proposed: str, problem: str, values: dict[str,
         f'{e(v.value.replace("_", " "))}</option>'
         for v in Verdict if v.value != proposed
     )
-    problem_html = (f'<p class="form-problem" role="status">Not signed off: {e(problem)}</p>'
-                    if problem else "")
+    problem_html = _problem_html("Not signed off: ", problem) if problem else ""
     return f"""<section class="sign-off"><h2>Sign off</h2>
 <p class="hint">Proposed: {e(proposed.replace("_", " "))}. Element statuses, the
 reconstruction, the ledger, the flip table, citations and routing are final and
@@ -507,6 +516,7 @@ background:#fff;min-height:44px}
 button{font:inherit;font-weight:600;min-height:48px;padding:0 24px;border:0;border-radius:10px;
 background:var(--ink);color:var(--card);cursor:pointer;align-self:flex-start}
 .form-problem{background:#EFD9D5;color:var(--flips);padding:12px 16px;border-radius:8px}
+.nowrap{white-space:nowrap}
 .citations>.caveat{background:#ECE8DE;color:#3A3732;padding:10px 14px;border-radius:8px;margin:8px 0}
 @media (max-width:480px){
 header.site{gap:12px;padding:12px 16px}
