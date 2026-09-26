@@ -252,3 +252,35 @@ def test_last_break_anchors_at_the_first_observation_after_the_break(pack) -> No
     # the whole series says.
     assert rows["last_break"].conclusion_holds is False
     assert rows["series_start"].conclusion_holds is True
+
+
+# -- what the output says when the sweep did not run ---------------------------------
+#
+# "Silence is not a pass" holds for every verdict reached without a sweep, but
+# only one of them is capped for it. The sweep section said "capped
+# accordingly" for all of them, including a False verdict that was never
+# capped: a true principle attached to a false statement about the verdict.
+
+
+@pytest.mark.parametrize(
+    "claim,capped",
+    [
+        # Every element verifies; the sweep could not run: capped.
+        ("registered job-seekers were about 29,000", True),
+        # Contradicted: False, reached without the sweep, never capped.
+        ("registered job-seekers were 29,000", False),
+        # Out of scope: Insufficient Data, never capped.
+        ("you dont see a curve therfore the earth is flat", False),
+    ],
+)
+def test_the_sweep_section_says_capped_only_when_the_verdict_is(
+    claim: str, capped: bool, registry, context, adapters, store
+) -> None:
+    from engine.pipeline import verify
+
+    artifact = verify(claim, context, registry, adapters, store).artifact
+    assert not artifact.sweep.ran
+    assert artifact.verdict.capped is capped
+    for output in (artifact.render(), artifact.render_html()):
+        assert ("capped accordingly" in output) is capped
+        assert "not a pass" in output
