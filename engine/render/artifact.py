@@ -290,7 +290,7 @@ class Artifact:
         if not self.sweep.ran:
             out.append("<p>Could not run.</p>")
             out.append(f"<p>{e(self.sweep.reason_not_run)}</p>")
-            out.append("<p>The verdict is capped accordingly; silence is not a pass.</p>")
+            out.append(f"<p>{e(self._sweep_absence())}</p>")
         else:
             out.append('<table class="flip-table"><thead><tr><th scope="col">Result</th>'
                        '<th scope="col">Alternative</th><th scope="col">What was compared</th>'
@@ -441,13 +441,27 @@ class Artifact:
             payload.sourced(f"  {self._reconstruction}\n", anchor)
 
 
+    def _sweep_absence(self) -> str:
+        """What a sweep that did not run means for this verdict (§9.3).
+
+        Only one verdict is capped for it: every element verifies and the
+        sweep could not run, which §9.3 refuses to read as a clean pass. Every
+        other verdict reached with no sweep — False, Insufficient Data, a
+        contested Indeterminate — did not come from the sweep at all, and
+        saying it was "capped accordingly" misdescribed it. Both say that the
+        silence is not a pass, which is the point either way.
+        """
+        if self.verdict.capped:
+            return "The verdict is capped accordingly; silence is not a pass."
+        return "The verdict does not rest on the sweep, and its not running is not a pass."
+
     def _render_flip_table(self, payload: Payload) -> None:
         """§9.3 — rendered with the verdict, never omitted from a Misleading one."""
         payload.line("ROBUSTNESS SWEEP")
         if not self.sweep.ran:
             payload.line("  Could not run.")
             payload.line(f"  {self.sweep.reason_not_run}")
-            payload.line("  The verdict is capped accordingly; silence is not a pass.")
+            payload.line(f"  {self._sweep_absence()}")
             payload.line()
             return
         for row in self.sweep.rows:
